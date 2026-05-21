@@ -1,26 +1,42 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Wati design tokens */
+  --wati-surface-subtle: #f6f7f6;
+  --wati-surface-default: #ffffff;
+  --wati-border-default: #e7e9e8;
+  --wati-divider-light: #e7e9e8;
+  --wati-text-primary: #23a455;
+  --wati-text-body: #353735;
+  --wati-text-subtitle: #505451;
+  --wati-text-caption: #848a86;
+  --wati-icon-default: #505451;
+  --wati-icon-muted: #848a86;
+  --wati-hover-bg: #ececf2;
+  --wati-active-bg: #e7f6ee;
+  --wati-tree-border: #ececf2;
+  --wati-chip-bg: #f1f0f1;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background: var(--wati-surface-subtle);
+  --color-foreground: var(--wati-text-body);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+html,
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--wati-surface-subtle);
+  color: var(--wati-text-body);
+  font-family: var(--font-inter), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Hide default focus rings on nav links to match design */
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid #23a455;
+  outline-offset: 2px;
+  border-radius: 6px;
 }
