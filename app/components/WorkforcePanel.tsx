@@ -10,7 +10,10 @@ import { TenantToggleChip } from "./TenantToggleChip";
 export function WorkforcePanel() {
   const { threads, activeThreadId, setActiveThreadId } = useChatThreads();
   const { agents, handoffsByAgent } = useAgents();
-  const { setMode } = useChatMode();
+  const { mode, setMode } = useChatMode();
+
+  const askWatiSelected = activeThreadId === null && mode !== "agent";
+  const newAgentSelected = activeThreadId === null && mode === "agent";
 
   const goHome = () => {
     setActiveThreadId(null);
@@ -36,7 +39,7 @@ export function WorkforcePanel() {
           type="button"
           onClick={goHome}
           className={`flex w-full items-center gap-1 rounded p-1 transition-colors ${
-            activeThreadId === null
+            askWatiSelected
               ? "bg-[var(--wati-chip-bg)]"
               : "bg-white hover:bg-[var(--wati-surface-subtle)]"
           }`}
@@ -69,7 +72,11 @@ export function WorkforcePanel() {
         <button
           type="button"
           onClick={startNewAgent}
-          className="flex w-full items-center gap-1 rounded bg-white p-1 transition-colors hover:bg-[var(--wati-surface-subtle)]"
+          className={`flex w-full items-center gap-1 rounded p-1 transition-colors ${
+            newAgentSelected
+              ? "bg-[var(--wati-chip-bg)]"
+              : "bg-white hover:bg-[var(--wati-surface-subtle)]"
+          }`}
         >
           <span className="flex h-5 w-5 items-center justify-center text-[var(--wati-icon-default)]">
             <Plus size={14} strokeWidth={2} />
