@@ -2008,3 +2008,15 @@ export function getPixabot(seed: string): string {
   const idx = Math.abs(h) % PIXABOT_IDS.length
   return `/pixabots/240/${PIXABOT_IDS[idx]}.png`
 }
+
+export function getPixabotByIndex(index: number): string {
+  const len = PIXABOT_IDS.length
+  const i = ((index % len) + len) % len
+  return `/pixabots/240/${PIXABOT_IDS[i]}.png`
+}
+
+export function pixabotIndexFromPath(path: string): number {
+  const match = path.match(/\/pixabots\/240\/([0-9a-f]+)\.png$/)
+  if (!match) return -1
+  return PIXABOT_IDS.indexOf(match[1] as (typeof PIXABOT_IDS)[number])
+}
