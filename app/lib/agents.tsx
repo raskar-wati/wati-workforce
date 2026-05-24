@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import type { AchievementId } from "./achievements";
+import { getActionScript } from "./agent-actions";
 
 export type WatcherTypeId =
   | "ready-to-buy"
@@ -38,6 +39,11 @@ export type Agent = {
   description?: string;
   schedule: AgentSchedule;
   actions: AchievementId[];
+  /**
+   * Handoff CTAs whose action the agent should fire automatically on every
+   * future run. Driven by the "Always do this" toggle on an action-run result.
+   */
+  autoActions: HandoffCtaAction[];
   avatarSeed: string;
   status: AgentStatus;
   createdAt: string;
@@ -104,8 +110,9 @@ export type AgentActionRun = {
   completedAt?: string;
 };
 
-type AgentDraft = Omit<Agent, "id" | "createdAt" | "status"> & {
+type AgentDraft = Omit<Agent, "id" | "createdAt" | "status" | "autoActions"> & {
   status?: AgentStatus;
+  autoActions?: HandoffCtaAction[];
 };
 
 type HandoffDraft = Omit<Handoff, "id" | "agentId" | "runNumber">;
@@ -134,6 +141,7 @@ type AgentsCtx = AgentsState & {
   addHandoff: (agentId: string, draft: HandoffDraft) => Handoff;
   startActionRun: (draft: ActionRunDraft) => AgentActionRun;
   completeActionRun: (runId: string) => void;
+  enableAutoAction: (agentId: string, action: HandoffCtaAction) => void;
   getAgent: (id: string) => Agent | undefined;
   getHandoffs: (agentId: string) => Handoff[];
   getActionRuns: (agentId: string) => AgentActionRun[];
@@ -172,7 +180,11 @@ export function AgentsProvider({ children }: { children: ReactNode }) {
         const parsed = JSON.parse(raw) as AgentsState;
         if (parsed && Array.isArray(parsed.agents)) {
           setState({
-            agents: parsed.agents,
+            // Back-fill autoActions for any agents that predate the field.
+            agents: parsed.agents.map((a) => ({
+              ...a,
+              autoActions: a.autoActions ?? [],
+            })),
             handoffsByAgent: parsed.handoffsByAgent ?? {},
             actionRunsByAgent: parsed.actionRunsByAgent ?? {},
           });
@@ -195,10 +207,11 @@ export function AgentsProvider({ children }: { children: ReactNode }) {
 
   const createAgent = useCallback((draft: AgentDraft): Agent => {
     const agent: Agent = {
+      ...draft,
       id: crypto.randomUUID(),
       createdAt: new Date().toISOString(),
       status: draft.status ?? "active",
-      ...draft,
+      autoActions: draft.autoActions ?? [],
     };
     setState((prev) => ({
       ...prev,
@@ -218,6 +231,7 @@ export function AgentsProvider({ children }: { children: ReactNode }) {
     (agentId: string, draft: HandoffDraft): Handoff => {
       let created: Handoff | null = null;
       setState((prev) => {
+        const agent = prev.agents.find((a) => a.id === agentId);
         const existing = prev.handoffsByAgent[agentId] ?? [];
         const handoff: Handoff = {
           ...draft,
@@ -226,16 +240,63 @@ export function AgentsProvider({ children }: { children: ReactNode }) {
           runNumber: existing.length + 1,
         };
         created = handoff;
+
+        // For each auto-action the agent has opted into, find the first
+        // matching footer CTA in this handoff and spawn an action run.
+        const autoRuns: AgentActionRun[] = [];
+        const auto = agent?.autoActions ?? [];
+        for (const action of auto) {
+          const cta = handoff.ctas.find((c) => c.action === action);
+          if (!cta) continue;
+          const script = getActionScript(action);
+          autoRuns.push({
+            id: crypto.randomUUID(),
+            agentId,
+            handoffId: handoff.id,
+            ctaId: cta.id,
+            action,
+            runTitle: script.runTitle,
+            steps: [...script.steps],
+            resultLabel: script.resultLabel,
+            resultDestination: script.resultDestination,
+            resultCtaLabel: script.resultCtaLabel,
+            status: "running",
+            startedAt: new Date().toISOString(),
+          });
+        }
+
+        const prevRuns = prev.actionRunsByAgent[agentId] ?? [];
         return {
           ...prev,
           handoffsByAgent: {
             ...prev.handoffsByAgent,
             [agentId]: sortByRunAtDesc([handoff, ...existing]),
           },
+          actionRunsByAgent:
+            autoRuns.length > 0
+              ? {
+                  ...prev.actionRunsByAgent,
+                  [agentId]: [...prevRuns, ...autoRuns],
+                }
+              : prev.actionRunsByAgent,
         };
       });
       // setState batches; created is assigned synchronously inside the updater
       return created!;
+    },
+    [],
+  );
+
+  const enableAutoAction = useCallback(
+    (agentId: string, action: HandoffCtaAction) => {
+      setState((prev) => ({
+        ...prev,
+        agents: prev.agents.map((a) => {
+          if (a.id !== agentId) return a;
+          if (a.autoActions.includes(action)) return a;
+          return { ...a, autoActions: [...a.autoActions, action] };
+        }),
+      }));
     },
     [],
   );
@@ -287,13 +348,22 @@ export function AgentsProvider({ children }: { children: ReactNode }) {
       addHandoff,
       startActionRun,
       completeActionRun,
+      enableAutoAction,
       getAgent: (id) => state.agents.find((a) => a.id === id),
       getHandoffs: (agentId) => state.handoffsByAgent[agentId] ?? [],
       getActionRuns: (agentId) => state.actionRunsByAgent[agentId] ?? [],
       getAgentsForThread: (threadId) =>
         state.agents.filter((a) => a.threadId === threadId),
     }),
-    [state, createAgent, setAgentStatus, addHandoff, startActionRun, completeActionRun],
+    [
+      state,
+      createAgent,
+      setAgentStatus,
+      addHandoff,
+      startActionRun,
+      completeActionRun,
+      enableAutoAction,
+    ],
   );
 
   return (

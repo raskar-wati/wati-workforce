@@ -88,6 +88,10 @@ function CompletedStep({ text }: { text: string }) {
 }
 
 function ActionRunResult({ run }: { run: AgentActionRunType }) {
+  const { getAgent, enableAutoAction } = useAgents();
+  const agent = getAgent(run.agentId);
+  const alwaysOn = agent?.autoActions.includes(run.action) ?? false;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -108,7 +112,7 @@ function ActionRunResult({ run }: { run: AgentActionRunType }) {
           </p>
         </div>
       </div>
-      <div className="flex justify-start">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <span
           aria-hidden
           className="inline-flex items-center gap-1.5 rounded-full border border-[#e5e5e5] bg-white px-3 py-1.5 text-[13px] tracking-[-0.078px] text-[#0a0a0a]"
@@ -116,6 +120,20 @@ function ActionRunResult({ run }: { run: AgentActionRunType }) {
           {run.resultCtaLabel}
           <ArrowUpRight size={12} strokeWidth={2} />
         </span>
+        {alwaysOn ? (
+          <span className="inline-flex items-center gap-1 text-[13px] tracking-[-0.078px] text-emerald-700">
+            <Check size={12} strokeWidth={2.5} />
+            Will always do this
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={() => enableAutoAction(run.agentId, run.action)}
+            className="text-[13px] tracking-[-0.078px] text-black/60 hover:text-[#0a0a0a]"
+          >
+            Always do this
+          </button>
+        )}
       </div>
     </motion.div>
   );
