@@ -2,23 +2,23 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowUp, Check, ChevronDown, Play, Plus, X } from "lucide-react";
-import Image from "next/image";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { getActionScript } from "../lib/agent-actions";
 import { useAgents, type HandoffCta } from "../lib/agents";
+import { useChatMode, type ChatMode } from "../lib/chat-mode";
 import { useChatThreads } from "../lib/chat-threads";
-import { getPixabot } from "../lib/pixabots";
+import { useTenantProfile } from "../lib/tenant-signal-profile";
 import { getWatcherType } from "../lib/watcher-types";
 import { AgentActionRun } from "./agents/AgentActionRun";
 import { AgentCreationFlow } from "./agents/AgentCreationFlow";
 import { AgentSummaryCard } from "./agents/AgentSummaryCard";
 import { Handoff } from "./agents/Handoff";
+import { TenantAgentSuggestions } from "./agents/TenantAgentSuggestions";
+import { ModePillRow } from "./ModePillRow";
 import { ThinkingIndicator } from "./ThinkingIndicator";
 
-type AgentMode = "agent" | "automation" | "insights";
-
 type ModeOption = {
-  id: AgentMode;
+  id: ChatMode;
   chipLabel: string;
   title: string;
   description: string;
@@ -48,30 +48,6 @@ const MODE_OPTIONS: ModeOption[] = [
 type ChatMessage =
   | { kind: "user-text"; id: string; content: string }
   | { kind: "agent-creation-flow"; id: string; initialMessage: string };
-
-type Suggestion = {
-  title: string;
-  description: string;
-};
-
-const SUGGESTIONS: Suggestion[] = [
-  {
-    title: "Drop off risk",
-    description: "Helps filter customers who are on the risk of drop off.",
-  },
-  {
-    title: "Escalated",
-    description: "Find all customers that require immediate attention.",
-  },
-  {
-    title: "Demand spike",
-    description: "Get alerts whenever there is a surge in demand.",
-  },
-  {
-    title: "Flag Spam Chats",
-    description: "Flag conversations that are spam and block them.",
-  },
-];
 
 const HERO_PLACEHOLDERS = [
   "Create an agent",
@@ -110,7 +86,7 @@ export function ChatArea() {
     Record<string, ChatMessage[]>
   >({});
   const [input, setInput] = useState("");
-  const [mode, setMode] = useState<AgentMode | null>(null);
+  const { mode, setMode } = useChatMode();
   const { activeThreadId, createThread } = useChatThreads();
   const {
     getAgentsForThread,
@@ -119,6 +95,7 @@ export function ChatArea() {
     getActionRuns,
     startActionRun,
   } = useAgents();
+  const { profile: tenantProfile } = useTenantProfile();
 
   const messages = activeThreadId
     ? messagesByThread[activeThreadId] ?? []
@@ -158,7 +135,9 @@ export function ChatArea() {
 
   useEffect(() => {
     setInput("");
-    setMode(null);
+    // Mode is lifted to ChatModeProvider and managed by whoever sets it
+    // (slash menu, pill row, sidebar New Agent button). Don't clobber it
+    // here on thread change — that would race with sidebar-driven setMode.
   }, [activeThreadId]);
 
   const submit = () => {
@@ -199,7 +178,7 @@ export function ChatArea() {
 
   return (
     <div className="mx-auto flex h-full w-full max-w-[720px] flex-col px-6 pb-6">
-      {/* Top: hero (state A) or messages (state B) */}
+      {/* Top: hero (with greeting or tenant suggestions inside) or messages */}
       <AnimatePresence initial={false} mode="popLayout">
         {!hasContent ? (
           <motion.div
@@ -207,14 +186,23 @@ export function ChatArea() {
             exit={{ opacity: 0, transition: { duration: 0.2 } }}
             className="flex flex-1 flex-col justify-end pb-6"
           >
-            <div className="flex justify-center">
-              <ThinkingIndicator />
-            </div>
-            <div className="pt-3">
-              <p className="text-center text-[16px] font-medium tracking-[-0.32px] text-black/70">
-                How may I be of service?
-              </p>
-            </div>
+            {mode === "agent" ? (
+              <TenantAgentSuggestions
+                profile={tenantProfile}
+                onSelect={setInput}
+              />
+            ) : (
+              <>
+                <div className="flex justify-center">
+                  <ThinkingIndicator />
+                </div>
+                <div className="pt-3">
+                  <p className="text-center text-[16px] font-medium tracking-[-0.32px] text-black/70">
+                    How may I be of service?
+                  </p>
+                </div>
+              </>
+            )}
           </motion.div>
         ) : (
           <motion.div
@@ -320,18 +308,15 @@ export function ChatArea() {
         />
       </motion.div>
 
-      {/* Bottom: suggestions (state A only) */}
-      <AnimatePresence initial={false}>
-        {!hasContent && (
-          <motion.div
-            key="suggestions"
-            exit={{ opacity: 0, transition: { duration: 0.2 } }}
-            className="flex-1 pt-6"
-          >
-            <SuggestedAgents />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Bottom: mode pills shown only on the empty hero when no mode is set.
+          Wrapped in a flex-1 spacer so it balances the top flex-1 hero block
+          and centers the composer vertically. When a mode is picked, this
+          block unmounts and the composer slides to the bottom. */}
+      {!hasContent && mode === null && (
+        <div className="flex flex-1 flex-col">
+          <ModePillRow onSelect={setMode} />
+        </div>
+      )}
     </div>
   );
 }
@@ -348,8 +333,8 @@ function Composer({
   onChange: (v: string) => void;
   onSubmit: () => void;
   hasMessages: boolean;
-  mode: AgentMode | null;
-  onModeChange: (mode: AgentMode | null) => void;
+  mode: ChatMode | null;
+  onModeChange: (mode: ChatMode | null) => void;
 }) {
   const [selectedModel, setSelectedModel] = useState<LLMOption>(LLM_OPTIONS[0]);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -387,7 +372,7 @@ function Composer({
     return () => document.removeEventListener("mousedown", handler);
   }, [dropdownOpen]);
 
-  const selectMode = (id: AgentMode) => {
+  const selectMode = (id: ChatMode) => {
     onModeChange(id);
     onChange("");
   };
@@ -506,7 +491,6 @@ function Composer({
             onClick={() => setDropdownOpen((o) => !o)}
             className="flex items-center gap-1.5 rounded-full border border-[#e5e5e5]/80 px-3 py-1.5"
           >
-            <Plus size={12} strokeWidth={2.5} className="text-[#0a0a0a]" />
             <span className="text-[13px] tracking-[-0.078px] text-[#0a0a0a]">
               {selectedModel.name}
             </span>
@@ -654,51 +638,3 @@ function AnimatedPlaceholder() {
   );
 }
 
-function SuggestedAgents() {
-  return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-3">
-        <p className="flex-1 text-sm text-[var(--wati-text-body)]">
-          Suggested Agents
-        </p>
-        <ChevronDown
-          size={20}
-          strokeWidth={1.75}
-          className="text-[var(--wati-icon-default)]"
-        />
-      </div>
-
-      <div className="grid grid-cols-4 gap-3">
-        {SUGGESTIONS.map((s) => (
-          <button
-            key={s.title}
-            type="button"
-            className="flex flex-col items-start gap-2 rounded-[10px] border border-[#e5e5e5] bg-white p-4 text-left"
-          >
-            <Image
-              src={getPixabot(s.title)}
-              alt=""
-              width={24}
-              height={24}
-              aria-hidden
-            />
-            <span className="text-[12px] font-medium leading-[16.5px] text-[#0a0a0a]">
-              {s.title}
-            </span>
-            <span className="text-[12px] leading-[16.5px] text-[#737373]">
-              {s.description}
-            </span>
-          </button>
-        ))}
-      </div>
-
-      <button
-        type="button"
-        className="flex w-full items-center justify-center gap-1 rounded-full px-4 py-1.5"
-      >
-        <span className="text-sm font-medium text-[#505451]">Show more</span>
-        <ChevronDown size={16} strokeWidth={2} className="text-[#505451]" />
-      </button>
-    </div>
-  );
-}

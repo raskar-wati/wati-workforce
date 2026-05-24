@@ -3,11 +3,24 @@
 import { ChevronDown, Plus, Sparkles } from "lucide-react";
 import Image from "next/image";
 import { useAgents } from "../lib/agents";
+import { useChatMode } from "../lib/chat-mode";
 import { useChatThreads } from "../lib/chat-threads";
+import { TenantToggleChip } from "./TenantToggleChip";
 
 export function WorkforcePanel() {
   const { threads, activeThreadId, setActiveThreadId } = useChatThreads();
   const { agents, handoffsByAgent } = useAgents();
+  const { setMode } = useChatMode();
+
+  const goHome = () => {
+    setActiveThreadId(null);
+    setMode(null);
+  };
+
+  const startNewAgent = () => {
+    setActiveThreadId(null);
+    setMode("agent");
+  };
 
   return (
     <div className="flex w-[232px] shrink-0 flex-col gap-6 overflow-hidden border-r border-[var(--wati-border-default)] bg-white p-3">
@@ -21,7 +34,7 @@ export function WorkforcePanel() {
 
         <button
           type="button"
-          onClick={() => setActiveThreadId(null)}
+          onClick={goHome}
           className={`flex w-full items-center gap-1 rounded p-1 transition-colors ${
             activeThreadId === null
               ? "bg-[var(--wati-chip-bg)]"
@@ -32,7 +45,7 @@ export function WorkforcePanel() {
             <Plus size={16} strokeWidth={2} />
           </span>
           <span className="flex-1 text-left text-sm font-medium text-[var(--wati-text-body)]">
-            New Chat
+            Ask Wati
           </span>
         </button>
 
@@ -55,7 +68,8 @@ export function WorkforcePanel() {
 
         <button
           type="button"
-          className="flex w-full items-center gap-1 rounded bg-white px-1"
+          onClick={startNewAgent}
+          className="flex w-full items-center gap-1 rounded bg-white p-1 transition-colors hover:bg-[var(--wati-surface-subtle)]"
         >
           <span className="flex h-5 w-5 items-center justify-center text-[var(--wati-icon-default)]">
             <Plus size={14} strokeWidth={2} />
@@ -125,6 +139,11 @@ export function WorkforcePanel() {
             ))}
         </div>
       )}
+
+      {/* Footer — dev-only tenant toggle */}
+      <div className="mt-auto border-t border-[var(--wati-border-default)] pt-3">
+        <TenantToggleChip />
+      </div>
     </div>
   );
 }
