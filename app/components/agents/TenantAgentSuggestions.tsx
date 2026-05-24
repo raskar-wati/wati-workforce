@@ -25,7 +25,12 @@ export function TenantAgentSuggestions({
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-sm text-[var(--wati-text-body)]">Suggested Agents</p>
+      <div className="flex items-center gap-2">
+        <p className="text-sm text-[var(--wati-text-body)]">Suggested Agents</p>
+        <span className="rounded-full bg-[#EFF8FF] px-2 py-0.5 text-[11px] font-medium text-[#1570EF]">
+          Based on 250 active chats
+        </span>
+      </div>
 
       <div className="grid grid-cols-2 gap-3">
         {suggestions.map((s) => (
