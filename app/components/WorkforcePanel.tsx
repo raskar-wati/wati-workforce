@@ -2,22 +2,12 @@
 
 import { ChevronDown, Plus, Sparkles } from "lucide-react";
 import Image from "next/image";
+import { useAgents } from "../lib/agents";
 import { useChatThreads } from "../lib/chat-threads";
-import { getPixabot } from "../lib/pixabots";
-
-type RecentAgent = {
-  label: string;
-  badge?: string;
-};
-
-const recentAgents: RecentAgent[] = [
-  { label: "Daily Digest", badge: "3" },
-  { label: "Ready-to-buy Agent", badge: "3" },
-  { label: "Top topics Agent" },
-];
 
 export function WorkforcePanel() {
   const { threads, activeThreadId, setActiveThreadId } = useChatThreads();
+  const { agents, handoffsByAgent } = useAgents();
 
   return (
     <div className="flex w-[232px] shrink-0 flex-col gap-6 overflow-hidden border-r border-[var(--wati-border-default)] bg-white p-3">
@@ -75,28 +65,41 @@ export function WorkforcePanel() {
           </span>
         </button>
 
-        {recentAgents.map((a) => (
-          <div key={a.label} className="flex w-full items-center gap-1 px-2">
-            <Image
-              src={getPixabot(a.label)}
-              alt=""
-              width={16}
-              height={16}
-              className="shrink-0"
-              aria-hidden
-            />
-            <p className="flex-1 truncate text-sm text-[#101828]">{a.label}</p>
-            {a.badge && (
-              <span className="flex h-[18px] w-[18px] items-center justify-center rounded border border-[var(--wati-border-default)] bg-[var(--wati-surface-subtle)] text-[10px] font-medium text-[var(--wati-text-body)]">
-                {a.badge}
-              </span>
-            )}
-          </div>
-        ))}
+        {agents.map((a) => {
+          const handoffCount = handoffsByAgent[a.id]?.length ?? 0;
+          const isActive = activeThreadId === a.threadId;
+          return (
+            <button
+              key={a.id}
+              type="button"
+              onClick={() => setActiveThreadId(a.threadId)}
+              className={`flex w-full items-center gap-1 rounded px-2 py-1 text-left transition-colors ${
+                isActive
+                  ? "bg-[var(--wati-chip-bg)]"
+                  : "hover:bg-[var(--wati-surface-subtle)]"
+              }`}
+            >
+              <Image
+                src={a.avatarSeed}
+                alt=""
+                width={16}
+                height={16}
+                className="shrink-0 rounded-full"
+                aria-hidden
+              />
+              <p className="flex-1 truncate text-sm text-[#101828]">{a.name}</p>
+              {handoffCount > 0 && (
+                <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded border border-[var(--wati-border-default)] bg-[var(--wati-surface-subtle)] px-1 text-[10px] font-medium text-[var(--wati-text-body)]">
+                  {handoffCount}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
-      {/* Recent chats */}
-      {threads.length > 0 && (
+      {/* Recent chats — non-agent threads only */}
+      {threads.some((t) => !t.agentId) && (
         <div className="flex flex-col gap-1">
           <div className="px-1 pb-2">
             <p className="text-[12px] font-semibold uppercase tracking-[1px] text-[var(--wati-text-caption)]">
@@ -104,20 +107,22 @@ export function WorkforcePanel() {
             </p>
           </div>
 
-          {threads.map((thread) => (
-            <button
-              key={thread.id}
-              type="button"
-              onClick={() => setActiveThreadId(thread.id)}
-              className={`w-full rounded px-2 py-1.5 text-left text-sm transition-colors ${
-                activeThreadId === thread.id
-                  ? "bg-[var(--wati-chip-bg)] font-medium text-[var(--wati-text-body)]"
-                  : "text-[var(--wati-text-subtitle)] hover:bg-[var(--wati-surface-subtle)]"
-              }`}
-            >
-              <span className="block truncate">{thread.title}</span>
-            </button>
-          ))}
+          {threads
+            .filter((thread) => !thread.agentId)
+            .map((thread) => (
+              <button
+                key={thread.id}
+                type="button"
+                onClick={() => setActiveThreadId(thread.id)}
+                className={`w-full rounded px-2 py-1.5 text-left text-sm transition-colors ${
+                  activeThreadId === thread.id
+                    ? "bg-[var(--wati-chip-bg)] font-medium text-[var(--wati-text-body)]"
+                    : "text-[var(--wati-text-subtitle)] hover:bg-[var(--wati-surface-subtle)]"
+                }`}
+              >
+                <span className="block truncate">{thread.title}</span>
+              </button>
+            ))}
         </div>
       )}
     </div>

@@ -1,18 +1,51 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowUp, Check, ChevronDown, Plus } from "lucide-react";
+import { ArrowUp, Check, ChevronDown, Play, Plus, X } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useAgents } from "../lib/agents";
 import { useChatThreads } from "../lib/chat-threads";
 import { getPixabot } from "../lib/pixabots";
+import { getWatcherType } from "../lib/watcher-types";
+import { AgentCreationFlow } from "./agents/AgentCreationFlow";
+import { AgentSummaryCard } from "./agents/AgentSummaryCard";
+import { Handoff } from "./agents/Handoff";
 import { ThinkingIndicator } from "./ThinkingIndicator";
 
-type ChatMessage = {
-  id: string;
-  role: "user";
-  content: string;
+type AgentMode = "agent" | "automation" | "insights";
+
+type ModeOption = {
+  id: AgentMode;
+  chipLabel: string;
+  title: string;
+  description: string;
 };
+
+const MODE_OPTIONS: ModeOption[] = [
+  {
+    id: "agent",
+    chipLabel: "Agent",
+    title: "Create an agent",
+    description: "Create a new agent, edit, or request a handoff.",
+  },
+  {
+    id: "automation",
+    chipLabel: "Automation",
+    title: "Build an automation",
+    description: "Run actions on triggers or a schedule.",
+  },
+  {
+    id: "insights",
+    chipLabel: "Insights",
+    title: "Get insights",
+    description: "Surface trends and answers from your data.",
+  },
+];
+
+type ChatMessage =
+  | { kind: "user-text"; id: string; content: string }
+  | { kind: "agent-creation-flow"; id: string; initialMessage: string };
 
 type Suggestion = {
   title: string;
@@ -71,40 +104,70 @@ const COMPOSER_TRANSITION = {
 };
 
 export function ChatArea() {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messagesByThread, setMessagesByThread] = useState<
+    Record<string, ChatMessage[]>
+  >({});
   const [input, setInput] = useState("");
+  const [mode, setMode] = useState<AgentMode | null>(null);
   const { activeThreadId, createThread } = useChatThreads();
+  const { getAgentsForThread, getHandoffs, addHandoff } = useAgents();
 
+  const messages = activeThreadId
+    ? messagesByThread[activeThreadId] ?? []
+    : [];
+  const agentForThread = activeThreadId
+    ? getAgentsForThread(activeThreadId)[0] ?? null
+    : null;
+  const handoffs = agentForThread ? getHandoffs(agentForThread.id) : [];
   const hasMessages = messages.length > 0;
+  const hasContent = hasMessages || agentForThread !== null;
 
   useEffect(() => {
-    if (activeThreadId === null) {
-      setMessages([]);
-      setInput("");
-    }
+    setInput("");
+    setMode(null);
   }, [activeThreadId]);
 
   const submit = () => {
     const text = input.trim();
     if (!text) return;
-    if (messages.length === 0) createThread(text);
-    const id = crypto.randomUUID();
-    setMessages((prev) => [...prev, { id, role: "user", content: text }]);
+    let threadId = activeThreadId;
+    if (!threadId) {
+      threadId = createThread(text);
+    }
+    const userMsg: ChatMessage = {
+      kind: "user-text",
+      id: crypto.randomUUID(),
+      content: text,
+    };
+    const startsAgentFlow = mode === "agent" && !agentForThread;
+    const nextMessages: ChatMessage[] = [userMsg];
+    if (startsAgentFlow) {
+      nextMessages.push({
+        kind: "agent-creation-flow",
+        id: crypto.randomUUID(),
+        initialMessage: text,
+      });
+    }
+    const tid = threadId;
+    setMessagesByThread((prev) => ({
+      ...prev,
+      [tid]: [...(prev[tid] ?? []), ...nextMessages],
+    }));
     setInput("");
+    if (startsAgentFlow) setMode(null);
   };
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      submit();
-    }
+  const runAgentAgain = () => {
+    if (!agentForThread) return;
+    const wt = getWatcherType(agentForThread.watcherType);
+    addHandoff(agentForThread.id, wt.buildDraft());
   };
 
   return (
     <div className="mx-auto flex h-full w-full max-w-[720px] flex-col px-6 pb-6">
       {/* Top: hero (state A) or messages (state B) */}
       <AnimatePresence initial={false} mode="popLayout">
-        {!hasMessages ? (
+        {!hasContent ? (
           <motion.div
             key="hero"
             exit={{ opacity: 0, transition: { duration: 0.2 } }}
@@ -129,20 +192,74 @@ export function ChatArea() {
             }}
             className="flex flex-1 flex-col overflow-y-auto pt-12 pb-6"
           >
-            <div className="flex flex-col gap-3">
-              {messages.map((m) => (
-                <motion.div
-                  key={m.id}
-                  initial={{ opacity: 0, y: -8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
-                  className="flex justify-end"
-                >
-                  <div className="max-w-[80%] rounded-2xl bg-black/[0.04] px-4 py-2.5 text-[14px] leading-[20px] text-black/80">
-                    {m.content}
-                  </div>
-                </motion.div>
-              ))}
+            <div className="flex flex-col gap-4">
+              {agentForThread && (
+                <AgentSummaryCard
+                  data={{
+                    avatarPath: agentForThread.avatarSeed,
+                    name: agentForThread.name,
+                    watcherType: agentForThread.watcherType,
+                    schedule: agentForThread.schedule,
+                    description: agentForThread.description,
+                    status: agentForThread.status,
+                  }}
+                  actions={
+                    <button
+                      type="button"
+                      onClick={runAgentAgain}
+                      className="flex items-center gap-1.5 rounded-full bg-[#0a0a0a] px-3 py-1.5 text-[13px] tracking-[-0.078px] text-white hover:bg-[#0a0a0a]/90"
+                    >
+                      <Play size={12} strokeWidth={2} />
+                      Run again
+                    </button>
+                  }
+                />
+              )}
+
+              {messages.map((m) => {
+                if (m.kind === "user-text") {
+                  return (
+                    <motion.div
+                      key={m.id}
+                      initial={{ opacity: 0, y: -8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+                      className="flex justify-end"
+                    >
+                      <div className="max-w-[80%] rounded-2xl bg-black/[0.04] px-4 py-2.5 text-[14px] leading-[20px] text-black/80">
+                        {m.content}
+                      </div>
+                    </motion.div>
+                  );
+                }
+                if (!activeThreadId) return null;
+                return (
+                  <motion.div
+                    key={m.id}
+                    initial={{ opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+                  >
+                    <AgentCreationFlow
+                      threadId={activeThreadId}
+                      initialMessage={m.initialMessage}
+                    />
+                  </motion.div>
+                );
+              })}
+
+              {agentForThread && handoffs.length > 0 && (
+                <div className="flex flex-col gap-3 pt-2">
+                  {handoffs.map((h, i) => (
+                    <Handoff
+                      key={h.id}
+                      handoff={h}
+                      agentName={agentForThread.name}
+                      defaultExpanded={i === 0}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           </motion.div>
         )}
@@ -154,14 +271,15 @@ export function ChatArea() {
           value={input}
           onChange={setInput}
           onSubmit={submit}
-          onKeyDown={handleKeyDown}
-          hasMessages={hasMessages}
+          hasMessages={hasContent}
+          mode={mode}
+          onModeChange={setMode}
         />
       </motion.div>
 
       {/* Bottom: suggestions (state A only) */}
       <AnimatePresence initial={false}>
-        {!hasMessages && (
+        {!hasContent && (
           <motion.div
             key="suggestions"
             exit={{ opacity: 0, transition: { duration: 0.2 } }}
@@ -179,18 +297,41 @@ function Composer({
   value,
   onChange,
   onSubmit,
-  onKeyDown,
   hasMessages,
+  mode,
+  onModeChange,
 }: {
   value: string;
   onChange: (v: string) => void;
   onSubmit: () => void;
-  onKeyDown: (e: KeyboardEvent<HTMLInputElement>) => void;
   hasMessages: boolean;
+  mode: AgentMode | null;
+  onModeChange: (mode: AgentMode | null) => void;
 }) {
   const [selectedModel, setSelectedModel] = useState<LLMOption>(LLM_OPTIONS[0]);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [slashIndex, setSlashIndex] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const slashOpen = !mode && value.startsWith("/");
+  const slashQuery = slashOpen ? value.slice(1).trim().toLowerCase() : "";
+  const filteredModes = slashOpen
+    ? MODE_OPTIONS.filter(
+        (o) =>
+          !slashQuery ||
+          o.id.includes(slashQuery) ||
+          o.chipLabel.toLowerCase().includes(slashQuery) ||
+          o.title.toLowerCase().includes(slashQuery),
+      )
+    : [];
+
+  useEffect(() => {
+    if (!slashOpen) setSlashIndex(0);
+  }, [slashOpen]);
+
+  useEffect(() => {
+    if (slashIndex >= filteredModes.length) setSlashIndex(0);
+  }, [filteredModes.length, slashIndex]);
 
   useEffect(() => {
     if (!dropdownOpen) return;
@@ -203,20 +344,115 @@ function Composer({
     return () => document.removeEventListener("mousedown", handler);
   }, [dropdownOpen]);
 
+  const selectMode = (id: AgentMode) => {
+    onModeChange(id);
+    onChange("");
+  };
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (slashOpen && filteredModes.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setSlashIndex((i) => (i + 1) % filteredModes.length);
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSlashIndex((i) => (i - 1 + filteredModes.length) % filteredModes.length);
+        return;
+      }
+      if (e.key === "Enter") {
+        e.preventDefault();
+        selectMode(filteredModes[slashIndex].id);
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onChange("");
+        return;
+      }
+    }
+    if (e.key === "Backspace" && value === "" && mode) {
+      e.preventDefault();
+      onModeChange(null);
+      return;
+    }
+    if (e.key === "Enter") {
+      e.preventDefault();
+      onSubmit();
+    }
+  };
+
+  const activeMode = mode ? MODE_OPTIONS.find((o) => o.id === mode) ?? null : null;
+
   return (
-    <div className="flex w-full flex-col rounded-3xl bg-white pt-4 shadow-[0_8px_16px_rgba(0,0,0,0.06),0_2px_4px_rgba(0,0,0,0.04)]">
+    <div className="relative flex w-full flex-col rounded-3xl bg-white pt-4 shadow-[0_8px_16px_rgba(0,0,0,0.06),0_2px_4px_rgba(0,0,0,0.04)]">
+      <AnimatePresence>
+        {slashOpen && filteredModes.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 6, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 6, scale: 0.98 }}
+            transition={{ duration: 0.15, ease: [0.32, 0.72, 0, 1] }}
+            className="absolute bottom-full left-0 right-0 mb-2 overflow-hidden rounded-2xl border border-[#e5e5e5] bg-white shadow-[0_8px_24px_rgba(0,0,0,0.1)]"
+          >
+            <div className="flex flex-col py-1">
+              {filteredModes.map((o, i) => {
+                const highlighted = i === slashIndex;
+                return (
+                  <button
+                    key={o.id}
+                    type="button"
+                    onMouseEnter={() => setSlashIndex(i)}
+                    onClick={() => selectMode(o.id)}
+                    className={`flex w-full items-center gap-3 px-3 py-2 text-left ${
+                      highlighted ? "bg-black/[0.04]" : ""
+                    }`}
+                  >
+                    <span className="text-[13px] font-medium tracking-[-0.078px] text-[#0a0a0a]">
+                      {o.title}
+                    </span>
+                    <span className="truncate text-[12px] tracking-[-0.06px] text-black/50">
+                      {o.description}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence initial={false}>
+        {activeMode && (
+          <motion.div
+            key={activeMode.id}
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.18, ease: [0.32, 0.72, 0, 1] }}
+            className="px-4 pb-2"
+          >
+            <ModeChip
+              option={activeMode}
+              onClear={() => onModeChange(null)}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="flex items-center gap-2 px-4">
         <div className="relative flex-1">
           <input
             type="text"
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            onKeyDown={onKeyDown}
+            onKeyDown={handleKeyDown}
             placeholder={hasMessages ? CONVERSATION_PLACEHOLDER : ""}
             autoFocus
             className="w-full bg-transparent text-[13px] tracking-[-0.078px] text-black/80 placeholder:text-black/50 focus:outline-none"
           />
-          {!hasMessages && !value && <AnimatedPlaceholder />}
+          {!hasMessages && !value && !activeMode && <AnimatedPlaceholder />}
         </div>
       </div>
 
@@ -303,6 +539,28 @@ function Composer({
         </div>
       </div>
     </div>
+  );
+}
+
+function ModeChip({
+  option,
+  onClear,
+}: {
+  option: ModeOption;
+  onClear: () => void;
+}) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-black/[0.06] py-1 pl-3 pr-1 text-[12px] tracking-[-0.06px] text-[#0a0a0a]">
+      <span>{option.chipLabel}</span>
+      <button
+        type="button"
+        onClick={onClear}
+        aria-label={`Remove ${option.chipLabel} mode`}
+        className="flex h-4 w-4 items-center justify-center rounded-full text-black/50 hover:bg-black/10 hover:text-black/80"
+      >
+        <X size={10} strokeWidth={2.5} />
+      </button>
+    </span>
   );
 }
 
