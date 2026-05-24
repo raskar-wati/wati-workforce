@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import { ChevronDown } from "lucide-react";
 import { useState } from "react";
-import type { Handoff as HandoffType } from "../../lib/agents";
+import type { Handoff as HandoffType, HandoffCta } from "../../lib/agents";
 import { HandoffCtaButton } from "./HandoffCtaButton";
 import { HandoffSection } from "./HandoffSection";
 
@@ -11,10 +11,14 @@ export function Handoff({
   handoff,
   agentName,
   defaultExpanded = false,
+  firedCtaIds,
+  onFireCta,
 }: {
   handoff: HandoffType;
   agentName: string;
   defaultExpanded?: boolean;
+  firedCtaIds: ReadonlySet<string>;
+  onFireCta: (cta: HandoffCta) => void;
 }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
 
@@ -54,12 +58,22 @@ export function Handoff({
           >
             <div className="flex flex-col gap-4 border-t border-[#f0f0f0] px-4 py-4">
               {handoff.sections.map((s) => (
-                <HandoffSection key={s.id} section={s} />
+                <HandoffSection
+                  key={s.id}
+                  section={s}
+                  firedCtaIds={firedCtaIds}
+                  onFireCta={onFireCta}
+                />
               ))}
               {handoff.ctas.length > 0 && (
                 <div className="flex flex-wrap gap-2 pt-1">
                   {handoff.ctas.map((c) => (
-                    <HandoffCtaButton key={c.id} cta={c} />
+                    <HandoffCtaButton
+                      key={c.id}
+                      cta={c}
+                      fired={firedCtaIds.has(c.id)}
+                      onFire={onFireCta}
+                    />
                   ))}
                 </div>
               )}

@@ -4,10 +4,12 @@ import { AnimatePresence, motion } from "motion/react";
 import { ArrowUp, Check, ChevronDown, Play, Plus, X } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { useAgents } from "../lib/agents";
+import { getActionScript } from "../lib/agent-actions";
+import { useAgents, type HandoffCta } from "../lib/agents";
 import { useChatThreads } from "../lib/chat-threads";
 import { getPixabot } from "../lib/pixabots";
 import { getWatcherType } from "../lib/watcher-types";
+import { AgentActionRun } from "./agents/AgentActionRun";
 import { AgentCreationFlow } from "./agents/AgentCreationFlow";
 import { AgentSummaryCard } from "./agents/AgentSummaryCard";
 import { Handoff } from "./agents/Handoff";
@@ -110,7 +112,13 @@ export function ChatArea() {
   const [input, setInput] = useState("");
   const [mode, setMode] = useState<AgentMode | null>(null);
   const { activeThreadId, createThread } = useChatThreads();
-  const { getAgentsForThread, getHandoffs, addHandoff } = useAgents();
+  const {
+    getAgentsForThread,
+    getHandoffs,
+    addHandoff,
+    getActionRuns,
+    startActionRun,
+  } = useAgents();
 
   const messages = activeThreadId
     ? messagesByThread[activeThreadId] ?? []
@@ -119,8 +127,34 @@ export function ChatArea() {
     ? getAgentsForThread(activeThreadId)[0] ?? null
     : null;
   const handoffs = agentForThread ? getHandoffs(agentForThread.id) : [];
+  const actionRuns = agentForThread ? getActionRuns(agentForThread.id) : [];
+  const runsByHandoff = actionRuns.reduce<Record<string, typeof actionRuns>>(
+    (acc, r) => {
+      (acc[r.handoffId] ??= []).push(r);
+      return acc;
+    },
+    {},
+  );
+  const firedCtaIds = new Set(actionRuns.map((r) => r.ctaId));
   const hasMessages = messages.length > 0;
   const hasContent = hasMessages || agentForThread !== null;
+
+  const fireCta = (handoffId: string, cta: HandoffCta) => {
+    if (!agentForThread) return;
+    if (firedCtaIds.has(cta.id)) return;
+    const script = getActionScript(cta.action);
+    startActionRun({
+      agentId: agentForThread.id,
+      handoffId,
+      ctaId: cta.id,
+      action: cta.action,
+      runTitle: script.runTitle,
+      steps: [...script.steps],
+      resultLabel: script.resultLabel,
+      resultDestination: script.resultDestination,
+      resultCtaLabel: script.resultCtaLabel,
+    });
+  };
 
   useEffect(() => {
     setInput("");
@@ -250,14 +284,23 @@ export function ChatArea() {
 
               {agentForThread && handoffs.length > 0 && (
                 <div className="flex flex-col gap-3 pt-2">
-                  {handoffs.map((h, i) => (
-                    <Handoff
-                      key={h.id}
-                      handoff={h}
-                      agentName={agentForThread.name}
-                      defaultExpanded={i === 0}
-                    />
-                  ))}
+                  {handoffs.map((h, i) => {
+                    const runs = runsByHandoff[h.id] ?? [];
+                    return (
+                      <div key={h.id} className="flex flex-col gap-2">
+                        <Handoff
+                          handoff={h}
+                          agentName={agentForThread.name}
+                          defaultExpanded={i === 0}
+                          firedCtaIds={firedCtaIds}
+                          onFireCta={(cta) => fireCta(h.id, cta)}
+                        />
+                        {runs.map((r) => (
+                          <AgentActionRun key={r.id} run={r} />
+                        ))}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

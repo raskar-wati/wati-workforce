@@ -1,6 +1,7 @@
 "use client";
 
 import type {
+  HandoffCta,
   HandoffSection as HandoffSectionType,
   HandoffSectionKind,
 } from "../../lib/agents";
@@ -12,7 +13,15 @@ const SECTION_TONE: Record<HandoffSectionKind, string> = {
   summary: "text-black/50",
 };
 
-export function HandoffSection({ section }: { section: HandoffSectionType }) {
+export function HandoffSection({
+  section,
+  firedCtaIds,
+  onFireCta,
+}: {
+  section: HandoffSectionType;
+  firedCtaIds: ReadonlySet<string>;
+  onFireCta: (cta: HandoffCta) => void;
+}) {
   return (
     <div className="flex flex-col gap-2">
       <p
@@ -22,7 +31,12 @@ export function HandoffSection({ section }: { section: HandoffSectionType }) {
       </p>
       <div className="flex flex-col gap-1.5">
         {section.items.map((i) => (
-          <HandoffItem key={i.id} item={i} />
+          <HandoffItem
+            key={i.id}
+            item={i}
+            firedCtaIds={firedCtaIds}
+            onFireCta={onFireCta}
+          />
         ))}
       </div>
     </div>

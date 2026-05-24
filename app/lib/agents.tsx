@@ -81,23 +81,62 @@ export type Handoff = {
   ctas: HandoffCta[];
 };
 
+export type AgentActionRunStatus = "running" | "done";
+
+export type AgentActionRun = {
+  id: string;
+  agentId: string;
+  handoffId: string;
+  ctaId: string;
+  action: HandoffCtaAction;
+  /** Title for the running phase, e.g. "Creating segments by topic". */
+  runTitle: string;
+  /** Status-indicator lines cycled while running. */
+  steps: string[];
+  /** Headline of the result card. */
+  resultLabel: string;
+  /** Where the user can find it in Wati. */
+  resultDestination: string;
+  /** Label of the (non-clickable) view CTA on the result card. */
+  resultCtaLabel: string;
+  status: AgentActionRunStatus;
+  startedAt: string;
+  completedAt?: string;
+};
+
 type AgentDraft = Omit<Agent, "id" | "createdAt" | "status"> & {
   status?: AgentStatus;
 };
 
 type HandoffDraft = Omit<Handoff, "id" | "agentId" | "runNumber">;
 
+type ActionRunDraft = {
+  agentId: string;
+  handoffId: string;
+  ctaId: string;
+  action: HandoffCtaAction;
+  runTitle: string;
+  steps: string[];
+  resultLabel: string;
+  resultDestination: string;
+  resultCtaLabel: string;
+};
+
 type AgentsState = {
   agents: Agent[];
   handoffsByAgent: Record<string, Handoff[]>;
+  actionRunsByAgent: Record<string, AgentActionRun[]>;
 };
 
 type AgentsCtx = AgentsState & {
   createAgent: (draft: AgentDraft) => Agent;
   setAgentStatus: (id: string, status: AgentStatus) => void;
   addHandoff: (agentId: string, draft: HandoffDraft) => Handoff;
+  startActionRun: (draft: ActionRunDraft) => AgentActionRun;
+  completeActionRun: (runId: string) => void;
   getAgent: (id: string) => Agent | undefined;
   getHandoffs: (agentId: string) => Handoff[];
+  getActionRuns: (agentId: string) => AgentActionRun[];
   getAgentsForThread: (threadId: string) => Agent[];
 };
 
@@ -119,6 +158,7 @@ export function AgentsProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AgentsState>({
     agents: [],
     handoffsByAgent: {},
+    actionRunsByAgent: {},
   });
   const [hydrated, setHydrated] = useState(false);
 
@@ -134,6 +174,7 @@ export function AgentsProvider({ children }: { children: ReactNode }) {
           setState({
             agents: parsed.agents,
             handoffsByAgent: parsed.handoffsByAgent ?? {},
+            actionRunsByAgent: parsed.actionRunsByAgent ?? {},
           });
         }
       }
@@ -199,19 +240,60 @@ export function AgentsProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const startActionRun = useCallback(
+    (draft: ActionRunDraft): AgentActionRun => {
+      const run: AgentActionRun = {
+        ...draft,
+        id: crypto.randomUUID(),
+        status: "running",
+        startedAt: new Date().toISOString(),
+      };
+      setState((prev) => {
+        const existing = prev.actionRunsByAgent[draft.agentId] ?? [];
+        return {
+          ...prev,
+          actionRunsByAgent: {
+            ...prev.actionRunsByAgent,
+            [draft.agentId]: [...existing, run],
+          },
+        };
+      });
+      return run;
+    },
+    [],
+  );
+
+  const completeActionRun = useCallback((runId: string) => {
+    setState((prev) => {
+      const next: Record<string, AgentActionRun[]> = {};
+      for (const [agentId, runs] of Object.entries(prev.actionRunsByAgent)) {
+        next[agentId] = runs.map((r) =>
+          r.id === runId
+            ? { ...r, status: "done", completedAt: new Date().toISOString() }
+            : r,
+        );
+      }
+      return { ...prev, actionRunsByAgent: next };
+    });
+  }, []);
+
   const value = useMemo<AgentsCtx>(
     () => ({
       agents: state.agents,
       handoffsByAgent: state.handoffsByAgent,
+      actionRunsByAgent: state.actionRunsByAgent,
       createAgent,
       setAgentStatus,
       addHandoff,
+      startActionRun,
+      completeActionRun,
       getAgent: (id) => state.agents.find((a) => a.id === id),
       getHandoffs: (agentId) => state.handoffsByAgent[agentId] ?? [],
+      getActionRuns: (agentId) => state.actionRunsByAgent[agentId] ?? [],
       getAgentsForThread: (threadId) =>
         state.agents.filter((a) => a.threadId === threadId),
     }),
-    [state, createAgent, setAgentStatus, addHandoff],
+    [state, createAgent, setAgentStatus, addHandoff, startActionRun, completeActionRun],
   );
 
   return (

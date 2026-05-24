@@ -1,9 +1,17 @@
 "use client";
 
-import type { HandoffItem as HandoffItemType } from "../../lib/agents";
+import type { HandoffCta, HandoffItem as HandoffItemType } from "../../lib/agents";
 import { HandoffCtaButton } from "./HandoffCtaButton";
 
-export function HandoffItem({ item }: { item: HandoffItemType }) {
+export function HandoffItem({
+  item,
+  firedCtaIds,
+  onFireCta,
+}: {
+  item: HandoffItemType;
+  firedCtaIds: ReadonlySet<string>;
+  onFireCta: (cta: HandoffCta) => void;
+}) {
   return (
     <div className="flex items-start gap-3 rounded-lg bg-black/[0.03] px-3 py-2">
       <div className="min-w-0 flex-1">
@@ -16,7 +24,14 @@ export function HandoffItem({ item }: { item: HandoffItemType }) {
           </p>
         )}
       </div>
-      {item.cta && <HandoffCtaButton cta={item.cta} variant="inline" />}
+      {item.cta && (
+        <HandoffCtaButton
+          cta={item.cta}
+          variant="inline"
+          fired={firedCtaIds.has(item.cta.id)}
+          onFire={onFireCta}
+        />
+      )}
     </div>
   );
 }
