@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { rankSuggestions, type AgentSuggestion } from "../../lib/agent-suggestions";
+import type { WatcherTypeId } from "../../lib/agents";
 import { getPixabot } from "../../lib/pixabots";
 import type { TenantSignalProfile } from "../../lib/tenant-signal-profile";
 
@@ -11,8 +12,7 @@ export function TenantAgentSuggestions({
   max = 4,
 }: {
   profile: TenantSignalProfile;
-  /** Called with the suggestion's pre-filled prompt when a card is tapped. */
-  onSelect: (prompt: string) => void;
+  onSelect: (prompt: string, watcherTypeId: WatcherTypeId) => void;
   max?: number;
 }) {
   const suggestions = rankSuggestions(profile, max);
@@ -48,12 +48,12 @@ function SuggestionCard({
 }: {
   suggestion: AgentSuggestion;
   evidence: string | null;
-  onSelect: (prompt: string) => void;
+  onSelect: (prompt: string, watcherTypeId: WatcherTypeId) => void;
 }) {
   return (
     <button
       type="button"
-      onClick={() => onSelect(suggestion.prompt)}
+      onClick={() => onSelect(suggestion.prompt, suggestion.watcherTypeId)}
       className="flex flex-col items-start gap-2 rounded-[10px] border border-[#e5e5e5] bg-white p-4 text-left transition-colors hover:bg-[var(--wati-surface-subtle)]"
     >
       <Image

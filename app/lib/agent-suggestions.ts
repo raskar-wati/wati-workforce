@@ -1,3 +1,4 @@
+import type { WatcherTypeId } from "./agents";
 import type { TenantSignalProfile, TenantTheme } from "./tenant-signal-profile";
 
 export type AgentSuggestion = {
@@ -12,12 +13,10 @@ export type AgentSuggestion = {
   evidence: (profile: TenantSignalProfile) => string | null;
   /** Higher = ranked earlier. 0 hides the suggestion. */
   score: (profile: TenantSignalProfile) => number;
-  /**
-   * Pre-filled composer text. Includes keywords matched by
-   * matchWatcherType() where a clean watcher type exists; otherwise the
-   * creation flow falls through to the "custom" watcher.
-   */
+  /** Pre-filled composer text shown to the user. */
   prompt: string;
+  /** The watcher type this suggestion maps to — passed directly to the creation flow. */
+  watcherTypeId: WatcherTypeId;
 };
 
 // ---- predicate helpers -----------------------------------------------------
@@ -74,6 +73,7 @@ const READY_TO_BUY: AgentSuggestion = {
   },
   prompt:
     "Create an agent to watch for ready-to-buy signals in conversations and surface contacts close to purchase.",
+  watcherTypeId: "ready-to-buy",
 };
 
 const RESPONSE_GAP: AgentSuggestion = {
@@ -90,6 +90,7 @@ const RESPONSE_GAP: AgentSuggestion = {
   },
   prompt:
     "Create an agent to flag conversations where customers are waiting longer than SLA for an agent reply, and route them for follow-up.",
+  watcherTypeId: "response-gap",
 };
 
 const CHURN_RISK: AgentSuggestion = {
@@ -104,9 +105,9 @@ const CHURN_RISK: AgentSuggestion = {
     if (!hasSignal(p, "negative_sentiment", "escalation")) return 0;
     return themeScore(findTheme(p, "negative sentiment", "escalation", "churn"));
   },
-  // "sentiment" → matches the existing sentiment-monitor watcher
   prompt:
     "Create an agent to monitor sentiment across conversations and surface customers at churn risk.",
+  watcherTypeId: "sentiment-monitor",
 };
 
 const BLOCKER_PRICE: AgentSuggestion = {
@@ -128,9 +129,9 @@ const BLOCKER_PRICE: AgentSuggestion = {
       findTheme(p, "installment", "bnpl", "price", "payment objection"),
     );
   },
-  // "price" → matches the existing price-alert watcher
   prompt:
     "Create an agent to watch for price and payment blockers — BNPL asks, installment requests, and pricing objections.",
+  watcherTypeId: "price-alert",
 };
 
 const DELIVERY_ISSUE: AgentSuggestion = {
@@ -147,9 +148,9 @@ const DELIVERY_ISSUE: AgentSuggestion = {
     }
     return themeScore(findTheme(p, "delivery"));
   },
-  // No keyword match in matchWatcherType → falls through to custom
   prompt:
     "Create an agent to watch for delivery complaints, group them by route or vendor, and surface affected customers.",
+  watcherTypeId: "delivery-issue",
 };
 
 const PRODUCT_INQUIRY: AgentSuggestion = {
@@ -166,9 +167,9 @@ const PRODUCT_INQUIRY: AgentSuggestion = {
     }
     return themeScore(findTheme(p, "sku", "product inquiry"));
   },
-  // "top topic" → matches the existing top-topics watcher
   prompt:
     "Create an agent to find top topics in customer inquiries and group conversations by product or SKU.",
+  watcherTypeId: "top-topics",
 };
 
 const URGENCY: AgentSuggestion = {
@@ -183,9 +184,9 @@ const URGENCY: AgentSuggestion = {
     if (!hasSignal(p, "timeline_urgency")) return 0;
     return themeScore(findTheme(p, "urgent", "same-week", "same week"));
   },
-  // Falls through to custom — no clean keyword match
   prompt:
     "Create an agent to watch for urgent, same-week, or last-minute customer requests and prioritize them in inbox.",
+  watcherTypeId: "urgency",
 };
 
 const PAID_ACQ: AgentSuggestion = {
@@ -200,9 +201,9 @@ const PAID_ACQ: AgentSuggestion = {
     if (!hasSignal(p, "ctwa_lead")) return 0;
     return themeScore(findTheme(p, "ad-sourced", "ctwa", "whatsapp ad"));
   },
-  // Falls through to custom
   prompt:
     "Create an agent to track paid acquisition leads coming in from WhatsApp ads and surface high-intent ones.",
+  watcherTypeId: "paid-acq",
 };
 
 const OPS_MISCLASSIFICATION: AgentSuggestion = {
@@ -219,9 +220,9 @@ const OPS_MISCLASSIFICATION: AgentSuggestion = {
     }
     return themeScore(findTheme(p, "internal", "ops"));
   },
-  // Falls through to custom
   prompt:
     "Create an agent to detect and filter internal or operations messages mistakenly landing in the customer support queue.",
+  watcherTypeId: "ops-misclassification",
 };
 
 export const SUGGESTION_BANK: readonly AgentSuggestion[] = [

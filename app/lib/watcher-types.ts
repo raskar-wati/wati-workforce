@@ -260,6 +260,186 @@ const VOLUME_SPIKE: WatcherTypeDef = {
   }),
 };
 
+const URGENCY: WatcherTypeDef = {
+  id: "urgency",
+  label: "Urgent / same-week requests",
+  defaultName: "Urgency Agent",
+  blurb: "Surface customers with time-sensitive or same-week requests.",
+  keywords: ["urgent", "same-week", "last-minute", "prioritize"],
+  buildDraft: () => ({
+    runAt: nowIso(),
+    sections: [
+      section("did", "What I scanned", [
+        { label: "Reviewed 1,842 conversations from the last 24h" },
+        { label: "Flagged 31 contacts with same-week or urgent language" },
+      ]),
+      section("attention", "Urgent requests", [
+        {
+          label: "Riya M. — 'need this by Friday, can you confirm?'",
+          meta: "WhatsApp · 1h ago",
+          cta: cta("send-bulk-message", "Send priority reply"),
+        },
+        {
+          label: "Carlos T. — 'booking for this weekend, is it available?'",
+          meta: "WhatsApp · 3h ago",
+          cta: cta("send-bulk-message", "Confirm availability"),
+        },
+        {
+          label: "14 more contacts with same-week intent",
+          meta: "Grouped by urgency score",
+          cta: cta("create-segment", "Save as urgent segment"),
+        },
+      ]),
+    ],
+    ctas: [
+      cta("create-segment", "Save urgent cohort"),
+      cta("create-inbox-filter", "Route urgent to priority queue"),
+    ],
+  }),
+};
+
+const RESPONSE_GAP: WatcherTypeDef = {
+  id: "response-gap",
+  label: "Response gap / SLA breach",
+  defaultName: "SLA Agent",
+  blurb: "Flag conversations where customers are waiting past SLA.",
+  keywords: ["sla", "response gap", "waiting", "no reply", "unanswered"],
+  buildDraft: () => ({
+    runAt: nowIso(),
+    sections: [
+      section("did", "What I monitored", [
+        { label: "Checked all open conversations for first-reply time" },
+        { label: "Flagged threads with no agent reply past the 3-minute SLA" },
+      ]),
+      section("attention", "SLA breaches", [
+        {
+          label: "18 conversations waiting > 10 min with no reply",
+          meta: "Avg wait: 23 min",
+          cta: cta("create-inbox-filter", "Route to available agents"),
+        },
+        {
+          label: "5 conversations waiting > 1 hour",
+          meta: "High escalation risk",
+          cta: cta("send-bulk-message", "Send holding message"),
+        },
+      ]),
+    ],
+    ctas: [
+      cta("create-segment", "Save breached conversations"),
+      cta("create-inbox-filter", "Auto-escalate on SLA breach"),
+    ],
+  }),
+};
+
+const DELIVERY_ISSUE: WatcherTypeDef = {
+  id: "delivery-issue",
+  label: "Delivery complaints",
+  defaultName: "Delivery Agent",
+  blurb: "Group delivery complaints by route or vendor and surface affected customers.",
+  keywords: ["delivery", "shipping", "dispatch", "courier", "shipment"],
+  buildDraft: () => ({
+    runAt: nowIso(),
+    sections: [
+      section("did", "What I scanned", [
+        { label: "Scanned all conversations for delivery-related keywords" },
+        { label: "Found 64 delivery complaint threads in the last 24h" },
+      ]),
+      section("attention", "Complaints by cluster", [
+        {
+          label: "Blue Dart — 27 complaints, avg 2.3 days late",
+          meta: "Northern zone",
+          cta: cta("send-bulk-message", "Send apology + update"),
+        },
+        {
+          label: "Delhivery — 19 complaints, 'not delivered' reports",
+          meta: "Western zone",
+          cta: cta("create-segment", "Save affected customers"),
+        },
+        {
+          label: "18 unassigned delivery complaints",
+          meta: "No vendor identified",
+          cta: cta("create-inbox-filter", "Route to ops team"),
+        },
+      ]),
+    ],
+    ctas: [
+      cta("send-campaign", "Proactive delay notification"),
+      cta("create-segment", "Save all delivery-complaint contacts"),
+    ],
+  }),
+};
+
+const PAID_ACQ: WatcherTypeDef = {
+  id: "paid-acq",
+  label: "Paid acquisition leads",
+  defaultName: "Paid Leads Agent",
+  blurb: "Track WhatsApp ad leads and surface high-intent ones.",
+  keywords: ["paid acquisition", "whatsapp ad", "ctwa", "ad lead", "click to whatsapp"],
+  buildDraft: () => ({
+    runAt: nowIso(),
+    sections: [
+      section("did", "What I tracked", [
+        { label: "Identified conversations originating from WhatsApp ad clicks" },
+        { label: "Scored each lead on engagement and response speed" },
+      ]),
+      section("attention", "High-intent ad leads", [
+        {
+          label: "Neha S. — clicked ad, asked 3 questions, shared budget",
+          meta: "Summer sale campaign · 45 min ago",
+          cta: cta("send-bulk-message", "Send offer link"),
+        },
+        {
+          label: "32 leads from 'Book Now' ad — responded within 1 min",
+          meta: "High intent cohort",
+          cta: cta("create-segment", "Save as hot leads"),
+        },
+        {
+          label: "61 leads went cold after first message",
+          meta: "Need re-engagement",
+          cta: cta("send-campaign", "Re-engage cold leads"),
+        },
+      ]),
+    ],
+    ctas: [
+      cta("create-segment", "Save high-intent ad leads"),
+      cta("send-campaign", "Launch lead nurture sequence"),
+    ],
+  }),
+};
+
+const OPS_MISCLASSIFICATION: WatcherTypeDef = {
+  id: "ops-misclassification",
+  label: "Internal / ops messages",
+  defaultName: "Ops Filter Agent",
+  blurb: "Detect internal or ops messages landing in the customer queue.",
+  keywords: ["internal", "ops", "operations", "misclassified", "staff message"],
+  buildDraft: () => ({
+    runAt: nowIso(),
+    sections: [
+      section("did", "What I checked", [
+        { label: "Scanned all inbound conversations for internal sender patterns" },
+        { label: "Found 12 ops or internal messages routed to the customer queue" },
+      ]),
+      section("attention", "Misrouted messages", [
+        {
+          label: "4 messages from internal WhatsApp numbers in customer inbox",
+          meta: "Sent by ops team members",
+          cta: cta("create-inbox-filter", "Exclude internal numbers"),
+        },
+        {
+          label: "8 messages with internal shortcodes or tags",
+          meta: "Likely test or broadcast noise",
+          cta: cta("create-inbox-filter", "Filter by tag"),
+        },
+      ]),
+    ],
+    ctas: [
+      cta("create-inbox-filter", "Block internal senders from customer queue"),
+      cta("create-segment", "Save misrouted thread list"),
+    ],
+  }),
+};
+
 const CUSTOM: WatcherTypeDef = {
   id: "custom",
   label: "Other",
@@ -294,6 +474,11 @@ export const WATCHER_TYPES: readonly WatcherTypeDef[] = [
   PRICE_ALERT,
   SENTIMENT_MONITOR,
   VOLUME_SPIKE,
+  URGENCY,
+  RESPONSE_GAP,
+  DELIVERY_ISSUE,
+  PAID_ACQ,
+  OPS_MISCLASSIFICATION,
   CUSTOM,
 ];
 

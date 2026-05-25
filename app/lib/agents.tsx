@@ -19,6 +19,11 @@ export type WatcherTypeId =
   | "price-alert"
   | "sentiment-monitor"
   | "volume-spike"
+  | "urgency"
+  | "response-gap"
+  | "delivery-issue"
+  | "paid-acq"
+  | "ops-misclassification"
   | "custom";
 
 export type RecurringPreset = "daily" | "weekly" | "every-other-day";

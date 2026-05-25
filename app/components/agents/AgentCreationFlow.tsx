@@ -14,9 +14,10 @@ import { generateInstructions } from "../../lib/agent-instructions";
 import {
   useAgents,
   type AgentSchedule,
+  type WatcherTypeId,
 } from "../../lib/agents";
 import { useChatThreads } from "../../lib/chat-threads";
-import { getWatcherType, matchWatcherType } from "../../lib/watcher-types";
+import { getWatcherType } from "../../lib/watcher-types";
 import { AgentCreationStepCard } from "./AgentCreationStepCard";
 import { AgentCreationSummary } from "./AgentCreationSummary";
 import { AgentInstructionsBlock } from "./AgentInstructionsBlock";
@@ -35,10 +36,12 @@ const THINKING_DURATION_MS = 1400;
 export function AgentCreationFlow({
   threadId,
   initialMessage,
+  watcherTypeId,
   onAgentCreated,
 }: {
   threadId: string;
   initialMessage: string;
+  watcherTypeId: WatcherTypeId;
   onAgentCreated?: (
     agentId: string,
     options: { ranImmediately: boolean },
@@ -57,6 +60,7 @@ export function AgentCreationFlow({
     <AgentCreationFlowInner
       threadId={threadId}
       initialMessage={initialMessage}
+      watcherTypeId={watcherTypeId}
       onAgentCreated={onAgentCreated}
       createAgent={createAgent}
       addHandoff={addHandoff}
@@ -68,6 +72,7 @@ export function AgentCreationFlow({
 function AgentCreationFlowInner({
   threadId,
   initialMessage,
+  watcherTypeId,
   onAgentCreated,
   createAgent,
   addHandoff,
@@ -75,6 +80,7 @@ function AgentCreationFlowInner({
 }: {
   threadId: string;
   initialMessage: string;
+  watcherTypeId: WatcherTypeId;
   onAgentCreated?: (
     agentId: string,
     options: { ranImmediately: boolean },
@@ -87,7 +93,7 @@ function AgentCreationFlowInner({
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [draft, setDraft] = useState<CreationDraft>(() => {
     const d = emptyDraft(initialMessage);
-    d.watcherType = matchWatcherType(initialMessage) ?? "custom";
+    d.watcherType = watcherTypeId;
     return d;
   });
 

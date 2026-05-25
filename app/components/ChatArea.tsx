@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { ArrowUp, Check, ChevronDown, Play, Plus, X } from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { getActionScript } from "../lib/agent-actions";
-import { useAgents, type HandoffCta } from "../lib/agents";
+import { useAgents, type HandoffCta, type WatcherTypeId } from "../lib/agents";
 import { useChatMode, type ChatMode } from "../lib/chat-mode";
 import { useChatThreads } from "../lib/chat-threads";
 import { useTenantProfile } from "../lib/tenant-signal-profile";
@@ -47,7 +47,7 @@ const MODE_OPTIONS: ModeOption[] = [
 
 type ChatMessage =
   | { kind: "user-text"; id: string; content: string }
-  | { kind: "agent-creation-flow"; id: string; initialMessage: string };
+  | { kind: "agent-creation-flow"; id: string; initialMessage: string; watcherTypeId: WatcherTypeId };
 
 const HERO_PLACEHOLDERS = [
   "Create an agent",
@@ -86,6 +86,7 @@ export function ChatArea() {
     Record<string, ChatMessage[]>
   >({});
   const [input, setInput] = useState("");
+  const [pendingWatcherTypeId, setPendingWatcherTypeId] = useState<WatcherTypeId | null>(null);
   const { mode, setMode } = useChatMode();
   const { activeThreadId, createThread } = useChatThreads();
   const {
@@ -159,8 +160,10 @@ export function ChatArea() {
         kind: "agent-creation-flow",
         id: crypto.randomUUID(),
         initialMessage: text,
+        watcherTypeId: pendingWatcherTypeId ?? "custom",
       });
     }
+    setPendingWatcherTypeId(null);
     const tid = threadId;
     setMessagesByThread((prev) => ({
       ...prev,
@@ -189,7 +192,10 @@ export function ChatArea() {
             {mode === "agent" ? (
               <TenantAgentSuggestions
                 profile={tenantProfile}
-                onSelect={setInput}
+                onSelect={(prompt, watcherTypeId) => {
+                  setInput(prompt);
+                  setPendingWatcherTypeId(watcherTypeId);
+                }}
               />
             ) : (
               <>
@@ -265,6 +271,7 @@ export function ChatArea() {
                     <AgentCreationFlow
                       threadId={activeThreadId}
                       initialMessage={m.initialMessage}
+                      watcherTypeId={m.watcherTypeId}
                     />
                   </motion.div>
                 );
