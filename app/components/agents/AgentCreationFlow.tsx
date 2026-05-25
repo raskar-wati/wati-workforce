@@ -87,8 +87,7 @@ function AgentCreationFlowInner({
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [draft, setDraft] = useState<CreationDraft>(() => {
     const d = emptyDraft(initialMessage);
-    const matched = matchWatcherType(initialMessage);
-    if (matched) d.watcherType = matched;
+    d.watcherType = matchWatcherType(initialMessage) ?? "custom";
     return d;
   });
 
