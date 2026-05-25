@@ -1,11 +1,7 @@
 import type { AchievementId } from "./achievements";
 import type { AgentSchedule, WatcherTypeId } from "./agents";
 
-export type CreationStepId =
-  | "watcher-type"
-  | "actions"
-  | "schedule"
-  | "avatar";
+export type CreationStepId = "actions" | "schedule" | "avatar";
 
 export type CreationStepDef = {
   id: CreationStepId;
@@ -13,10 +9,6 @@ export type CreationStepDef = {
 };
 
 export const CREATION_STEPS: readonly CreationStepDef[] = [
-  {
-    id: "watcher-type",
-    question: "What do you want this agent to Watch?",
-  },
   {
     id: "actions",
     question: "What do you want to achieve with this agent?",
@@ -56,12 +48,6 @@ export function isStepAnswered(
   draft: CreationDraft,
 ): boolean {
   switch (stepId) {
-    case "watcher-type":
-      return (
-        draft.watcherType !== null &&
-        (draft.watcherType !== "custom" ||
-          draft.customDescription.trim().length > 0)
-      );
     case "actions":
       return draft.actions.length > 0;
     case "schedule":

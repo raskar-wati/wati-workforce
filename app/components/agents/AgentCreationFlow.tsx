@@ -14,7 +14,6 @@ import { generateInstructions } from "../../lib/agent-instructions";
 import {
   useAgents,
   type AgentSchedule,
-  type WatcherTypeId,
 } from "../../lib/agents";
 import { useChatThreads } from "../../lib/chat-threads";
 import { getWatcherType, matchWatcherType } from "../../lib/watcher-types";
@@ -26,7 +25,6 @@ import { HandoffActionPicker } from "./HandoffActionPicker";
 import { ScheduleTaskCard } from "./ScheduleTaskCard";
 import { SchedulePresetList, scheduleTitle } from "./SchedulePresetList";
 import { StatusIndicator } from "./StatusIndicator";
-import { WatcherTypeOptionList } from "./WatcherTypeOptionList";
 import { ACHIEVEMENTS, type AchievementId } from "../../lib/achievements";
 
 type Phase = "intro" | "in-flow" | "thinking" | "streaming" | "ready" | "done";
@@ -173,13 +171,6 @@ function AgentCreationFlowInner({
     const wt = getWatcherType(draft.watcherType);
     return [
       {
-        question: "What do you want this agent to Watch?",
-        answer:
-          wt.id === "custom" && draft.customDescription
-            ? draft.customDescription
-            : wt.label,
-      },
-      {
         question: "What do you want to achieve with this agent?",
         answer:
           draft.actions
@@ -284,21 +275,6 @@ function StepBody({
   draft: CreationDraft;
   setDraft: (updater: (prev: CreationDraft) => CreationDraft) => void;
 }) {
-  if (stepId === "watcher-type") {
-    return (
-      <WatcherTypeOptionList
-        value={draft.watcherType}
-        customDescription={draft.customDescription}
-        onChange={(id: WatcherTypeId, customDescription?: string) =>
-          setDraft((d) => ({
-            ...d,
-            watcherType: id,
-            customDescription: customDescription ?? d.customDescription,
-          }))
-        }
-      />
-    );
-  }
   if (stepId === "actions") {
     return (
       <HandoffActionPicker
