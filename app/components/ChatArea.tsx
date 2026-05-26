@@ -15,6 +15,7 @@ import { AgentSummaryCard } from "./agents/AgentSummaryCard";
 import { Handoff } from "./agents/Handoff";
 import { TenantAgentSuggestions } from "./agents/TenantAgentSuggestions";
 import { Composer, COMPOSER_TRANSITION } from "./Composer";
+import { DailyDigest } from "./digest/DailyDigest";
 import { HandoffInbox } from "./handoffs/HandoffInbox";
 import { ModePillRow } from "./ModePillRow";
 import { ThinkingIndicator } from "./ThinkingIndicator";
@@ -104,6 +105,21 @@ export function ChatArea() {
     if (startsAgentFlow) setMode(null);
   };
 
+  // Clicking a Daily Digest pointer enters Insights mode in a fresh thread,
+  // with the pointer text as the first user message so the conversation has
+  // something concrete to dig into.
+  const handleDigestPointer = (text: string) => {
+    setMode("insights");
+    const threadId = createThread(text);
+    setMessagesByThread((prev) => ({
+      ...prev,
+      [threadId]: [
+        ...(prev[threadId] ?? []),
+        { kind: "user-text", id: crypto.randomUUID(), content: text },
+      ],
+    }));
+  };
+
   const runAgentAgain = () => {
     if (!agentForThread) return;
     const wt = getWatcherType(agentForThread.watcherType);
@@ -116,15 +132,31 @@ export function ChatArea() {
     return <HandoffInbox />;
   }
 
+  // On the home screen (no thread, no messages, no mode picked) we let the
+  // page scroll so the Daily Digest can flow in below the hero. Outside
+  // the home state the layout stays as a full-height non-scrolling column.
+  const isHomeScreen = !hasContent && mode === null;
+
   return (
-    <div className="mx-auto flex h-full w-full max-w-[720px] flex-col px-6 pb-6">
+    <div
+      className={`mx-auto flex w-full max-w-[720px] flex-col px-6 pb-6 ${
+        isHomeScreen ? "h-full overflow-y-auto" : "h-full"
+      }`}
+    >
+      <div
+        className={
+          isHomeScreen
+            ? "flex min-h-full flex-col justify-center"
+            : "flex h-full flex-col"
+        }
+      >
       {/* Top: hero (with greeting or tenant suggestions inside) or messages */}
       <AnimatePresence initial={false} mode="popLayout">
         {!hasContent ? (
           <motion.div
             key="hero"
             exit={{ opacity: 0, transition: { duration: 0.2 } }}
-            className="flex flex-1 flex-col justify-end pb-6"
+            className={`flex flex-col justify-end pb-6 ${isHomeScreen ? "" : "flex-1"}`}
           >
             {mode === "agent" ? (
               <TenantAgentSuggestions
@@ -258,10 +290,20 @@ export function ChatArea() {
           and centers the composer vertically. When a mode is picked, this
           block unmounts and the composer slides to the bottom. */}
       {!hasContent && mode === null && (
-        <div className="flex flex-1 flex-col">
+        <div className="flex flex-col">
           <ModePillRow onSelect={setMode} />
         </div>
       )}
+
+      {/* Daily Digest — home screen only. Lives inside the centered wrapper
+          so the whole cluster (hero + composer + pills + digest) reads as
+          one vertically-centered group. */}
+      {isHomeScreen && (
+        <div className="pt-6">
+          <DailyDigest onSelectPointer={handleDigestPointer} />
+        </div>
+      )}
+      </div>
     </div>
   );
 }
