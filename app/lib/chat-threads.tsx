@@ -9,6 +9,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { buildReturningUserSeed } from "./demo-data";
+import { useDemoState, type DemoMode } from "./demo-state";
 
 export type Thread = {
   id: string;
@@ -24,7 +26,16 @@ type ChatThreadsCtx = {
   attachAgentToThread: (threadId: string, agentId: string) => void;
 };
 
-const STORAGE_KEY = "wati.chat-threads.v1";
+const STORAGE_KEY_BASE = "wati.chat-threads.v1";
+
+function storageKeyFor(mode: DemoMode): string {
+  return `${STORAGE_KEY_BASE}.${mode}`;
+}
+
+function initialThreadsFor(mode: DemoMode): Thread[] {
+  if (mode !== "returning") return [];
+  return buildReturningUserSeed().threads;
+}
 
 const ChatThreadsContext = createContext<ChatThreadsCtx | null>(null);
 
@@ -39,39 +50,45 @@ type PersistedState = {
 };
 
 export function ChatThreadsProvider({ children }: { children: ReactNode }) {
+  const { mode, hydrated: demoHydrated } = useDemoState();
   const [threads, setThreads] = useState<Thread[]>([]);
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
-  const [hydrated, setHydrated] = useState(false);
+  const [hydratedForMode, setHydratedForMode] = useState<DemoMode | null>(null);
 
   useEffect(() => {
+    if (!demoHydrated) return;
+    const key = storageKeyFor(mode);
+    let next: Thread[] | null = null;
     try {
       const raw =
         typeof window !== "undefined"
-          ? window.localStorage.getItem(STORAGE_KEY)
+          ? window.localStorage.getItem(key)
           : null;
       if (raw) {
         const parsed = JSON.parse(raw) as PersistedState;
         if (parsed && Array.isArray(parsed.threads)) {
-          setThreads(parsed.threads);
+          next = parsed.threads;
         }
       }
     } catch {
       // ignore
     }
-    setHydrated(true);
-  }, []);
+    setThreads(next ?? initialThreadsFor(mode));
+    setActiveThreadId(null);
+    setHydratedForMode(mode);
+  }, [mode, demoHydrated]);
 
   useEffect(() => {
-    if (!hydrated) return;
+    if (hydratedForMode !== mode) return;
     try {
       window.localStorage.setItem(
-        STORAGE_KEY,
+        storageKeyFor(mode),
         JSON.stringify({ threads } satisfies PersistedState),
       );
     } catch {
       // ignore
     }
-  }, [threads, hydrated]);
+  }, [threads, hydratedForMode, mode]);
 
   const createThread = useCallback((firstMessage: string): string => {
     const id = crypto.randomUUID();

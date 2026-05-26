@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { ChevronDown } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Handoff as HandoffType, HandoffCta } from "../../lib/agents";
 import { HandoffCtaButton } from "./HandoffCtaButton";
 import { HandoffSection } from "./HandoffSection";
@@ -13,14 +13,25 @@ export function Handoff({
   defaultExpanded = false,
   firedCtaIds,
   onFireCta,
+  onExpand,
 }: {
   handoff: HandoffType;
   agentName: string;
   defaultExpanded?: boolean;
   firedCtaIds: ReadonlySet<string>;
   onFireCta: (cta: HandoffCta) => void;
+  /** Called the first time the handoff is expanded — used to mark it read. */
+  onExpand?: () => void;
 }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
+
+  // Fire onExpand once on initial mount if defaultExpanded, then on every
+  // user-triggered open. The hook in agents.tsx is idempotent so duplicate
+  // calls are safe.
+  useEffect(() => {
+    if (expanded) onExpand?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expanded]);
 
   return (
     <div className="flex flex-col rounded-2xl border border-[#e5e5e5] bg-white">

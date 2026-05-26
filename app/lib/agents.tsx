@@ -11,6 +11,11 @@ import {
 } from "react";
 import type { AchievementId } from "./achievements";
 import { getActionScript } from "./agent-actions";
+import {
+  buildReturningUserReadSet,
+  buildReturningUserSeed,
+} from "./demo-data";
+import { useDemoState, type DemoMode } from "./demo-state";
 
 export type WatcherTypeId =
   | "ready-to-buy"
@@ -138,7 +143,10 @@ type AgentsState = {
   agents: Agent[];
   handoffsByAgent: Record<string, Handoff[]>;
   actionRunsByAgent: Record<string, AgentActionRun[]>;
+  readHandoffIds: string[];
 };
+
+export type HandoffWithAgent = Handoff & { agent: Agent };
 
 type AgentsCtx = AgentsState & {
   createAgent: (draft: AgentDraft) => Agent;
@@ -147,13 +155,46 @@ type AgentsCtx = AgentsState & {
   startActionRun: (draft: ActionRunDraft) => AgentActionRun;
   completeActionRun: (runId: string) => void;
   enableAutoAction: (agentId: string, action: HandoffCtaAction) => void;
+  markHandoffRead: (handoffId: string) => void;
+  markHandoffsRead: (handoffIds: string[]) => void;
+  markAllHandoffsRead: () => void;
+  isHandoffRead: (handoffId: string) => boolean;
   getAgent: (id: string) => Agent | undefined;
   getHandoffs: (agentId: string) => Handoff[];
   getActionRuns: (agentId: string) => AgentActionRun[];
   getAgentsForThread: (threadId: string) => Agent[];
+  /** All handoffs across all agents, sorted newest first, joined with their agent. */
+  getAllHandoffs: () => HandoffWithAgent[];
+  /** Count of handoffs the user hasn't opened yet (across all agents). */
+  unreadHandoffCount: number;
+  /** Unread count for a single agent. */
+  getUnreadCountForAgent: (agentId: string) => number;
 };
 
-const STORAGE_KEY = "wati.agents.v1";
+const STORAGE_KEY_BASE = "wati.agents.v1";
+
+function storageKeyFor(mode: DemoMode): string {
+  return `${STORAGE_KEY_BASE}.${mode}`;
+}
+
+const EMPTY_STATE: AgentsState = {
+  agents: [],
+  handoffsByAgent: {},
+  actionRunsByAgent: {},
+  readHandoffIds: [],
+};
+
+/** Build the initial state for a given demo mode. */
+function initialStateFor(mode: DemoMode): AgentsState {
+  if (mode !== "returning") return EMPTY_STATE;
+  const seed = buildReturningUserSeed();
+  return {
+    agents: seed.agents,
+    handoffsByAgent: seed.handoffsByAgent,
+    actionRunsByAgent: {},
+    readHandoffIds: buildReturningUserReadSet(seed),
+  };
+}
 
 const AgentsContext = createContext<AgentsCtx | null>(null);
 
@@ -168,23 +209,28 @@ function sortByRunAtDesc(handoffs: Handoff[]): Handoff[] {
 }
 
 export function AgentsProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<AgentsState>({
-    agents: [],
-    handoffsByAgent: {},
-    actionRunsByAgent: {},
-  });
-  const [hydrated, setHydrated] = useState(false);
+  const { mode, hydrated: demoHydrated } = useDemoState();
+  const [state, setState] = useState<AgentsState>(EMPTY_STATE);
+  /** Bumped on every demo-mode flip so the persistence effect waits for the
+   * matching hydration pass before writing back to localStorage. */
+  const [hydratedForMode, setHydratedForMode] = useState<DemoMode | null>(null);
 
+  // Re-hydrate from the mode-specific storage key on mount and whenever the
+  // demo mode changes. In "returning" mode with no stored data, seed from
+  // the demo blueprint.
   useEffect(() => {
+    if (!demoHydrated) return;
+    const key = storageKeyFor(mode);
+    let next: AgentsState | null = null;
     try {
       const raw =
         typeof window !== "undefined"
-          ? window.localStorage.getItem(STORAGE_KEY)
+          ? window.localStorage.getItem(key)
           : null;
       if (raw) {
         const parsed = JSON.parse(raw) as AgentsState;
         if (parsed && Array.isArray(parsed.agents)) {
-          setState({
+          next = {
             // Back-fill autoActions for any agents that predate the field.
             agents: parsed.agents.map((a) => ({
               ...a,
@@ -192,23 +238,25 @@ export function AgentsProvider({ children }: { children: ReactNode }) {
             })),
             handoffsByAgent: parsed.handoffsByAgent ?? {},
             actionRunsByAgent: parsed.actionRunsByAgent ?? {},
-          });
+            readHandoffIds: parsed.readHandoffIds ?? [],
+          };
         }
       }
     } catch {
       // ignore corrupted storage
     }
-    setHydrated(true);
-  }, []);
+    setState(next ?? initialStateFor(mode));
+    setHydratedForMode(mode);
+  }, [mode, demoHydrated]);
 
   useEffect(() => {
-    if (!hydrated) return;
+    if (hydratedForMode !== mode) return;
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      window.localStorage.setItem(storageKeyFor(mode), JSON.stringify(state));
     } catch {
       // ignore quota / disabled storage
     }
-  }, [state, hydrated]);
+  }, [state, hydratedForMode, mode]);
 
   const createAgent = useCallback((draft: AgentDraft): Agent => {
     const agent: Agent = {
@@ -343,33 +391,96 @@ export function AgentsProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const value = useMemo<AgentsCtx>(
-    () => ({
+  const markHandoffRead = useCallback((handoffId: string) => {
+    setState((prev) => {
+      if (prev.readHandoffIds.includes(handoffId)) return prev;
+      return { ...prev, readHandoffIds: [...prev.readHandoffIds, handoffId] };
+    });
+  }, []);
+
+  const markHandoffsRead = useCallback((handoffIds: string[]) => {
+    if (handoffIds.length === 0) return;
+    setState((prev) => {
+      const set = new Set(prev.readHandoffIds);
+      let changed = false;
+      for (const id of handoffIds) {
+        if (!set.has(id)) {
+          set.add(id);
+          changed = true;
+        }
+      }
+      if (!changed) return prev;
+      return { ...prev, readHandoffIds: Array.from(set) };
+    });
+  }, []);
+
+  const markAllHandoffsRead = useCallback(() => {
+    setState((prev) => {
+      const allIds = Object.values(prev.handoffsByAgent)
+        .flat()
+        .map((h) => h.id);
+      const set = new Set([...prev.readHandoffIds, ...allIds]);
+      return { ...prev, readHandoffIds: Array.from(set) };
+    });
+  }, []);
+
+  const value = useMemo<AgentsCtx>(() => {
+    const readSet = new Set(state.readHandoffIds);
+    const agentById = new Map(state.agents.map((a) => [a.id, a]));
+
+    const allHandoffs: HandoffWithAgent[] = [];
+    for (const [agentId, list] of Object.entries(state.handoffsByAgent)) {
+      const agent = agentById.get(agentId);
+      if (!agent) continue;
+      for (const h of list) allHandoffs.push({ ...h, agent });
+    }
+    allHandoffs.sort((a, b) => (a.runAt < b.runAt ? 1 : -1));
+
+    const unreadHandoffCount = allHandoffs.reduce(
+      (n, h) => (readSet.has(h.id) ? n : n + 1),
+      0,
+    );
+
+    return {
       agents: state.agents,
       handoffsByAgent: state.handoffsByAgent,
       actionRunsByAgent: state.actionRunsByAgent,
+      readHandoffIds: state.readHandoffIds,
       createAgent,
       setAgentStatus,
       addHandoff,
       startActionRun,
       completeActionRun,
       enableAutoAction,
-      getAgent: (id) => state.agents.find((a) => a.id === id),
+      markHandoffRead,
+      markHandoffsRead,
+      markAllHandoffsRead,
+      isHandoffRead: (id) => readSet.has(id),
+      getAgent: (id) => agentById.get(id),
       getHandoffs: (agentId) => state.handoffsByAgent[agentId] ?? [],
       getActionRuns: (agentId) => state.actionRunsByAgent[agentId] ?? [],
       getAgentsForThread: (threadId) =>
         state.agents.filter((a) => a.threadId === threadId),
-    }),
-    [
-      state,
-      createAgent,
-      setAgentStatus,
-      addHandoff,
-      startActionRun,
-      completeActionRun,
-      enableAutoAction,
-    ],
-  );
+      getAllHandoffs: () => allHandoffs,
+      unreadHandoffCount,
+      getUnreadCountForAgent: (agentId) =>
+        (state.handoffsByAgent[agentId] ?? []).reduce(
+          (n, h) => (readSet.has(h.id) ? n : n + 1),
+          0,
+        ),
+    };
+  }, [
+    state,
+    createAgent,
+    setAgentStatus,
+    addHandoff,
+    startActionRun,
+    completeActionRun,
+    enableAutoAction,
+    markHandoffRead,
+    markHandoffsRead,
+    markAllHandoffsRead,
+  ]);
 
   return (
     <AgentsContext.Provider value={value}>{children}</AgentsContext.Provider>
