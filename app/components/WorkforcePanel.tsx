@@ -13,7 +13,7 @@ export function WorkforcePanel() {
   const { threads, activeThreadId, setActiveThreadId } = useChatThreads();
   const { agents, getUnreadCountForAgent, unreadHandoffCount } = useAgents();
   const { mode, setMode, view, setView } = useChatMode();
-  const [agentsOpen, setAgentsOpen] = useState(true);
+  const [agentsOpen, setAgentsOpen] = useState(false);
 
   // Selection is driven first by `view` (Handoffs sits outside thread/mode).
   const inboxSelected = view === "handoffs";

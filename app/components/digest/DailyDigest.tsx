@@ -32,7 +32,7 @@ export function DailyDigest({
 }) {
   const { profile } = useTenantProfile();
   const data = useMemo(() => buildDailyDigest(profile), [profile]);
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
 
   const pointers = useMemo(() => buildPointers(data), [data]);
 
