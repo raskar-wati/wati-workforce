@@ -17,7 +17,6 @@ import { TenantAgentSuggestions } from "./agents/TenantAgentSuggestions";
 import { Composer, COMPOSER_TRANSITION } from "./Composer";
 import { DailyDigest } from "./digest/DailyDigest";
 import { HandoffInbox } from "./handoffs/HandoffInbox";
-import { ModePillRow } from "./ModePillRow";
 import { ThinkingIndicator } from "./ThinkingIndicator";
 
 type ChatMessage =
@@ -285,17 +284,7 @@ export function ChatArea() {
         />
       </motion.div>
 
-      {/* Bottom: mode pills shown only on the empty hero when no mode is set.
-          Wrapped in a flex-1 spacer so it balances the top flex-1 hero block
-          and centers the composer vertically. When a mode is picked, this
-          block unmounts and the composer slides to the bottom. */}
-      {!hasContent && mode === null && (
-        <div className="flex flex-col">
-          <ModePillRow onSelect={setMode} />
-        </div>
-      )}
-
-      {/* Daily Digest — home screen only. Lives inside the centered wrapper
+{/* Daily Digest — home screen only. Lives inside the centered wrapper
           so the whole cluster (hero + composer + pills + digest) reads as
           one vertically-centered group. */}
       {isHomeScreen && (

@@ -196,7 +196,7 @@ export function Composer({
       </AnimatePresence>
 
       <AnimatePresence initial={false}>
-        {activeMode && (
+        {activeMode && activeMode.id !== "agent" && (
           <motion.div
             key={activeMode.id}
             initial={{ opacity: 0, y: -4 }}
@@ -226,6 +226,14 @@ export function Composer({
       </div>
 
       <div className="flex w-full items-center justify-between px-3 pb-3 pt-2">
+        {/* Left: Agent mode toggle */}
+        <AgentModeToggle
+          checked={mode === "agent"}
+          onChange={(checked) => onModeChange(checked ? "agent" : null)}
+        />
+
+        {/* Right: model picker + send */}
+        <div className="flex items-center gap-1">
         <div ref={dropdownRef} className="relative">
           <button
             type="button"
@@ -295,7 +303,6 @@ export function Composer({
           </AnimatePresence>
         </div>
 
-        <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={onSubmit}
@@ -307,6 +314,35 @@ export function Composer({
         </div>
       </div>
     </div>
+  );
+}
+
+function AgentModeToggle({
+  checked,
+  onChange,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <label className="flex cursor-pointer items-center gap-2">
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        className={`relative h-[18px] w-[32px] flex-shrink-0 rounded-full transition-colors duration-200 ${
+          checked ? "bg-[#0a0a0a]" : "bg-black/20"
+        }`}
+      >
+        <span
+          className={`absolute top-[2px] h-[14px] w-[14px] rounded-full bg-white shadow-sm transition-transform duration-200 ${
+            checked ? "translate-x-[16px]" : "translate-x-[2px]"
+          }`}
+        />
+      </button>
+      <span className="text-[13px] tracking-[-0.078px] text-black/50">Agent mode</span>
+    </label>
   );
 }
 
