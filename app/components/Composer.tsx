@@ -238,7 +238,7 @@ export function Composer({
           <button
             type="button"
             onClick={() => setDropdownOpen((o) => !o)}
-            className="flex items-center gap-1.5 rounded-full border border-[#e5e5e5]/80 px-3 py-1.5"
+            className="flex items-center gap-1.5 rounded-full bg-black/5 px-3 py-1.5"
           >
             <span className="text-[13px] tracking-[-0.078px] text-[#0a0a0a]">
               {selectedModel.name}
