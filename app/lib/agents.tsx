@@ -79,6 +79,27 @@ export type HandoffItem = {
   cta?: HandoffCta;
 };
 
+/** A single row in a customer table inside a handoff section. */
+export type HandoffTableRow = {
+  id: string;
+  /** Cell values aligned to the table's columns (excluding the action column). */
+  cells: string[];
+  /** Optional per-row action, rendered in the trailing action column. */
+  cta?: HandoffCta;
+  /**
+   * When true the row is a muted full-width note (e.g. "14 more contacts …")
+   * rather than a regular data row — its first cell spans all columns.
+   */
+  note?: boolean;
+};
+
+/** Compact tabular view of a customer list inside a handoff section. */
+export type HandoffTable = {
+  /** Header labels. The trailing action column has an empty-string header. */
+  columns: string[];
+  rows: HandoffTableRow[];
+};
+
 export type HandoffSectionKind = "did" | "attention" | "summary";
 
 export type HandoffSection = {
@@ -86,6 +107,11 @@ export type HandoffSection = {
   kind: HandoffSectionKind;
   title: string;
   items: HandoffItem[];
+  /**
+   * Optional table view. When present (for customer lists), the section
+   * renders this compact table instead of stacked item rows.
+   */
+  table?: HandoffTable;
 };
 
 export type Handoff = {

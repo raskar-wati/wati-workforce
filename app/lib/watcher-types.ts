@@ -2,6 +2,8 @@ import type {
   Handoff,
   HandoffCta,
   HandoffSection,
+  HandoffTable,
+  HandoffTableRow,
   WatcherTypeId,
 } from "./agents";
 
@@ -28,13 +30,23 @@ function section(
   kind: HandoffSection["kind"],
   title: string,
   items: Array<Omit<HandoffSection["items"][number], "id">>,
+  tbl?: HandoffTable,
 ): HandoffSection {
   return {
     id: uid(),
     kind,
     title,
     items: items.map((i) => ({ ...i, id: uid() })),
+    table: tbl,
   };
+}
+
+/** Builds a customer table; assigns row ids automatically. */
+function table(
+  columns: string[],
+  rows: Array<Omit<HandoffTableRow, "id">>,
+): HandoffTable {
+  return { columns, rows: rows.map((r) => ({ ...r, id: uid() })) };
 }
 
 function cta(action: HandoffCta["action"], label: string): HandoffCta {
@@ -54,23 +66,40 @@ const READY_TO_BUY: WatcherTypeDef = {
         { label: "Analyzed 1,247 conversations from the last 24h" },
         { label: "Identified 12 contacts with strong buying signals" },
       ]),
-      section("attention", "Hot leads", [
-        {
-          label: "Sarah J. — asked about pricing 3× this week",
-          meta: "WhatsApp · 2h ago",
-          cta: cta("send-bulk-message", "Send follow-up"),
-        },
-        {
-          label: "Mark P. — added items to cart, did not check out",
-          meta: "Web chat · 4h ago",
-          cta: cta("send-bulk-message", "Send nudge"),
-        },
-        {
-          label: "Priya K. — requested a demo yesterday",
-          meta: "WhatsApp · 1d ago",
-          cta: cta("send-bulk-message", "Send demo link"),
-        },
-      ]),
+      section(
+        "attention",
+        "Hot leads",
+        [],
+        table(
+          ["Contact", "Channel", "Signal", ""],
+          [
+            {
+              cells: [
+                "Sarah J.",
+                "WhatsApp · 2h ago",
+                "Asked about pricing 3× this week",
+              ],
+              cta: cta("send-bulk-message", "Send follow-up"),
+            },
+            {
+              cells: [
+                "Mark P.",
+                "Web chat · 4h ago",
+                "Added items to cart, didn’t check out",
+              ],
+              cta: cta("send-bulk-message", "Send nudge"),
+            },
+            {
+              cells: [
+                "Priya K.",
+                "WhatsApp · 1d ago",
+                "Requested a demo yesterday",
+              ],
+              cta: cta("send-bulk-message", "Send demo link"),
+            },
+          ],
+        ),
+      ),
     ],
     ctas: [
       cta("create-segment", "Save as segment"),
@@ -273,23 +302,37 @@ const URGENCY: WatcherTypeDef = {
         { label: "Reviewed 1,842 conversations from the last 24h" },
         { label: "Flagged 31 contacts with same-week or urgent language" },
       ]),
-      section("attention", "Urgent requests", [
-        {
-          label: "Riya M. — 'need this by Friday, can you confirm?'",
-          meta: "WhatsApp · 1h ago",
-          cta: cta("send-bulk-message", "Send priority reply"),
-        },
-        {
-          label: "Carlos T. — 'booking for this weekend, is it available?'",
-          meta: "WhatsApp · 3h ago",
-          cta: cta("send-bulk-message", "Confirm availability"),
-        },
-        {
-          label: "14 more contacts with same-week intent",
-          meta: "Grouped by urgency score",
-          cta: cta("create-segment", "Save as urgent segment"),
-        },
-      ]),
+      section(
+        "attention",
+        "Urgent requests",
+        [],
+        table(
+          ["Customer", "Channel", "Request", ""],
+          [
+            {
+              cells: [
+                "Riya M.",
+                "WhatsApp · 1h ago",
+                "“need this by Friday, can you confirm?”",
+              ],
+              cta: cta("send-bulk-message", "Send priority reply"),
+            },
+            {
+              cells: [
+                "Carlos T.",
+                "WhatsApp · 3h ago",
+                "“booking for this weekend, is it available?”",
+              ],
+              cta: cta("send-bulk-message", "Confirm availability"),
+            },
+            {
+              note: true,
+              cells: ["14 more contacts with same-week intent"],
+              cta: cta("create-segment", "Save as urgent segment"),
+            },
+          ],
+        ),
+      ),
     ],
     ctas: [
       cta("create-segment", "Save urgent cohort"),
@@ -382,23 +425,34 @@ const PAID_ACQ: WatcherTypeDef = {
         { label: "Identified conversations originating from WhatsApp ad clicks" },
         { label: "Scored each lead on engagement and response speed" },
       ]),
-      section("attention", "High-intent ad leads", [
-        {
-          label: "Neha S. — clicked ad, asked 3 questions, shared budget",
-          meta: "Summer sale campaign · 45 min ago",
-          cta: cta("send-bulk-message", "Send offer link"),
-        },
-        {
-          label: "32 leads from 'Book Now' ad — responded within 1 min",
-          meta: "High intent cohort",
-          cta: cta("create-segment", "Save as hot leads"),
-        },
-        {
-          label: "61 leads went cold after first message",
-          meta: "Need re-engagement",
-          cta: cta("send-campaign", "Re-engage cold leads"),
-        },
-      ]),
+      section(
+        "attention",
+        "High-intent ad leads",
+        [],
+        table(
+          ["Lead", "Source", "Signal", ""],
+          [
+            {
+              cells: [
+                "Neha S.",
+                "Summer sale · 45m ago",
+                "Clicked ad, asked 3 questions, shared budget",
+              ],
+              cta: cta("send-bulk-message", "Send offer link"),
+            },
+            {
+              note: true,
+              cells: ["32 leads from ‘Book Now’ ad — responded within 1 min"],
+              cta: cta("create-segment", "Save as hot leads"),
+            },
+            {
+              note: true,
+              cells: ["61 leads went cold after first message"],
+              cta: cta("send-campaign", "Re-engage cold leads"),
+            },
+          ],
+        ),
+      ),
     ],
     ctas: [
       cta("create-segment", "Save high-intent ad leads"),

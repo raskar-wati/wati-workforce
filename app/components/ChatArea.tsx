@@ -9,7 +9,6 @@ import { useChatThreads } from "../lib/chat-threads";
 import { useFireHandoffCta } from "../lib/use-fire-handoff-cta";
 import { useTenantProfile } from "../lib/tenant-signal-profile";
 import { getWatcherType } from "../lib/watcher-types";
-import { AgentActionRun } from "./agents/AgentActionRun";
 import { AgentCreationFlow } from "./agents/AgentCreationFlow";
 import { AgentSummaryCard } from "./agents/AgentSummaryCard";
 import { Handoff } from "./agents/Handoff";
@@ -248,24 +247,18 @@ export function ChatArea() {
 
               {agentForThread && handoffs.length > 0 && (
                 <div className="flex flex-col gap-3 pt-2">
-                  {handoffs.map((h, i) => {
-                    const runs = runsByHandoff[h.id] ?? [];
-                    return (
-                      <div key={h.id} className="flex flex-col gap-2">
-                        <Handoff
-                          handoff={h}
-                          agentName={agentForThread.name}
-                          defaultExpanded={i === 0}
-                          firedCtaIds={firedCtaIds}
-                          onFireCta={(cta) => fireCta(h.id, cta)}
-                          onExpand={() => markHandoffRead(h.id)}
-                        />
-                        {runs.map((r) => (
-                          <AgentActionRun key={r.id} run={r} />
-                        ))}
-                      </div>
-                    );
-                  })}
+                  {handoffs.map((h, i) => (
+                    <Handoff
+                      key={h.id}
+                      handoff={h}
+                      agentName={agentForThread.name}
+                      defaultExpanded={i === 0}
+                      firedCtaIds={firedCtaIds}
+                      actionRuns={runsByHandoff[h.id] ?? []}
+                      onFireCta={(cta) => fireCta(h.id, cta)}
+                      onExpand={() => markHandoffRead(h.id)}
+                    />
+                  ))}
                 </div>
               )}
             </div>
