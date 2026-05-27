@@ -370,7 +370,7 @@ function AnimatedPlaceholder() {
               animate={{ opacity: 1, filter: "blur(0px)" }}
               transition={{ delay: i * 0.038, duration: 0.28, ease: "easeOut" }}
             >
-              {char === " " ? " " : char}
+              {char === " " ? " " : char}
             </motion.span>
           ))}
         </motion.span>
