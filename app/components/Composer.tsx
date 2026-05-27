@@ -238,7 +238,7 @@ export function Composer({
           <button
             type="button"
             onClick={() => setDropdownOpen((o) => !o)}
-            className="flex items-center gap-1.5 rounded-full bg-black/5 px-3 py-1.5"
+            className="flex items-center gap-1.5 px-1 py-1.5"
           >
             <span className="text-[13px] tracking-[-0.078px] text-[#0a0a0a]">
               {selectedModel.name}
@@ -259,7 +259,7 @@ export function Composer({
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 6, scale: 0.97 }}
                 transition={{ duration: 0.15, ease: [0.32, 0.72, 0, 1] }}
-                className="absolute bottom-full left-0 mb-2 w-52 overflow-hidden rounded-2xl border border-[#e5e5e5] bg-white shadow-[0_8px_24px_rgba(0,0,0,0.1)]"
+                className="absolute bottom-full right-0 mb-2 w-52 overflow-hidden rounded-2xl border border-[#e5e5e5] bg-white shadow-[0_8px_24px_rgba(0,0,0,0.1)]"
               >
                 {(() => {
                   const grouped = LLM_OPTIONS.reduce<Record<string, LLMOption[]>>(
