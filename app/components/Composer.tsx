@@ -34,7 +34,6 @@ export const MODE_OPTIONS: ModeOption[] = [
 ];
 
 const HERO_PLACEHOLDERS = [
-  "Create an agent",
   "Ask about your customers",
   "Ask about your agents",
   "Build an automation",
