@@ -337,7 +337,7 @@ function AgentModeToggle({
         <div className="h-[18px] w-[32px] rounded-full bg-black/20 transition-colors duration-200 peer-checked:bg-[#0a0a0a]" />
         <div className="pointer-events-none absolute top-[2px] left-[2px] h-[14px] w-[14px] rounded-full bg-white shadow-sm transition-transform duration-200 peer-checked:translate-x-[14px]" />
       </div>
-      <span className="text-[13px] tracking-[-0.078px] text-black/50">Agent mode</span>
+      <span className="text-[13px] tracking-[-0.078px] text-black/50">{checked ? "Agent mode" : "Chat mode"}</span>
     </label>
   );
 }
