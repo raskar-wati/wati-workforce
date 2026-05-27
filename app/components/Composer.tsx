@@ -325,22 +325,18 @@ function AgentModeToggle({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <label className="flex cursor-pointer items-center gap-2">
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        onClick={() => onChange(!checked)}
-        className={`relative h-[18px] w-[32px] flex-shrink-0 rounded-full transition-colors duration-200 ${
-          checked ? "bg-[#0a0a0a]" : "bg-black/20"
-        }`}
-      >
-        <span
-          className={`absolute top-[2px] h-[14px] w-[14px] rounded-full bg-white shadow-sm transition-transform duration-200 ${
-            checked ? "translate-x-[16px]" : "translate-x-[2px]"
-          }`}
+    <label className="flex cursor-pointer items-center gap-2 select-none">
+      <div className="relative">
+        <input
+          type="checkbox"
+          role="switch"
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+          className="sr-only peer"
         />
-      </button>
+        <div className="h-[18px] w-[32px] rounded-full bg-black/20 transition-colors duration-200 peer-checked:bg-[#0a0a0a]" />
+        <div className="pointer-events-none absolute top-[2px] left-[2px] h-[14px] w-[14px] rounded-full bg-white shadow-sm transition-transform duration-200 peer-checked:translate-x-[14px]" />
+      </div>
       <span className="text-[13px] tracking-[-0.078px] text-black/50">Agent mode</span>
     </label>
   );
