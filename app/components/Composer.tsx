@@ -217,7 +217,7 @@ export function Composer({
             value={value}
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={hasMessages ? CONVERSATION_PLACEHOLDER : ""}
+            placeholder={hasMessages ? CONVERSATION_PLACEHOLDER : mode === "agent" ? "Create an agent" : ""}
             autoFocus
             className="w-full bg-transparent text-[13px] tracking-[-0.078px] text-black/80 placeholder:text-black/50 focus:outline-none"
           />
