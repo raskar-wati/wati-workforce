@@ -1,8 +1,8 @@
 "use client";
 
-import { AnimatePresence, motion } from "motion/react";
+import { motion } from "motion/react";
 import { Play } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAgents, type HandoffCta, type WatcherTypeId } from "../lib/agents";
 import { useChatMode } from "../lib/chat-mode";
 import { useChatThreads } from "../lib/chat-threads";
@@ -11,6 +11,7 @@ import { useTenantProfile } from "../lib/tenant-signal-profile";
 import { getWatcherType } from "../lib/watcher-types";
 import { AgentActionRun } from "./agents/AgentActionRun";
 import { AgentCreationFlow } from "./agents/AgentCreationFlow";
+import { AgentRunningIndicator } from "./agents/AgentRunningIndicator";
 import { AgentSummaryCard } from "./agents/AgentSummaryCard";
 import { Handoff } from "./agents/Handoff";
 import { TenantAgentSuggestions } from "./agents/TenantAgentSuggestions";
@@ -30,6 +31,15 @@ export function ChatArea() {
   >({});
   const [input, setInput] = useState("");
   const [pendingWatcherTypeId, setPendingWatcherTypeId] = useState<WatcherTypeId | null>(null);
+  // Theatre: which agent is currently "running" (mock loading state). Cleared
+  // when the simulated run finishes and the handoff is appended.
+  const [runningAgentId, setRunningAgentId] = useState<string | null>(null);
+  const runTimerRef = useRef<number | null>(null);
+  // Scroll plumbing for chat-style scaffolding: runs render oldest→newest and
+  // new output appends at the bottom, so we follow the conversation downward
+  // (never yanking the view back up). Driven by effects below — on thread open
+  // we land at the newest run; when a run starts or finishes we follow down.
+  const scrollRef = useRef<HTMLDivElement | null>(null);
   const { mode, setMode, view } = useChatMode();
   const { activeThreadId, createThread } = useChatThreads();
   const {
@@ -68,10 +78,51 @@ export function ChatArea() {
 
   useEffect(() => {
     setInput("");
+    // Cancel any in-flight run theatre when switching threads, so a pending
+    // timer doesn't append a handoff to the wrong (now-inactive) agent.
+    setRunningAgentId(null);
+    if (runTimerRef.current !== null) {
+      window.clearTimeout(runTimerRef.current);
+      runTimerRef.current = null;
+    }
     // Mode is lifted to ChatModeProvider and managed by whoever sets it
     // (slash menu, pill row, sidebar New Agent button). Don't clobber it
     // here on thread change — that would race with sidebar-driven setMode.
   }, [activeThreadId]);
+
+  // Clear any pending run timer on unmount.
+  useEffect(() => {
+    return () => {
+      if (runTimerRef.current !== null) {
+        window.clearTimeout(runTimerRef.current);
+      }
+    };
+  }, []);
+
+  // When a thread with existing content opens, land on the newest run at the
+  // bottom (chat-style) instead of the top. Instant, so it reads as "already
+  // there" rather than a scroll.
+  useEffect(() => {
+    if (!activeThreadId) return;
+    scrollToBottom("auto");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeThreadId]);
+
+  // Newest handoff id — changes when a run completes and appends a result.
+  const newestHandoffId = handoffs[0]?.id ?? null;
+
+  // Follow the conversation downward whenever a run starts (indicator appears)
+  // or finishes (new result appends). Runs after commit, so layout is settled;
+  // skips the first pass per thread (the open effect already landed us).
+  const didFollowInit = useRef(false);
+  useEffect(() => {
+    if (!didFollowInit.current) {
+      didFollowInit.current = true;
+      return;
+    }
+    scrollToBottom("smooth");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runningAgentId, newestHandoffId]);
 
   const submit = () => {
     const text = input.trim();
@@ -120,10 +171,26 @@ export function ChatArea() {
     }));
   };
 
+  const scrollToBottom = (behavior: ScrollBehavior) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior });
+  };
+
   const runAgentAgain = () => {
-    if (!agentForThread) return;
-    const wt = getWatcherType(agentForThread.watcherType);
-    addHandoff(agentForThread.id, wt.buildDraft());
+    if (!agentForThread || runningAgentId) return;
+    const agent = agentForThread;
+    // Theatre: show the running indicator for a beat before the result lands,
+    // standing in for the real backend run. The indicator appends at the bottom
+    // of the thread; the follow-effect scrolls down to it so the conversation
+    // builds downward like a chat — never yanking the view back up to the top.
+    setRunningAgentId(agent.id);
+    runTimerRef.current = window.setTimeout(() => {
+      const wt = getWatcherType(agent.watcherType);
+      addHandoff(agent.id, wt.buildDraft());
+      setRunningAgentId(null);
+      runTimerRef.current = null;
+    }, 2500);
   };
 
   // Handoff inbox is a parallel top-level surface — render it instead of the
@@ -151,11 +218,9 @@ export function ChatArea() {
         }
       >
       {/* Top: hero (with greeting or tenant suggestions inside) or messages */}
-      <AnimatePresence initial={false} mode="popLayout">
+      <>
         {!hasContent ? (
-          <motion.div
-            key="hero"
-            exit={{ opacity: 0, transition: { duration: 0.2 } }}
+          <div
             className={`flex flex-col justify-end pb-6 ${isHomeScreen ? "" : "flex-1"}`}
           >
             {mode === "agent" ? (
@@ -178,39 +243,41 @@ export function ChatArea() {
                 </div>
               </>
             )}
-          </motion.div>
+          </div>
         ) : (
-          <motion.div
+          <div
+            ref={scrollRef}
             key="messages"
-            initial={{ opacity: 0 }}
-            animate={{
-              opacity: 1,
-              transition: { duration: 0.35, delay: 0.25 },
-            }}
-            className="flex flex-1 flex-col overflow-y-auto pt-12 pb-6"
+            className="flex flex-1 flex-col overflow-y-auto pb-6"
           >
             <div className="flex flex-col gap-4">
               {agentForThread && (
-                <AgentSummaryCard
-                  data={{
-                    avatarPath: agentForThread.avatarSeed,
-                    name: agentForThread.name,
-                    watcherType: agentForThread.watcherType,
-                    schedule: agentForThread.schedule,
-                    description: agentForThread.description,
-                    status: agentForThread.status,
-                  }}
-                  actions={
-                    <button
-                      type="button"
-                      onClick={runAgentAgain}
-                      className="flex items-center gap-1.5 rounded-full bg-[#0a0a0a] px-3 py-1.5 text-[13px] tracking-[-0.078px] text-white hover:bg-[#0a0a0a]/90"
-                    >
-                      <Play size={12} strokeWidth={2} />
-                      Run again
-                    </button>
-                  }
-                />
+                // Sticky header: keeps the agent identity + "Run again" in reach
+                // while runs scroll beneath it, so you never lose the control
+                // after the conversation grows downward.
+                <div className="sticky top-0 z-10 bg-white pt-12 pb-3">
+                  <AgentSummaryCard
+                    data={{
+                      avatarPath: agentForThread.avatarSeed,
+                      name: agentForThread.name,
+                      watcherType: agentForThread.watcherType,
+                      schedule: agentForThread.schedule,
+                      description: agentForThread.description,
+                      status: agentForThread.status,
+                    }}
+                    actions={
+                      <button
+                        type="button"
+                        onClick={runAgentAgain}
+                        disabled={runningAgentId === agentForThread.id}
+                        className="flex items-center gap-1.5 rounded-full bg-[#0a0a0a] px-3 py-1.5 text-[13px] tracking-[-0.078px] text-white hover:bg-[#0a0a0a]/90 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <Play size={12} strokeWidth={2} />
+                        Run again
+                      </button>
+                    }
+                  />
+                </div>
               )}
 
               {messages.map((m) => {
@@ -246,16 +313,21 @@ export function ChatArea() {
                 );
               })}
 
-              {agentForThread && handoffs.length > 0 && (
+              {agentForThread &&
+                (handoffs.length > 0 ||
+                  runningAgentId === agentForThread.id) && (
                 <div className="flex flex-col gap-3 pt-2">
-                  {handoffs.map((h, i) => {
+                  {/* Oldest → newest, so new runs append at the bottom and the
+                      view follows downward like a chat transcript. Newest run
+                      starts expanded; older runs collapse. */}
+                  {[...handoffs].reverse().map((h, i, arr) => {
                     const runs = runsByHandoff[h.id] ?? [];
                     return (
                       <div key={h.id} className="flex flex-col gap-2">
                         <Handoff
                           handoff={h}
                           agentName={agentForThread.name}
-                          defaultExpanded={i === 0}
+                          defaultExpanded={i === arr.length - 1}
                           firedCtaIds={firedCtaIds}
                           onFireCta={(cta) => fireCta(h.id, cta)}
                           onExpand={() => markHandoffRead(h.id)}
@@ -266,12 +338,18 @@ export function ChatArea() {
                       </div>
                     );
                   })}
+                  {runningAgentId === agentForThread.id && (
+                    <AgentRunningIndicator
+                      agentName={agentForThread.name}
+                      avatarPath={agentForThread.avatarSeed}
+                    />
+                  )}
                 </div>
               )}
             </div>
-          </motion.div>
+          </div>
         )}
-      </AnimatePresence>
+      </>
 
       {/* Composer — same element across both states; layout animates the position change */}
       <motion.div layout transition={COMPOSER_TRANSITION}>

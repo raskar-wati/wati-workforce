@@ -2020,3 +2020,15 @@ export function pixabotIndexFromPath(path: string): number {
   if (!match) return -1
   return PIXABOT_IDS.indexOf(match[1] as (typeof PIXABOT_IDS)[number])
 }
+
+/**
+ * Map a static pixabot PNG avatar path to its animated GIF counterpart.
+ * Only a subset of GIFs are bundled (see public/pixabots/gif/) — callers
+ * should fall back to the original PNG if the GIF 404s. Returns the input
+ * unchanged if it isn't a recognizable pixabot PNG path.
+ */
+export function pixabotGifFromPath(pngPath: string): string {
+  const match = pngPath.match(/\/pixabots\/240\/([0-9a-f]+)\.png$/)
+  if (!match) return pngPath
+  return `/pixabots/gif/${match[1]}.gif`
+}
