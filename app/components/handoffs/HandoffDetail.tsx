@@ -136,9 +136,12 @@ export function HandoffDetail({
           )}
 
           {runs.length > 0 && (
-            <div className="flex flex-col gap-2 pt-2">
+            <div className="flex flex-col gap-2 border-t border-[#f0f0f0] pt-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.6px] text-black/40">
+                Actions taken
+              </p>
               {runs.map((r) => (
-                <AgentActionRun key={r.id} run={r} />
+                <AgentActionRun key={r.id} run={r} nested />
               ))}
             </div>
           )}

@@ -3,7 +3,12 @@
 import { AnimatePresence, motion } from "motion/react";
 import { ChevronDown } from "lucide-react";
 import { useEffect, useState } from "react";
-import type { Handoff as HandoffType, HandoffCta } from "../../lib/agents";
+import type {
+  AgentActionRun as AgentActionRunType,
+  Handoff as HandoffType,
+  HandoffCta,
+} from "../../lib/agents";
+import { AgentActionRun } from "./AgentActionRun";
 import { HandoffCtaButton } from "./HandoffCtaButton";
 import { HandoffSection } from "./HandoffSection";
 
@@ -12,6 +17,7 @@ export function Handoff({
   agentName,
   defaultExpanded = false,
   firedCtaIds,
+  actionRuns = [],
   onFireCta,
   onExpand,
 }: {
@@ -19,6 +25,8 @@ export function Handoff({
   agentName: string;
   defaultExpanded?: boolean;
   firedCtaIds: ReadonlySet<string>;
+  /** Action runs spawned from this handoff's CTAs — rendered inside the card. */
+  actionRuns?: AgentActionRunType[];
   onFireCta: (cta: HandoffCta) => void;
   /** Called the first time the handoff is expanded — used to mark it read. */
   onExpand?: () => void;
@@ -85,6 +93,17 @@ export function Handoff({
                       fired={firedCtaIds.has(c.id)}
                       onFire={onFireCta}
                     />
+                  ))}
+                </div>
+              )}
+
+              {actionRuns.length > 0 && (
+                <div className="flex flex-col gap-2 border-t border-[#f0f0f0] pt-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.6px] text-black/40">
+                    Actions taken
+                  </p>
+                  {actionRuns.map((r) => (
+                    <AgentActionRun key={r.id} run={r} nested />
                   ))}
                 </div>
               )}

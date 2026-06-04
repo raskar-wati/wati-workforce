@@ -9,7 +9,6 @@ import { useChatThreads } from "../lib/chat-threads";
 import { useFireHandoffCta } from "../lib/use-fire-handoff-cta";
 import { useTenantProfile } from "../lib/tenant-signal-profile";
 import { getWatcherType } from "../lib/watcher-types";
-import { AgentActionRun } from "./agents/AgentActionRun";
 import { AgentCreationFlow } from "./agents/AgentCreationFlow";
 import { AgentRunningIndicator } from "./agents/AgentRunningIndicator";
 import { AgentSummaryCard } from "./agents/AgentSummaryCard";
@@ -320,24 +319,18 @@ export function ChatArea() {
                   {/* Oldest → newest, so new runs append at the bottom and the
                       view follows downward like a chat transcript. Newest run
                       starts expanded; older runs collapse. */}
-                  {[...handoffs].reverse().map((h, i, arr) => {
-                    const runs = runsByHandoff[h.id] ?? [];
-                    return (
-                      <div key={h.id} className="flex flex-col gap-2">
-                        <Handoff
-                          handoff={h}
-                          agentName={agentForThread.name}
-                          defaultExpanded={i === arr.length - 1}
-                          firedCtaIds={firedCtaIds}
-                          onFireCta={(cta) => fireCta(h.id, cta)}
-                          onExpand={() => markHandoffRead(h.id)}
-                        />
-                        {runs.map((r) => (
-                          <AgentActionRun key={r.id} run={r} />
-                        ))}
-                      </div>
-                    );
-                  })}
+                  {[...handoffs].reverse().map((h, i, arr) => (
+                    <Handoff
+                      key={h.id}
+                      handoff={h}
+                      agentName={agentForThread.name}
+                      defaultExpanded={i === arr.length - 1}
+                      firedCtaIds={firedCtaIds}
+                      actionRuns={runsByHandoff[h.id] ?? []}
+                      onFireCta={(cta) => fireCta(h.id, cta)}
+                      onExpand={() => markHandoffRead(h.id)}
+                    />
+                  ))}
                   {runningAgentId === agentForThread.id && (
                     <AgentRunningIndicator
                       agentName={agentForThread.name}
