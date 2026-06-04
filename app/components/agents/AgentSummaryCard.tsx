@@ -45,14 +45,16 @@ export function AgentSummaryCard({
   return (
     <div className="flex flex-col gap-4 rounded-2xl border border-[#e5e5e5] bg-white p-4">
       <div className="flex items-center gap-3">
-        <Image
-          src={data.avatarPath}
-          alt=""
-          width={40}
-          height={40}
-          className="shrink-0 rounded-full border border-[#e5e5e5]"
-          aria-hidden
-        />
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#e5e5e5] bg-[#f5f5f5]">
+          <Image
+            src={data.avatarPath}
+            alt=""
+            width={32}
+            height={32}
+            className="object-contain"
+            aria-hidden
+          />
+        </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-[14px] font-medium tracking-[-0.084px] text-[#0a0a0a]">
             {data.name}
