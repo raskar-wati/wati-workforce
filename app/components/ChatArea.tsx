@@ -1,13 +1,20 @@
 "use client";
 
-import { AnimatePresence, motion } from "motion/react";
+import { motion } from "motion/react";
 import { Play } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAgents, type HandoffCta, type WatcherTypeId } from "../lib/agents";
 import { useChatMode } from "../lib/chat-mode";
 import { useChatThreads } from "../lib/chat-threads";
+import { useDemoState } from "../lib/demo-state";
 import { useFireHandoffCta } from "../lib/use-fire-handoff-cta";
+import { useOnboardingSeen } from "../lib/use-onboarding-seen";
 import { useTenantProfile } from "../lib/tenant-signal-profile";
+import { getTenantPromptCopy } from "../lib/tenant-prompts";
+import {
+  getOnboardingScript,
+  type ClosingChip,
+} from "../lib/onboarding-script";
 import { getWatcherType } from "../lib/watcher-types";
 import { AgentActionRun } from "./agents/AgentActionRun";
 import { AgentCreationFlow } from "./agents/AgentCreationFlow";
@@ -19,19 +26,54 @@ import { DailyDigest } from "./digest/DailyDigest";
 import { HandoffInbox } from "./handoffs/HandoffInbox";
 import { ModePillRow } from "./ModePillRow";
 import { ThinkingIndicator } from "./ThinkingIndicator";
+import { WatiWelcome } from "./WatiWelcome";
+import { OnboardingHandoffPreview } from "./onboarding/OnboardingHandoffPreview";
+import { WatiMessage, type WatiChip } from "./onboarding/WatiMessage";
+
+const ONBOARDING_TITLE = "Getting started";
+
+type WatiAction =
+  | { kind: "onboarding-lead"; label: string; prompt: string }
+  | { kind: "onboarding-skip"; label: string }
+  | { kind: "onboarding-convert"; label: string; watcherTypeId: WatcherTypeId }
+  | { kind: "onboarding-decline"; label: string }
+  | { kind: "open-handoffs"; label: string }
+  | { kind: "open-digest"; label: string }
+  | { kind: "fill-composer"; label: string; prompt: string };
 
 type ChatMessage =
   | { kind: "user-text"; id: string; content: string }
-  | { kind: "agent-creation-flow"; id: string; initialMessage: string; watcherTypeId: WatcherTypeId };
+  | {
+      kind: "agent-creation-flow";
+      id: string;
+      initialMessage: string;
+      watcherTypeId: WatcherTypeId;
+    }
+  | {
+      kind: "wati-message";
+      id: string;
+      text: string;
+      actions: WatiAction[];
+      /** Once a chip is tapped we strip actions so the row collapses. */
+      locked?: boolean;
+    }
+  | { kind: "onboarding-preview"; id: string };
 
 export function ChatArea() {
   const [messagesByThread, setMessagesByThread] = useState<
     Record<string, ChatMessage[]>
   >({});
   const [input, setInput] = useState("");
-  const [pendingWatcherTypeId, setPendingWatcherTypeId] = useState<WatcherTypeId | null>(null);
-  const { mode, setMode, view } = useChatMode();
-  const { activeThreadId, createThread } = useChatThreads();
+  const [pendingWatcherTypeId, setPendingWatcherTypeId] =
+    useState<WatcherTypeId | null>(null);
+  const { mode, setMode, view, setView } = useChatMode();
+  const {
+    threads,
+    activeThreadId,
+    setActiveThreadId,
+    createThread,
+    hydrated: threadsHydrated,
+  } = useChatThreads();
   const {
     getAgentsForThread,
     getHandoffs,
@@ -41,6 +83,18 @@ export function ChatArea() {
   } = useAgents();
   const fireHandoffCta = useFireHandoffCta();
   const { profile: tenantProfile } = useTenantProfile();
+  const { mode: demoMode, hydrated: demoHydrated } = useDemoState();
+  const { seen: onboardingSeen, hydrated: onboardingHydrated, markSeen } =
+    useOnboardingSeen();
+
+  // Onboarding orchestration state. Lives in ChatArea so it can drive the
+  // message timeline, but the thread itself is just a normal thread — we
+  // remember its id so post-agent-creation we know to fire the closing
+  // message.
+  const [onboardingThreadId, setOnboardingThreadId] = useState<string | null>(
+    null,
+  );
+  const [onboardingClosingPosted, setOnboardingClosingPosted] = useState(false);
 
   const messages = activeThreadId
     ? messagesByThread[activeThreadId] ?? []
@@ -66,12 +120,135 @@ export function ChatArea() {
     fireHandoffCta(agentForThread.id, handoffId, cta);
   };
 
+  const appendMessages = useCallback(
+    (threadId: string, msgs: ChatMessage[]) => {
+      setMessagesByThread((prev) => ({
+        ...prev,
+        [threadId]: [...(prev[threadId] ?? []), ...msgs],
+      }));
+    },
+    [],
+  );
+
+  const lockWatiMessageActions = useCallback(
+    (threadId: string, messageId: string) => {
+      setMessagesByThread((prev) => {
+        const list = prev[threadId];
+        if (!list) return prev;
+        return {
+          ...prev,
+          [threadId]: list.map((m) =>
+            m.kind === "wati-message" && m.id === messageId
+              ? { ...m, locked: true }
+              : m,
+          ),
+        };
+      });
+    },
+    [],
+  );
+
   useEffect(() => {
     setInput("");
     // Mode is lifted to ChatModeProvider and managed by whoever sets it
     // (slash menu, pill row, sidebar New Agent button). Don't clobber it
     // here on thread change — that would race with sidebar-driven setMode.
   }, [activeThreadId]);
+
+  // Bootstrap onboarding for first-time users who have not yet seen the
+  // flow. Idempotent — finds the existing "Getting started" thread if one
+  // is already there (StrictMode double-mount, hot reload, etc.) and only
+  // posts the intro message when the thread has none. Skipped for
+  // returning-user mode and once the user has completed/skipped onboarding.
+  useEffect(() => {
+    if (!demoHydrated || !onboardingHydrated || !threadsHydrated) return;
+    if (demoMode !== "first-time") return;
+    if (onboardingSeen) return;
+    if (view !== "chat") return;
+
+    const existing = threads.find((t) => t.title === ONBOARDING_TITLE);
+    let threadId: string;
+    if (existing) {
+      threadId = existing.id;
+      if (onboardingThreadId !== threadId) {
+        setOnboardingThreadId(threadId);
+      }
+      if (!activeThreadId) {
+        setActiveThreadId(threadId);
+      }
+    } else {
+      if (activeThreadId) return; // user already in some other thread; don't override
+      threadId = createThread(ONBOARDING_TITLE);
+      setOnboardingThreadId(threadId);
+      setOnboardingClosingPosted(false);
+    }
+
+    const existingMessages = messagesByThread[threadId] ?? [];
+    if (existingMessages.length > 0) return;
+
+    const script = getOnboardingScript(tenantProfile);
+    appendMessages(threadId, [
+      {
+        kind: "wati-message",
+        id: crypto.randomUUID(),
+        text: `${script.intro.greeting} ${script.intro.subline}`,
+        actions: [
+          {
+            kind: "onboarding-lead",
+            label: script.intro.leadChipLabel,
+            prompt: script.intro.leadPrompt,
+          },
+          { kind: "onboarding-skip", label: "Skip intro" },
+        ],
+      },
+    ]);
+  }, [
+    demoHydrated,
+    onboardingHydrated,
+    threadsHydrated,
+    demoMode,
+    onboardingSeen,
+    view,
+    threads,
+    activeThreadId,
+    messagesByThread,
+    onboardingThreadId,
+    tenantProfile,
+    appendMessages,
+    createThread,
+    setActiveThreadId,
+  ]);
+
+  // Once the agent for the onboarding thread is created, post the closing
+  // message. Runs once thanks to `onboardingClosingPosted`.
+  useEffect(() => {
+    if (!onboardingThreadId) return;
+    if (onboardingClosingPosted) return;
+    if (activeThreadId !== onboardingThreadId) return;
+    const onboardingAgent = getAgentsForThread(onboardingThreadId)[0] ?? null;
+    if (!onboardingAgent) return;
+    const script = getOnboardingScript(tenantProfile);
+    setOnboardingClosingPosted(true);
+    appendMessages(onboardingThreadId, [
+      {
+        kind: "wati-message",
+        id: crypto.randomUUID(),
+        text: script.afterAgent.text,
+        actions: script.closingChips.map((c) =>
+          closingChipToAction(c),
+        ),
+      },
+    ]);
+    markSeen();
+  }, [
+    onboardingThreadId,
+    onboardingClosingPosted,
+    activeThreadId,
+    getAgentsForThread,
+    tenantProfile,
+    appendMessages,
+    markSeen,
+  ]);
 
   const submit = () => {
     const text = input.trim();
@@ -97,12 +274,20 @@ export function ChatArea() {
     }
     setPendingWatcherTypeId(null);
     const tid = threadId;
-    setMessagesByThread((prev) => ({
-      ...prev,
-      [tid]: [...(prev[tid] ?? []), ...nextMessages],
-    }));
+    appendMessages(tid, nextMessages);
     setInput("");
     if (startsAgentFlow) setMode(null);
+
+    // If a first-time user starts typing free-form in the onboarding
+    // thread without tapping the lead chip, treat it as them finding
+    // their own way in and step out of the way for future sessions.
+    if (
+      onboardingThreadId &&
+      tid === onboardingThreadId &&
+      !onboardingSeen
+    ) {
+      markSeen();
+    }
   };
 
   // Clicking a Daily Digest pointer enters Insights mode in a fresh thread,
@@ -125,6 +310,127 @@ export function ChatArea() {
     const wt = getWatcherType(agentForThread.watcherType);
     addHandoff(agentForThread.id, wt.buildDraft());
   };
+
+  // Resolves a WatiAction tapped by the user. The dispatcher is constructed
+  // at render time (not stored in the message) so each handler sees current
+  // closures.
+  const handleWatiAction = useCallback(
+    (threadId: string, messageId: string, action: WatiAction) => {
+      lockWatiMessageActions(threadId, messageId);
+
+      switch (action.kind) {
+        case "onboarding-lead": {
+          // Render their question, then a "thinking" → preview handoff.
+          // The follow-up "want me to keep watching?" message is posted by
+          // `onPreviewReady` once the preview animation finishes, so we
+          // don't race the thinking indicator here.
+          appendMessages(threadId, [
+            {
+              kind: "user-text",
+              id: crypto.randomUUID(),
+              content: action.prompt,
+            },
+            { kind: "onboarding-preview", id: crypto.randomUUID() },
+          ]);
+          break;
+        }
+
+        case "onboarding-skip": {
+          markSeen();
+          // Drop them onto the standard first-time home (WatiWelcome).
+          setActiveThreadId(null);
+          setOnboardingThreadId(null);
+          break;
+        }
+
+        case "onboarding-convert": {
+          appendMessages(threadId, [
+            {
+              kind: "agent-creation-flow",
+              id: crypto.randomUUID(),
+              initialMessage: getOnboardingScript(tenantProfile).intro
+                .leadPrompt,
+              watcherTypeId: action.watcherTypeId,
+            },
+          ]);
+          break;
+        }
+
+        case "onboarding-decline": {
+          appendMessages(threadId, [
+            {
+              kind: "wati-message",
+              id: crypto.randomUUID(),
+              text: "No problem — you can always ask me to set one up later.",
+              actions: [],
+            },
+          ]);
+          markSeen();
+          break;
+        }
+
+        case "open-handoffs": {
+          setView("handoffs");
+          break;
+        }
+
+        case "open-digest": {
+          setActiveThreadId(null);
+          setMode(null);
+          // The home renders DailyDigest. Defer scroll so the home mounts
+          // before we try to find the digest.
+          requestAnimationFrame(() => {
+            const el = document.querySelector("[data-daily-digest]");
+            if (el) {
+              el.scrollIntoView({ behavior: "smooth", block: "start" });
+            }
+          });
+          break;
+        }
+
+        case "fill-composer": {
+          setActiveThreadId(null);
+          setMode(null);
+          setInput(action.prompt);
+          break;
+        }
+      }
+    },
+    [
+      appendMessages,
+      lockWatiMessageActions,
+      markSeen,
+      setActiveThreadId,
+      setMode,
+      setView,
+      tenantProfile,
+    ],
+  );
+
+  const onPreviewReady = useCallback(
+    (threadId: string) => {
+      const script = getOnboardingScript(tenantProfile);
+      appendMessages(threadId, [
+        {
+          kind: "wati-message",
+          id: crypto.randomUUID(),
+          text: script.afterResult.text,
+          actions: [
+            {
+              kind: "onboarding-convert",
+              label: script.afterResult.convertLabel,
+              watcherTypeId: script.leadWatcherType,
+            },
+            {
+              kind: "onboarding-decline",
+              label: script.afterResult.declineLabel,
+            },
+          ],
+        },
+      ]);
+    },
+    [appendMessages, tenantProfile],
+  );
 
   // Handoff inbox is a parallel top-level surface — render it instead of the
   // chat column when the user has navigated there from the sidebar.
@@ -151,11 +457,9 @@ export function ChatArea() {
         }
       >
       {/* Top: hero (with greeting or tenant suggestions inside) or messages */}
-      <AnimatePresence initial={false} mode="popLayout">
+      <>
         {!hasContent ? (
-          <motion.div
-            key="hero"
-            exit={{ opacity: 0, transition: { duration: 0.2 } }}
+          <div
             className={`flex flex-col justify-end pb-6 ${isHomeScreen ? "" : "flex-1"}`}
           >
             {mode === "agent" ? (
@@ -165,6 +469,11 @@ export function ChatArea() {
                   setInput(prompt);
                   setPendingWatcherTypeId(watcherTypeId);
                 }}
+              />
+            ) : demoMode === "first-time" ? (
+              <WatiWelcome
+                copy={getTenantPromptCopy(tenantProfile)}
+                onSelectPrompt={(prompt) => setInput(prompt)}
               />
             ) : (
               <>
@@ -178,15 +487,9 @@ export function ChatArea() {
                 </div>
               </>
             )}
-          </motion.div>
+          </div>
         ) : (
-          <motion.div
-            key="messages"
-            initial={{ opacity: 0 }}
-            animate={{
-              opacity: 1,
-              transition: { duration: 0.35, delay: 0.25 },
-            }}
+          <div
             className="flex flex-1 flex-col overflow-y-auto pt-12 pb-6"
           >
             <div className="flex flex-col gap-4">
@@ -229,6 +532,31 @@ export function ChatArea() {
                     </motion.div>
                   );
                 }
+                if (m.kind === "wati-message") {
+                  const chips: WatiChip[] | undefined =
+                    m.locked || m.actions.length === 0
+                      ? undefined
+                      : m.actions.map((a, i) => ({
+                          id: `${m.id}-${i}`,
+                          label: a.label,
+                          variant: chipVariantFor(a),
+                          onClick: () =>
+                            activeThreadId &&
+                            handleWatiAction(activeThreadId, m.id, a),
+                        }));
+                  return (
+                    <WatiMessage key={m.id} text={m.text} chips={chips} />
+                  );
+                }
+                if (m.kind === "onboarding-preview") {
+                  if (!activeThreadId) return null;
+                  return (
+                    <OnboardingHandoffPreview
+                      key={m.id}
+                      onReady={() => onPreviewReady(activeThreadId)}
+                    />
+                  );
+                }
                 if (!activeThreadId) return null;
                 return (
                   <motion.div
@@ -269,9 +597,9 @@ export function ChatArea() {
                 </div>
               )}
             </div>
-          </motion.div>
+          </div>
         )}
-      </AnimatePresence>
+      </>
 
       {/* Composer — same element across both states; layout animates the position change */}
       <motion.div layout transition={COMPOSER_TRANSITION}>
@@ -299,7 +627,7 @@ export function ChatArea() {
           so the whole cluster (hero + composer + pills + digest) reads as
           one vertically-centered group. */}
       {isHomeScreen && (
-        <div className="pt-6">
+        <div className="pt-6" data-daily-digest>
           <DailyDigest onSelectPointer={handleDigestPointer} />
         </div>
       )}
@@ -307,3 +635,25 @@ export function ChatArea() {
     </div>
   );
 }
+
+function chipVariantFor(action: WatiAction): "primary" | "ghost" {
+  if (action.kind === "onboarding-lead") return "primary";
+  if (action.kind === "onboarding-convert") return "primary";
+  return "ghost";
+}
+
+function closingChipToAction(chip: ClosingChip): WatiAction {
+  switch (chip.action.kind) {
+    case "open-handoffs":
+      return { kind: "open-handoffs", label: chip.label };
+    case "open-digest":
+      return { kind: "open-digest", label: chip.label };
+    case "fill-composer":
+      return {
+        kind: "fill-composer",
+        label: chip.label,
+        prompt: chip.action.prompt,
+      };
+  }
+}
+

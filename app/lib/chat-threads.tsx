@@ -24,6 +24,8 @@ type ChatThreadsCtx = {
   setActiveThreadId: (id: string | null) => void;
   createThread: (firstMessage: string) => string;
   attachAgentToThread: (threadId: string, agentId: string) => void;
+  /** True once threads for the current demo mode have hydrated from storage. */
+  hydrated: boolean;
 };
 
 const STORAGE_KEY_BASE = "wati.chat-threads.v1";
@@ -110,6 +112,8 @@ export function ChatThreadsProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const hydrated = hydratedForMode === mode;
+
   const value = useMemo<ChatThreadsCtx>(
     () => ({
       threads,
@@ -117,8 +121,9 @@ export function ChatThreadsProvider({ children }: { children: ReactNode }) {
       setActiveThreadId,
       createThread,
       attachAgentToThread,
+      hydrated,
     }),
-    [threads, activeThreadId, createThread, attachAgentToThread],
+    [threads, activeThreadId, createThread, attachAgentToThread, hydrated],
   );
 
   return (
