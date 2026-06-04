@@ -14,6 +14,7 @@ import { getTenantPromptCopy } from "../lib/tenant-prompts";
 import {
   getOnboardingScript,
   type ClosingChip,
+  type OfferingChoice,
 } from "../lib/onboarding-script";
 import { getWatcherType } from "../lib/watcher-types";
 import { AgentActionRun } from "./agents/AgentActionRun";
@@ -33,9 +34,22 @@ import { WatiMessage, type WatiChip } from "./onboarding/WatiMessage";
 const ONBOARDING_TITLE = "Getting started";
 
 type WatiAction =
-  | { kind: "onboarding-lead"; label: string; prompt: string }
+  | { kind: "onboarding-pick-offering"; label: string; choice: OfferingChoice }
+  | {
+      kind: "onboarding-pick-agent";
+      label: string;
+      agentName: string;
+      prompt: string;
+      watcherTypeId: WatcherTypeId;
+    }
+  | { kind: "onboarding-back-to-offerings"; label: string }
   | { kind: "onboarding-skip"; label: string }
-  | { kind: "onboarding-convert"; label: string; watcherTypeId: WatcherTypeId }
+  | {
+      kind: "onboarding-convert";
+      label: string;
+      watcherTypeId: WatcherTypeId;
+      prompt: string;
+    }
   | { kind: "onboarding-decline"; label: string }
   | { kind: "open-handoffs"; label: string }
   | { kind: "open-digest"; label: string }
@@ -57,7 +71,13 @@ type ChatMessage =
       /** Once a chip is tapped we strip actions so the row collapses. */
       locked?: boolean;
     }
-  | { kind: "onboarding-preview"; id: string };
+  | {
+      kind: "onboarding-preview";
+      id: string;
+      watcherTypeId: WatcherTypeId;
+      agentName: string;
+      prompt: string;
+    };
 
 export function ChatArea() {
   const [messagesByThread, setMessagesByThread] = useState<
@@ -191,14 +211,14 @@ export function ChatArea() {
       {
         kind: "wati-message",
         id: crypto.randomUUID(),
-        text: `${script.intro.greeting} ${script.intro.subline}`,
+        text: script.intro.text,
         actions: [
-          {
-            kind: "onboarding-lead",
-            label: script.intro.leadChipLabel,
-            prompt: script.intro.leadPrompt,
-          },
-          { kind: "onboarding-skip", label: "Skip intro" },
+          ...script.intro.offerings.map<WatiAction>((o) => ({
+            kind: "onboarding-pick-offering",
+            label: o.label,
+            choice: o.choice,
+          })),
+          { kind: "onboarding-skip", label: script.intro.skipLabel },
         ],
       },
     ]);
@@ -234,7 +254,7 @@ export function ChatArea() {
         kind: "wati-message",
         id: crypto.randomUUID(),
         text: script.afterAgent.text,
-        actions: script.closingChips.map((c) =>
+        actions: script.afterAgent.closingChips.map((c) =>
           closingChipToAction(c),
         ),
       },
@@ -319,7 +339,60 @@ export function ChatArea() {
       lockWatiMessageActions(threadId, messageId);
 
       switch (action.kind) {
-        case "onboarding-lead": {
+        case "onboarding-pick-offering": {
+          const script = getOnboardingScript(tenantProfile);
+          if (action.choice === "agents") {
+            // Drill in: show the tenant-aware agent options.
+            appendMessages(threadId, [
+              {
+                kind: "wati-message",
+                id: crypto.randomUUID(),
+                text: script.agentsDrillDown.text,
+                actions: [
+                  ...script.agentsDrillDown.agents.map<WatiAction>((a) => ({
+                    kind: "onboarding-pick-agent",
+                    label: a.label,
+                    agentName: a.agentName,
+                    prompt: a.prompt,
+                    watcherTypeId: a.watcherTypeId,
+                  })),
+                  {
+                    kind: "onboarding-back-to-offerings",
+                    label: script.agentsDrillDown.backLabel,
+                  },
+                  {
+                    kind: "onboarding-skip",
+                    label: script.agentsDrillDown.skipLabel,
+                  },
+                ],
+              },
+            ]);
+          } else {
+            // Automations / Insights aren't built yet — surface a friendly
+            // "coming soon" turn with a path back to agents.
+            const turn =
+              action.choice === "automations"
+                ? script.comingSoonAutomations
+                : script.comingSoonInsights;
+            appendMessages(threadId, [
+              {
+                kind: "wati-message",
+                id: crypto.randomUUID(),
+                text: turn.text,
+                actions: [
+                  {
+                    kind: "onboarding-back-to-offerings",
+                    label: turn.backLabel,
+                  },
+                  { kind: "onboarding-skip", label: turn.skipLabel },
+                ],
+              },
+            ]);
+          }
+          break;
+        }
+
+        case "onboarding-pick-agent": {
           // Render their question, then a "thinking" → preview handoff.
           // The follow-up "want me to keep watching?" message is posted by
           // `onPreviewReady` once the preview animation finishes, so we
@@ -330,7 +403,37 @@ export function ChatArea() {
               id: crypto.randomUUID(),
               content: action.prompt,
             },
-            { kind: "onboarding-preview", id: crypto.randomUUID() },
+            {
+              kind: "onboarding-preview",
+              id: crypto.randomUUID(),
+              watcherTypeId: action.watcherTypeId,
+              agentName: action.agentName,
+              prompt: action.prompt,
+            },
+          ]);
+          break;
+        }
+
+        case "onboarding-back-to-offerings": {
+          // Re-post the intro turn so the user can pick a different
+          // offering. New message, new id — the previous turn stays in
+          // the transcript (locked) so the conversation history reads
+          // naturally.
+          const script = getOnboardingScript(tenantProfile);
+          appendMessages(threadId, [
+            {
+              kind: "wati-message",
+              id: crypto.randomUUID(),
+              text: script.intro.text,
+              actions: [
+                ...script.intro.offerings.map<WatiAction>((o) => ({
+                  kind: "onboarding-pick-offering",
+                  label: o.label,
+                  choice: o.choice,
+                })),
+                { kind: "onboarding-skip", label: script.intro.skipLabel },
+              ],
+            },
           ]);
           break;
         }
@@ -348,8 +451,7 @@ export function ChatArea() {
             {
               kind: "agent-creation-flow",
               id: crypto.randomUUID(),
-              initialMessage: getOnboardingScript(tenantProfile).intro
-                .leadPrompt,
+              initialMessage: action.prompt,
               watcherTypeId: action.watcherTypeId,
             },
           ]);
@@ -408,7 +510,10 @@ export function ChatArea() {
   );
 
   const onPreviewReady = useCallback(
-    (threadId: string) => {
+    (
+      threadId: string,
+      previewCtx: { watcherTypeId: WatcherTypeId; prompt: string },
+    ) => {
       const script = getOnboardingScript(tenantProfile);
       appendMessages(threadId, [
         {
@@ -419,7 +524,8 @@ export function ChatArea() {
             {
               kind: "onboarding-convert",
               label: script.afterResult.convertLabel,
-              watcherTypeId: script.leadWatcherType,
+              watcherTypeId: previewCtx.watcherTypeId,
+              prompt: previewCtx.prompt,
             },
             {
               kind: "onboarding-decline",
@@ -553,7 +659,14 @@ export function ChatArea() {
                   return (
                     <OnboardingHandoffPreview
                       key={m.id}
-                      onReady={() => onPreviewReady(activeThreadId)}
+                      watcherTypeId={m.watcherTypeId}
+                      agentName={m.agentName}
+                      onReady={() =>
+                        onPreviewReady(activeThreadId, {
+                          watcherTypeId: m.watcherTypeId,
+                          prompt: m.prompt,
+                        })
+                      }
                     />
                   );
                 }
@@ -637,7 +750,17 @@ export function ChatArea() {
 }
 
 function chipVariantFor(action: WatiAction): "primary" | "ghost" {
-  if (action.kind === "onboarding-lead") return "primary";
+  // Primary emphasis on the chips that advance the user toward an agent —
+  // the recommended path. Everything else (Automations, Insights, back,
+  // skip, decline) stays ghost so the offering row reads as one strong
+  // suggestion alongside lower-weight alternatives.
+  if (
+    action.kind === "onboarding-pick-offering" &&
+    action.choice === "agents"
+  ) {
+    return "primary";
+  }
+  if (action.kind === "onboarding-pick-agent") return "primary";
   if (action.kind === "onboarding-convert") return "primary";
   return "ghost";
 }

@@ -1,13 +1,24 @@
+import { rankSuggestions } from "./agent-suggestions";
 import type { WatcherTypeId } from "./agents";
 import type { TenantSignalProfile } from "./tenant-signal-profile";
 
 /**
- * Adoption-focused onboarding script. Walks first-time users through one
- * concrete value moment (ask → see real answer → convert to a persistent
- * agent), then offers a small set of next-step pointers. Tenant-shaped:
- * the lead prompt, watcher conversion, and closing CTAs all change per
- * tenant so the journey feels relevant.
+ * Conversational onboarding payloads. The script is the deterministic
+ * fallback path — it returns the exact data shape an LLM-backed Wati
+ * would. ChatArea consumes turn payloads and wires chip clicks to
+ * behavior; the script itself is pure data so it can move behind an
+ * API route handler unchanged when we wire the LLM in.
+ *
+ * Conversation shape:
+ *   intro → (pick-offering) → agentsDrillDown | comingSoon
+ *   agentsDrillDown → (pick-agent) → mock handoff preview
+ *   preview → afterResult → (convert) → AgentCreationFlow → afterAgent
+ *   afterAgent → closing chips
  */
+
+// ---- chip action types ----------------------------------------------------
+
+export type OfferingChoice = "agents" | "automations" | "insights";
 
 export type ClosingChipAction =
   | { kind: "open-handoffs" }
@@ -19,44 +30,84 @@ export type ClosingChip = {
   action: ClosingChipAction;
 };
 
-export type OnboardingScript = {
-  intro: {
-    greeting: string;
-    subline: string;
-    leadChipLabel: string;
-    leadPrompt: string;
-  };
-  leadWatcherType: WatcherTypeId;
-  /** Wati's follow-up after the mock result lands. */
-  afterResult: {
-    text: string;
-    convertLabel: string;
-    declineLabel: string;
-  };
-  /** Wati's closing message after the agent is created. */
-  afterAgent: {
-    text: string;
-  };
+// ---- turn payload shapes --------------------------------------------------
+
+export type OnboardingAgentOption = {
+  label: string;
+  agentName: string;
+  prompt: string;
+  watcherTypeId: WatcherTypeId;
+};
+
+export type IntroTurn = {
+  text: string;
+  offerings: ReadonlyArray<{ label: string; choice: OfferingChoice }>;
+  skipLabel: string;
+};
+
+export type AgentsDrillDownTurn = {
+  text: string;
+  agents: ReadonlyArray<OnboardingAgentOption>;
+  backLabel: string;
+  skipLabel: string;
+};
+
+export type ComingSoonTurn = {
+  text: string;
+  backLabel: string;
+  skipLabel: string;
+};
+
+export type AfterResultTurn = {
+  text: string;
+  convertLabel: string;
+  declineLabel: string;
+};
+
+export type AfterAgentTurn = {
+  text: string;
   closingChips: readonly ClosingChip[];
 };
 
-const TRAVEL_HOUSE: OnboardingScript = {
-  intro: {
-    greeting: "Hi — I'm Ask Wati.",
-    subline:
-      "I can dig through your Travel House conversations, draft replies, and run small agents that keep watching while you focus on something else. The fastest way to feel it is to try one.",
-    leadChipLabel: "Find customers ready to book this week",
-    leadPrompt: "Find customers ready to book this week",
-  },
-  leadWatcherType: "ready-to-buy",
-  afterResult: {
-    text: "A handful of customers are showing strong intent right now. Want me to keep an eye on this and bring you new ones daily?",
-    convertLabel: "Set up a Hot Leads watcher",
-    declineLabel: "Not now",
-  },
-  afterAgent: {
-    text: "Your Hot Leads watcher is running. A few more things I can do whenever you're ready:",
-  },
+export type OnboardingScript = {
+  intro: IntroTurn;
+  agentsDrillDown: AgentsDrillDownTurn;
+  comingSoonAutomations: ComingSoonTurn;
+  comingSoonInsights: ComingSoonTurn;
+  afterResult: AfterResultTurn;
+  afterAgent: AfterAgentTurn;
+};
+
+// ---- shared copy ----------------------------------------------------------
+
+const COMING_SOON_AUTOMATIONS: ComingSoonTurn = {
+  text: "Automations are coming soon — rules that fire on their own without you in the loop. For now, agents are the entry point. Want to see what I can watch for?",
+  backLabel: "Show me agents",
+  skipLabel: "Skip intro",
+};
+
+const COMING_SOON_INSIGHTS: ComingSoonTurn = {
+  text: "Insights are coming soon — ad-hoc questions you can ask about your data and get an answer instantly. For now, agents are the entry point. Want to see what I can watch for?",
+  backLabel: "Show me agents",
+  skipLabel: "Skip intro",
+};
+
+const AFTER_AGENT_TEXT =
+  "Your agent is running and will show up here whenever it has something for you. A few more things I can do whenever you're ready:";
+
+// ---- tenant-shaped intro copy --------------------------------------------
+
+type TenantIntroCopy = {
+  intro: string;
+  agentsHeader: string;
+  closingChips: readonly ClosingChip[];
+};
+
+const TRAVEL_HOUSE_COPY: TenantIntroCopy = {
+  intro:
+    "Hey — I'm Wati, your AI workforce inside the Wati platform. I act on Wati directly: I read your Travel House conversations, draft and send replies, update contacts, and run on my own when you're not here.\n\nI can do that as agents that watch for things and act (like spotting customers ready to book), automations that fire on their own (coming soon), or insights you can ask about on demand (coming soon). Where would you like to start?",
+  agentsHeader:
+    "Here's what I can watch for in your Travel House inbox. Pick one and I'll run it once so you can see what it looks like:",
   closingChips: [
     { label: "Browse the Handoff Inbox", action: { kind: "open-handoffs" } },
     { label: "Show today's Daily Digest", action: { kind: "open-digest" } },
@@ -70,23 +121,11 @@ const TRAVEL_HOUSE: OnboardingScript = {
   ],
 };
 
-const BIGHAAT: OnboardingScript = {
-  intro: {
-    greeting: "Hi — I'm Ask Wati.",
-    subline:
-      "I can dig through your BigHaat customer queue, cluster what's coming in, and run small agents that keep watching while you focus on something else. The fastest way to feel it is to try one.",
-    leadChipLabel: "Show today's delivery complaints",
-    leadPrompt: "Show today's delivery complaints",
-  },
-  leadWatcherType: "delivery-issue",
-  afterResult: {
-    text: "There's a real cluster here. Want me to keep watching for delivery complaints and bring you the new ones daily?",
-    convertLabel: "Set up a Delivery-issue watcher",
-    declineLabel: "Not now",
-  },
-  afterAgent: {
-    text: "Your Delivery-issue watcher is running. A few more things I can do whenever you're ready:",
-  },
+const BIGHAAT_COPY: TenantIntroCopy = {
+  intro:
+    "Hey — I'm Wati, your AI workforce inside the Wati platform. I act on Wati directly: I read your BigHaat customer queue, cluster what's coming in, reply where I can, and run on my own when you're not here.\n\nI can do that as agents that watch for things and act (like surfacing delivery complaints early), automations that fire on their own (coming soon), or insights you can ask about on demand (coming soon). Where would you like to start?",
+  agentsHeader:
+    "Here's what I can watch for in your BigHaat queue. Pick one and I'll run it once so you can see what it looks like:",
   closingChips: [
     { label: "Browse the Handoff Inbox", action: { kind: "open-handoffs" } },
     { label: "Show today's Daily Digest", action: { kind: "open-digest" } },
@@ -94,15 +133,69 @@ const BIGHAAT: OnboardingScript = {
       label: "Filter ops messages out of the customer queue",
       action: {
         kind: "fill-composer",
-        prompt: "Find messages that look like internal ops sent to the customer queue by mistake",
+        prompt:
+          "Find messages that look like internal ops sent to the customer queue by mistake",
       },
     },
   ],
 };
 
+function getTenantCopy(profile: TenantSignalProfile): TenantIntroCopy {
+  if (profile.tenantId === "bighaat") return BIGHAAT_COPY;
+  return TRAVEL_HOUSE_COPY;
+}
+
+// ---- assembly -------------------------------------------------------------
+
+const OFFERINGS: IntroTurn["offerings"] = [
+  { label: "Agents", choice: "agents" },
+  { label: "Automations", choice: "automations" },
+  { label: "Insights", choice: "insights" },
+];
+
+function buildAgentOptions(
+  profile: TenantSignalProfile,
+): OnboardingAgentOption[] {
+  // Reuse the existing tenant-aware suggestion bank so the onboarding
+  // drill-in stays in sync with what the user sees elsewhere. Cap at 4 to
+  // keep the chip row scannable.
+  // Chip label uses the suggestion's short outcome-language name
+  // ("Watch for ready-to-buy signals"). The full prompt is preserved
+  // separately so it can seed AgentCreationFlow's composer.
+  return rankSuggestions(profile, 4).map((s) => ({
+    label: s.name,
+    agentName: s.name,
+    prompt: s.prompt,
+    watcherTypeId: s.watcherTypeId,
+  }));
+}
+
 export function getOnboardingScript(
   profile: TenantSignalProfile,
 ): OnboardingScript {
-  if (profile.tenantId === "bighaat") return BIGHAAT;
-  return TRAVEL_HOUSE;
+  const copy = getTenantCopy(profile);
+  return {
+    intro: {
+      text: copy.intro,
+      offerings: OFFERINGS,
+      skipLabel: "Skip intro",
+    },
+    agentsDrillDown: {
+      text: copy.agentsHeader,
+      agents: buildAgentOptions(profile),
+      backLabel: "Back",
+      skipLabel: "Skip intro",
+    },
+    comingSoonAutomations: COMING_SOON_AUTOMATIONS,
+    comingSoonInsights: COMING_SOON_INSIGHTS,
+    afterResult: {
+      text: "Want me to keep an eye on this and bring you new ones as they come in?",
+      convertLabel: "Set this up as an agent",
+      declineLabel: "Not now",
+    },
+    afterAgent: {
+      text: AFTER_AGENT_TEXT,
+      closingChips: copy.closingChips,
+    },
+  };
 }

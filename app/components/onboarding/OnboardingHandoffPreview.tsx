@@ -2,10 +2,8 @@
 
 import { motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
-import { useTenantProfile } from "../../lib/tenant-signal-profile";
-import { getOnboardingScript } from "../../lib/onboarding-script";
 import { getWatcherType } from "../../lib/watcher-types";
-import type { Handoff as HandoffType } from "../../lib/agents";
+import type { Handoff as HandoffType, WatcherTypeId } from "../../lib/agents";
 import { Handoff } from "../agents/Handoff";
 import { StatusIndicator } from "../agents/StatusIndicator";
 
@@ -17,18 +15,23 @@ const THINKING_MS = 1400;
  * user will see after they actually create the agent. CTAs are inert during
  * the preview (the agent doesn't exist yet); we fire `onReady` once the
  * "thinking" phase ends so the orchestrator can post its follow-up message.
+ *
+ * `watcherTypeId` selects which agent's draft to render — onboarding lets the
+ * user pick from multiple tenant agents, so this is no longer hardcoded.
  */
 export function OnboardingHandoffPreview({
+  watcherTypeId,
+  agentName,
   onReady,
 }: {
+  watcherTypeId: WatcherTypeId;
+  agentName: string;
   onReady: () => void;
 }) {
-  const { profile } = useTenantProfile();
-  const script = getOnboardingScript(profile);
   const [phase, setPhase] = useState<"thinking" | "result">("thinking");
 
   const previewHandoff = useMemo<HandoffType>(() => {
-    const wt = getWatcherType(script.leadWatcherType);
+    const wt = getWatcherType(watcherTypeId);
     const draft = wt.buildDraft();
     return {
       id: "onboarding-preview",
@@ -36,12 +39,7 @@ export function OnboardingHandoffPreview({
       runNumber: 1,
       ...draft,
     };
-  }, [script.leadWatcherType]);
-
-  const agentName = useMemo(
-    () => getWatcherType(script.leadWatcherType).defaultName,
-    [script.leadWatcherType],
-  );
+  }, [watcherTypeId]);
 
   useEffect(() => {
     if (phase !== "thinking") return;
