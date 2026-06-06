@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   BarChart3,
   BookUser,
@@ -21,11 +23,12 @@ type NavItem = {
   label: string;
   icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
   active?: boolean;
+  href?: string;
   children?: { label: string; active?: boolean }[];
 };
 
 const workspace: NavItem[] = [
-  { label: "Conversations", icon: Mail },
+  { label: "Conversations", icon: Mail, href: "/preview" },
   { label: "Contacts", icon: BookUser },
   { label: "Commerce", icon: ShoppingCart },
   { label: "Campaigns", icon: Megaphone },
@@ -49,6 +52,7 @@ const setup: NavItem[] = [
 
 export function MainSidebar() {
   const [collapsed, setCollapsed] = useState(true);
+  const pathname = usePathname();
 
   return (
     <aside
@@ -64,7 +68,8 @@ export function MainSidebar() {
           <NavRow
             icon={PanelsTopLeft}
             label="WorkForce"
-            active
+            href="/"
+            active={pathname === "/"}
             collapsed={collapsed}
           />
         </Section>
@@ -78,6 +83,8 @@ export function MainSidebar() {
               key={item.label}
               icon={item.icon}
               label={item.label}
+              href={item.href}
+              active={item.href ? pathname === item.href : false}
               collapsed={collapsed}
             />
           ))}
@@ -92,6 +99,7 @@ export function MainSidebar() {
               key={item.label}
               icon={item.icon}
               label={item.label}
+              href={item.href}
               collapsed={collapsed}
             />
           ))}
@@ -211,23 +219,23 @@ function NavRow({
   icon: Icon,
   label,
   active,
+  href,
   collapsed,
 }: {
   icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
   label: string;
   active?: boolean;
+  href?: string;
   collapsed: boolean;
 }) {
-  return (
-    <button
-      type="button"
-      title={collapsed ? label : undefined}
-      className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium hover:bg-[var(--wati-hover-bg)] ${
-        active
-          ? "text-[var(--wati-text-primary)]"
-          : "text-[var(--wati-text-body)]"
-      } ${collapsed ? "justify-center" : ""}`}
-    >
+  const className = `flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium hover:bg-[var(--wati-hover-bg)] ${
+    active
+      ? "bg-[var(--wati-active-bg)] text-[var(--wati-text-primary)]"
+      : "text-[var(--wati-text-body)]"
+  } ${collapsed ? "justify-center" : ""}`;
+
+  const body = (
+    <>
       <span
         className={`flex h-5 w-5 shrink-0 items-center justify-center ${
           active
@@ -238,6 +246,20 @@ function NavRow({
         <Icon size={18} strokeWidth={1.75} />
       </span>
       {!collapsed && <span className="truncate">{label}</span>}
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link href={href} title={collapsed ? label : undefined} className={className}>
+        {body}
+      </Link>
+    );
+  }
+
+  return (
+    <button type="button" title={collapsed ? label : undefined} className={className}>
+      {body}
     </button>
   );
 }

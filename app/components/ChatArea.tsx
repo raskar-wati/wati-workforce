@@ -24,6 +24,8 @@ import { Handoff } from "./agents/Handoff";
 import { TenantAgentSuggestions } from "./agents/TenantAgentSuggestions";
 import { Composer, COMPOSER_TRANSITION } from "./Composer";
 import { DailyDigest } from "./digest/DailyDigest";
+import { InboxAskWatiSuggestions } from "./agents/InboxAskWatiSuggestions";
+import { useInboxContext } from "../lib/inbox-context";
 import { HandoffInbox } from "./handoffs/HandoffInbox";
 import { ModePillRow } from "./ModePillRow";
 import { ThinkingIndicator } from "./ThinkingIndicator";
@@ -79,7 +81,7 @@ type ChatMessage =
       prompt: string;
     };
 
-export function ChatArea() {
+export function ChatArea({ hideDailyDigest = false }: { hideDailyDigest?: boolean } = {}) {
   const [messagesByThread, setMessagesByThread] = useState<
     Record<string, ChatMessage[]>
   >({});
@@ -103,6 +105,8 @@ export function ChatArea() {
   } = useAgents();
   const fireHandoffCta = useFireHandoffCta();
   const { profile: tenantProfile } = useTenantProfile();
+  const inboxCtx = useInboxContext();
+  const [inboxScopeActive, setInboxScopeActive] = useState(Boolean(inboxCtx));
   const { mode: demoMode, hydrated: demoHydrated } = useDemoState();
   const { seen: onboardingSeen, hydrated: onboardingHydrated, markSeen } =
     useOnboardingSeen();
@@ -569,13 +573,23 @@ export function ChatArea() {
             className={`flex flex-col justify-end pb-6 ${isHomeScreen ? "" : "flex-1"}`}
           >
             {mode === "agent" ? (
-              <TenantAgentSuggestions
-                profile={tenantProfile}
-                onSelect={(prompt, watcherTypeId) => {
-                  setInput(prompt);
-                  setPendingWatcherTypeId(watcherTypeId);
-                }}
-              />
+              inboxCtx ? (
+                <InboxAskWatiSuggestions
+                  stats={inboxCtx.stats}
+                  onSelect={(prompt, watcherTypeId) => {
+                    setInput(prompt);
+                    setPendingWatcherTypeId(watcherTypeId);
+                  }}
+                />
+              ) : (
+                <TenantAgentSuggestions
+                  profile={tenantProfile}
+                  onSelect={(prompt, watcherTypeId) => {
+                    setInput(prompt);
+                    setPendingWatcherTypeId(watcherTypeId);
+                  }}
+                />
+              )
             ) : demoMode === "first-time" ? (
               <WatiWelcome
                 copy={getTenantPromptCopy(tenantProfile)}
@@ -723,6 +737,17 @@ export function ChatArea() {
           hasMessages={hasContent}
           mode={mode}
           onModeChange={setMode}
+          contextChips={
+            inboxCtx && inboxScopeActive
+              ? [
+                  {
+                    id: "inbox",
+                    label: "@inbox",
+                    onRemove: () => setInboxScopeActive(false),
+                  },
+                ]
+              : undefined
+          }
         />
       </motion.div>
 
@@ -739,7 +764,7 @@ export function ChatArea() {
       {/* Daily Digest — home screen only. Lives inside the centered wrapper
           so the whole cluster (hero + composer + pills + digest) reads as
           one vertically-centered group. */}
-      {isHomeScreen && (
+      {isHomeScreen && !hideDailyDigest && (
         <div className="pt-6" data-daily-digest>
           <DailyDigest onSelectPointer={handleDigestPointer} />
         </div>

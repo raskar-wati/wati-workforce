@@ -32,7 +32,7 @@ export function TenantAgentSuggestions({
         </span>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="flex flex-col gap-3">
         {suggestions.map((s) => (
           <SuggestionCard
             key={s.id}

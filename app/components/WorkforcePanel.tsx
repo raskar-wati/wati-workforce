@@ -1,6 +1,13 @@
 "use client";
 
-import { ChevronDown, Inbox, Plus, Sparkles } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronsLeft,
+  ChevronsRight,
+  Inbox,
+  Plus,
+  Sparkles,
+} from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
 import { useAgents } from "../lib/agents";
@@ -9,13 +16,30 @@ import { useChatThreads } from "../lib/chat-threads";
 import { DemoStateToggleChip } from "./DemoStateToggleChip";
 import { TenantToggleChip } from "./TenantToggleChip";
 
-export function WorkforcePanel() {
+export function WorkforcePanel({
+  hideHandoffs = false,
+  defaultCollapsed = false,
+  hideDevTools = false,
+  panelStyle = "expandable",
+}: {
+  hideHandoffs?: boolean;
+  defaultCollapsed?: boolean;
+  hideDevTools?: boolean;
+  /**
+   * "expandable" (default): expanding the panel replaces the 52px column
+   *   with a 232px inline column — the original behavior.
+   * "popover": the 52px column is always visible; expanding renders the
+   *   232px content as an absolutely-positioned overlay so it doesn't
+   *   consume horizontal space (used by the Ask Wati drawer).
+   */
+  panelStyle?: "expandable" | "popover";
+} = {}) {
   const { threads, activeThreadId, setActiveThreadId } = useChatThreads();
   const { agents, getUnreadCountForAgent, unreadHandoffCount } = useAgents();
   const { mode, setMode, view, setView } = useChatMode();
   const [agentsOpen, setAgentsOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(defaultCollapsed);
 
-  // Selection is driven first by `view` (Handoffs sits outside thread/mode).
   const inboxSelected = view === "handoffs";
   const askWatiSelected =
     !inboxSelected && activeThreadId === null && mode !== "agent";
@@ -45,14 +69,103 @@ export function WorkforcePanel() {
     setActiveThreadId(threadId);
   };
 
-  return (
-    <div className="flex w-[232px] shrink-0 flex-col gap-6 overflow-hidden border-r border-[var(--wati-border-default)] bg-white p-3">
+  const collapsedColumn = (
+    <div className="flex w-[52px] shrink-0 flex-col items-center gap-2 overflow-hidden border-r border-[var(--wati-border-default)] bg-white p-2">
+        <button
+          type="button"
+          onClick={() => setCollapsed(false)}
+          aria-label="Expand navigation"
+          title="Expand"
+          className="flex h-8 w-8 items-center justify-center rounded text-[var(--wati-icon-default)] hover:bg-[var(--wati-surface-subtle)]"
+        >
+          <ChevronsRight size={16} strokeWidth={1.75} />
+        </button>
+
+        <button
+          type="button"
+          onClick={goHome}
+          aria-label="Ask Wati"
+          title="Ask Wati"
+          className={`flex h-8 w-8 items-center justify-center rounded ${
+            askWatiSelected
+              ? "bg-[var(--wati-chip-bg)]"
+              : "hover:bg-[var(--wati-surface-subtle)]"
+          }`}
+        >
+          <Plus
+            size={16}
+            strokeWidth={2}
+            className="text-[var(--wati-icon-default)]"
+          />
+        </button>
+
+        {!hideHandoffs && (
+          <button
+            type="button"
+            onClick={openInbox}
+            aria-label="Handoffs"
+            title="Handoffs"
+            className={`relative flex h-8 w-8 items-center justify-center rounded ${
+              inboxSelected
+                ? "bg-[var(--wati-chip-bg)]"
+                : "hover:bg-[var(--wati-surface-subtle)]"
+            }`}
+          >
+            <Inbox
+              size={16}
+              strokeWidth={1.75}
+              className="text-[var(--wati-icon-default)]"
+            />
+            {unreadHandoffCount > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 flex h-[14px] min-w-[14px] items-center justify-center rounded-full bg-[var(--wati-text-primary)] px-1 text-[9px] font-semibold text-white">
+                {unreadHandoffCount}
+              </span>
+            )}
+          </button>
+        )}
+
+        <button
+          type="button"
+          onClick={() => {
+            setCollapsed(false);
+            setAgentsOpen(true);
+          }}
+          aria-label="Agents"
+          title="Agents"
+          className="flex h-8 w-8 items-center justify-center rounded hover:bg-[var(--wati-surface-subtle)]"
+        >
+          <Sparkles
+            size={16}
+            strokeWidth={1.75}
+            className="text-[var(--wati-icon-default)]"
+          />
+        </button>
+      </div>
+  );
+
+  const expandedColumn = (
+    <div
+      className={
+        panelStyle === "popover"
+          ? "absolute left-[52px] top-0 z-30 flex h-full w-[232px] flex-col gap-6 overflow-y-auto border-r border-[var(--wati-border-default)] bg-white p-3 shadow-lg"
+          : "flex w-[232px] shrink-0 flex-col gap-6 overflow-hidden border-r border-[var(--wati-border-default)] bg-white p-3"
+      }
+    >
       {/* Header + agent list */}
       <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-center px-1">
+        <div className="flex items-center justify-center gap-1 px-1">
           <p className="flex-1 text-sm font-semibold text-[var(--wati-text-body)]">
             WorkForce
           </p>
+          <button
+            type="button"
+            onClick={() => setCollapsed(true)}
+            aria-label="Collapse navigation"
+            title="Collapse"
+            className="flex h-6 w-6 items-center justify-center rounded text-[var(--wati-icon-default)] hover:bg-[var(--wati-surface-subtle)]"
+          >
+            <ChevronsLeft size={14} strokeWidth={1.75} />
+          </button>
         </div>
 
         <button
@@ -72,27 +185,29 @@ export function WorkforcePanel() {
           </span>
         </button>
 
-        <button
-          type="button"
-          onClick={openInbox}
-          className={`flex w-full items-center gap-1 rounded p-1 transition-colors ${
-            inboxSelected
-              ? "bg-[var(--wati-chip-bg)]"
-              : "bg-white hover:bg-[var(--wati-surface-subtle)]"
-          }`}
-        >
-          <span className="flex h-5 w-5 items-center justify-center text-[var(--wati-icon-default)]">
-            <Inbox size={16} strokeWidth={1.75} />
-          </span>
-          <span className="flex-1 text-left text-sm font-medium text-[var(--wati-text-body)]">
-            Handoffs
-          </span>
-          {unreadHandoffCount > 0 && (
-            <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded border border-[var(--wati-border-default)] bg-[var(--wati-surface-subtle)] px-1 text-[10px] font-medium text-[var(--wati-text-body)]">
-              {unreadHandoffCount}
+        {!hideHandoffs && (
+          <button
+            type="button"
+            onClick={openInbox}
+            className={`flex w-full items-center gap-1 rounded p-1 transition-colors ${
+              inboxSelected
+                ? "bg-[var(--wati-chip-bg)]"
+                : "bg-white hover:bg-[var(--wati-surface-subtle)]"
+            }`}
+          >
+            <span className="flex h-5 w-5 items-center justify-center text-[var(--wati-icon-default)]">
+              <Inbox size={16} strokeWidth={1.75} />
             </span>
-          )}
-        </button>
+            <span className="flex-1 text-left text-sm font-medium text-[var(--wati-text-body)]">
+              Handoffs
+            </span>
+            {unreadHandoffCount > 0 && (
+              <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded border border-[var(--wati-border-default)] bg-[var(--wati-surface-subtle)] px-1 text-[10px] font-medium text-[var(--wati-text-body)]">
+                {unreadHandoffCount}
+              </span>
+            )}
+          </button>
+        )}
 
         <button
           type="button"
@@ -195,10 +310,34 @@ export function WorkforcePanel() {
       )}
 
       {/* Footer — dev-only toggles (user state + tenant) */}
-      <div className="mt-auto flex flex-col gap-0.5 border-t border-[var(--wati-border-default)] pt-3">
-        <DemoStateToggleChip />
-        <TenantToggleChip />
-      </div>
+      {!hideDevTools && (
+        <div className="mt-auto flex flex-col gap-0.5 border-t border-[var(--wati-border-default)] pt-3">
+          <DemoStateToggleChip />
+          <TenantToggleChip />
+        </div>
+      )}
     </div>
   );
+
+  if (panelStyle === "popover") {
+    // Collapsed column always visible; expanded content rendered as an
+    // overlay so it doesn't push neighbouring content.
+    return (
+      <div className="relative flex h-full shrink-0">
+        {collapsedColumn}
+        {!collapsed && (
+          <>
+            <div
+              aria-hidden
+              onClick={() => setCollapsed(true)}
+              className="fixed inset-0 z-20"
+            />
+            {expandedColumn}
+          </>
+        )}
+      </div>
+    );
+  }
+
+  return collapsed ? collapsedColumn : expandedColumn;
 }

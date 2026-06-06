@@ -32,8 +32,14 @@ type ChatModeCtx = {
 
 const ChatModeContext = createContext<ChatModeCtx | null>(null);
 
-export function ChatModeProvider({ children }: { children: ReactNode }) {
-  const [mode, setModeState] = useState<ChatMode | null>(null);
+export function ChatModeProvider({
+  children,
+  defaultMode = null,
+}: {
+  children: ReactNode;
+  defaultMode?: ChatMode | null;
+}) {
+  const [mode, setModeState] = useState<ChatMode | null>(defaultMode);
   const [view, setView] = useState<ChatView>("chat");
 
   // Setting a mode implies we're back on the chat surface — keep them in sync

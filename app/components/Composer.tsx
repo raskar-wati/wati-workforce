@@ -65,6 +65,12 @@ export const COMPOSER_TRANSITION = {
   mass: 0.9,
 };
 
+export type ComposerContextChip = {
+  id: string;
+  label: string;
+  onRemove: () => void;
+};
+
 export function Composer({
   value,
   onChange,
@@ -72,6 +78,7 @@ export function Composer({
   hasMessages,
   mode,
   onModeChange,
+  contextChips,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -79,6 +86,8 @@ export function Composer({
   hasMessages: boolean;
   mode: ChatMode | null;
   onModeChange: (mode: ChatMode | null) => void;
+  /** Optional scope chips rendered alongside the mode chip (e.g. "@inbox"). */
+  contextChips?: ComposerContextChip[];
 }) {
   const [selectedModel, setSelectedModel] = useState<LLMOption>(LLM_OPTIONS[0]);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -196,16 +205,21 @@ export function Composer({
       </AnimatePresence>
 
       <AnimatePresence initial={false}>
-        {activeMode && (
+        {(activeMode || (contextChips && contextChips.length > 0)) && (
           <motion.div
-            key={activeMode.id}
+            key="composer-chips"
             initial={{ opacity: 0, y: -4 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.18, ease: [0.32, 0.72, 0, 1] }}
-            className="px-4 pb-2"
+            className="flex flex-wrap items-center gap-1.5 px-4 pb-2"
           >
-            <ModeChip option={activeMode} onClear={() => onModeChange(null)} />
+            {activeMode && (
+              <ModeChip option={activeMode} onClear={() => onModeChange(null)} />
+            )}
+            {contextChips?.map((chip) => (
+              <ContextChip key={chip.id} label={chip.label} onClear={chip.onRemove} />
+            ))}
           </motion.div>
         )}
       </AnimatePresence>
@@ -325,6 +339,28 @@ function ModeChip({
         onClick={onClear}
         aria-label={`Remove ${option.chipLabel} mode`}
         className="flex h-4 w-4 items-center justify-center rounded-full text-black/50 hover:bg-black/10 hover:text-black/80"
+      >
+        <X size={10} strokeWidth={2.5} />
+      </button>
+    </span>
+  );
+}
+
+function ContextChip({
+  label,
+  onClear,
+}: {
+  label: string;
+  onClear: () => void;
+}) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-[#EFF8FF] py-1 pl-3 pr-1 text-[12px] tracking-[-0.06px] text-[#1570EF]">
+      <span>{label}</span>
+      <button
+        type="button"
+        onClick={onClear}
+        aria-label={`Remove ${label} scope`}
+        className="flex h-4 w-4 items-center justify-center rounded-full text-[#1570EF]/60 hover:bg-[#1570EF]/10 hover:text-[#1570EF]"
       >
         <X size={10} strokeWidth={2.5} />
       </button>
