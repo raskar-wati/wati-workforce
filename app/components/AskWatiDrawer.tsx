@@ -44,8 +44,13 @@ export function AskWatiDrawer() {
     <aside
       role="region"
       aria-label="Ask Wati"
-      className="relative flex h-full shrink-0 flex-col overflow-hidden border-l border-[var(--wati-border-default)] bg-white"
-      style={{ width: 420, minWidth: 420, maxWidth: 420 }}
+      className="relative my-2 ml-1 mr-2 flex shrink-0 flex-col overflow-hidden rounded-xl border border-[var(--wati-border-default)] bg-white"
+      style={{
+        width: 420,
+        minWidth: 420,
+        maxWidth: 420,
+        height: "calc(100% - 1rem)",
+      }}
     >
       {/* Drawer controls — pinned top-right, sit visually inside the
           drawer's top edge alongside any context badge below. */}
