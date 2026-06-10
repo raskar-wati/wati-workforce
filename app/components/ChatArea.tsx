@@ -607,6 +607,24 @@ export function ChatArea({
                 copy={getTenantPromptCopy(tenantProfile)}
                 onSelectPrompt={(prompt) => setInput(prompt)}
               />
+            ) : chrome === "drawer" ? (
+              <div className="flex flex-col items-start gap-5 px-1">
+                <h2 className="text-[26px] font-semibold tracking-[-0.6px] text-[#0a0a0a]">
+                  How can I help you?
+                </h2>
+                <div className="flex flex-col items-start gap-2">
+                  {getStarterPrompts(Boolean(inboxCtx)).map((prompt) => (
+                    <button
+                      key={prompt}
+                      type="button"
+                      onClick={() => setInput(prompt)}
+                      className="rounded-full bg-black/[0.04] px-3.5 py-1.5 text-[13px] tracking-[-0.078px] text-[#0a0a0a] transition-colors hover:bg-black/[0.07]"
+                    >
+                      {prompt}
+                    </button>
+                  ))}
+                </div>
+              </div>
             ) : (
               <>
                 <div className="flex justify-center">
@@ -614,25 +632,9 @@ export function ChatArea({
                 </div>
                 <div className="pt-3">
                   <p className="text-center text-[16px] font-medium tracking-[-0.32px] text-black/70">
-                    {chrome === "drawer"
-                      ? "How can I help you?"
-                      : "How may I be of service?"}
+                    How may I be of service?
                   </p>
                 </div>
-                {chrome === "drawer" && (
-                  <div className="flex flex-col items-center gap-1.5 pt-5">
-                    {getStarterPrompts(Boolean(inboxCtx)).map((prompt) => (
-                      <button
-                        key={prompt}
-                        type="button"
-                        onClick={() => setInput(prompt)}
-                        className="rounded-full border border-[var(--wati-border-default)] bg-white px-3.5 py-1.5 text-[13px] tracking-[-0.078px] text-[var(--wati-text-body)] transition-colors hover:border-black/20 hover:bg-[var(--wati-surface-subtle)]"
-                      >
-                        {prompt}
-                      </button>
-                    ))}
-                  </div>
-                )}
               </>
             )}
           </div>
@@ -772,7 +774,7 @@ export function ChatArea({
               ? [
                   {
                     id: "inbox",
-                    label: "@inbox",
+                    label: chrome === "drawer" ? "Team inbox" : "@inbox",
                     onRemove: () => setInboxScopeActive(false),
                   },
                 ]

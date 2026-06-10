@@ -1,8 +1,8 @@
 "use client";
 
-import { Inbox, Maximize2, X } from "lucide-react";
-import { useRouter, usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Maximize2, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { useAskWatiDrawer } from "../lib/ask-wati-drawer";
 import { WorkforceMain } from "./WorkforceMain";
 
@@ -22,8 +22,6 @@ import { WorkforceMain } from "./WorkforceMain";
 export function AskWatiDrawer() {
   const { open, closeDrawer } = useAskWatiDrawer();
   const router = useRouter();
-  const pathname = usePathname();
-  const [contextDismissed, setContextDismissed] = useState(false);
 
   // ESC closes — only while the drawer is open.
   useEffect(() => {
@@ -35,23 +33,12 @@ export function AskWatiDrawer() {
     return () => window.removeEventListener("keydown", onKey);
   }, [open, closeDrawer]);
 
-  // Reset the context-pill dismissal each time the drawer reopens, so the
-  // module badge is visible again on the next summon.
-  useEffect(() => {
-    if (!open) setContextDismissed(false);
-  }, [open]);
-
   if (!open) return null;
 
   const maximize = () => {
     closeDrawer();
     router.push("/");
   };
-
-  // Map the current route to its module context. Only `/preview` carries
-  // a meaningful module today; expand here as new module surfaces land.
-  const moduleContext =
-    pathname === "/preview" ? { label: "Inbox", Icon: Inbox } : null;
 
   return (
     <aside
@@ -82,26 +69,6 @@ export function AskWatiDrawer() {
           <X size={16} strokeWidth={1.75} />
         </button>
       </div>
-
-      {/* Context badge — only shows on module surfaces; dismissable. */}
-      {moduleContext && !contextDismissed && (
-        <div className="flex shrink-0 items-center gap-2 px-3 pt-3">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--wati-border-default)] bg-[var(--wati-surface-subtle)] py-1 pl-2.5 pr-1 text-[12px] tracking-[-0.06px] text-[var(--wati-text-body)]">
-            <moduleContext.Icon size={12} strokeWidth={1.75} className="text-[var(--wati-icon-default)]" />
-            <span>
-              Sharing <strong className="font-semibold">{moduleContext.label}</strong>
-            </span>
-            <button
-              type="button"
-              onClick={() => setContextDismissed(true)}
-              aria-label="Dismiss context"
-              className="flex h-4 w-4 items-center justify-center rounded-full text-black/40 hover:bg-black/5 hover:text-black/70"
-            >
-              <X size={10} strokeWidth={2.5} />
-            </button>
-          </span>
-        </div>
-      )}
 
       {/* Embedded WorkForce surface (providers + panel + main). The
           drawer-specific chrome flag flips ChatArea + Composer into the
