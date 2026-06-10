@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowUp, Check, ChevronDown, X } from "lucide-react";
+import { ArrowUp, Check, ChevronDown, Plus, Sparkles, X } from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import type { ChatMode } from "../lib/chat-mode";
 
@@ -79,6 +79,8 @@ export function Composer({
   mode,
   onModeChange,
   contextChips,
+  chrome,
+  onCreateAgentClick,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -88,11 +90,18 @@ export function Composer({
   onModeChange: (mode: ChatMode | null) => void;
   /** Optional scope chips rendered alongside the mode chip (e.g. "@inbox"). */
   contextChips?: ComposerContextChip[];
+  /** "drawer" swaps the bottom row to [+]…[Model ▾] [Send] and restyles
+   *  the model selector minimally (no pill background). */
+  chrome?: "drawer";
+  /** Drawer-mode + menu → "Create an agent" → host triggers agent flow. */
+  onCreateAgentClick?: () => void;
 }) {
   const [selectedModel, setSelectedModel] = useState<LLMOption>(LLM_OPTIONS[0]);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const [slashIndex, setSlashIndex] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const plusMenuRef = useRef<HTMLDivElement>(null);
 
   const slashOpen = !mode && value.startsWith("/");
   const slashQuery = slashOpen ? value.slice(1).trim().toLowerCase() : "";
@@ -124,6 +133,17 @@ export function Composer({
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [dropdownOpen]);
+
+  useEffect(() => {
+    if (!plusMenuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (plusMenuRef.current && !plusMenuRef.current.contains(e.target as Node)) {
+        setPlusMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [plusMenuOpen]);
 
   const selectMode = (id: ChatMode) => {
     onModeChange(id);
@@ -240,76 +260,68 @@ export function Composer({
       </div>
 
       <div className="flex w-full items-center justify-between px-3 pb-3 pt-2">
-        <div ref={dropdownRef} className="relative">
-          <button
-            type="button"
-            onClick={() => setDropdownOpen((o) => !o)}
-            className="flex items-center gap-1.5 rounded-full border border-[#e5e5e5]/80 px-3 py-1.5"
-          >
-            <span className="text-[13px] tracking-[-0.078px] text-[#0a0a0a]">
-              {selectedModel.name}
-            </span>
-            <motion.span
-              animate={{ rotate: dropdownOpen ? 180 : 0 }}
-              transition={{ duration: 0.2 }}
-              className="flex"
+        {/* Left cluster: drawer mode shows a + menu (Create an agent),
+            otherwise the model dropdown lives here. */}
+        {chrome === "drawer" ? (
+          <div ref={plusMenuRef} className="relative">
+            <button
+              type="button"
+              onClick={() => setPlusMenuOpen((o) => !o)}
+              aria-label="Open create menu"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-[#e5e5e5]/80 text-[#0a0a0a] hover:bg-black/[0.04]"
             >
-              <ChevronDown size={10} className="text-[#0a0a0a]" />
-            </motion.span>
-          </button>
+              <Plus size={16} strokeWidth={2} />
+            </button>
+            <AnimatePresence>
+              {plusMenuOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: 6, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 6, scale: 0.97 }}
+                  transition={{ duration: 0.15, ease: [0.32, 0.72, 0, 1] }}
+                  className="absolute bottom-full left-0 mb-2 w-48 overflow-hidden rounded-2xl border border-[#e5e5e5] bg-white shadow-[0_8px_24px_rgba(0,0,0,0.1)]"
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPlusMenuOpen(false);
+                      onCreateAgentClick?.();
+                    }}
+                    className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left hover:bg-black/[0.03]"
+                  >
+                    <Sparkles size={14} strokeWidth={1.75} className="text-[var(--wati-icon-default)]" />
+                    <span className="text-[13px] tracking-[-0.078px] text-[#0a0a0a]">
+                      Create an agent
+                    </span>
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        ) : (
+          <ModelDropdown
+            dropdownRef={dropdownRef}
+            dropdownOpen={dropdownOpen}
+            setDropdownOpen={setDropdownOpen}
+            selectedModel={selectedModel}
+            setSelectedModel={setSelectedModel}
+            chrome={chrome}
+          />
+        )}
 
-          <AnimatePresence>
-            {dropdownOpen && (
-              <motion.div
-                initial={{ opacity: 0, y: 6, scale: 0.97 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 6, scale: 0.97 }}
-                transition={{ duration: 0.15, ease: [0.32, 0.72, 0, 1] }}
-                className="absolute bottom-full left-0 mb-2 w-52 overflow-hidden rounded-2xl border border-[#e5e5e5] bg-white shadow-[0_8px_24px_rgba(0,0,0,0.1)]"
-              >
-                {(() => {
-                  const grouped = LLM_OPTIONS.reduce<Record<string, LLMOption[]>>(
-                    (acc, m) => {
-                      (acc[m.provider] ??= []).push(m);
-                      return acc;
-                    },
-                    {}
-                  );
-                  return Object.entries(grouped).map(([provider, models], gi) => (
-                    <div key={provider}>
-                      {gi > 0 && <div className="mx-3 border-t border-[#f0f0f0]" />}
-                      <div className="px-3 pb-1 pt-2.5">
-                        <span className="text-[10px] font-semibold uppercase tracking-[0.8px] text-black/30">
-                          {provider}
-                        </span>
-                      </div>
-                      {models.map((m) => (
-                        <button
-                          key={m.id}
-                          type="button"
-                          onClick={() => {
-                            setSelectedModel(m);
-                            setDropdownOpen(false);
-                          }}
-                          className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-black/[0.03]"
-                        >
-                          <span className="flex-1 text-[13px] tracking-[-0.078px] text-[#0a0a0a]">
-                            {m.name}
-                          </span>
-                          {selectedModel.id === m.id && (
-                            <Check size={12} strokeWidth={2.5} className="text-[#0a0a0a]" />
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  ));
-                })()}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        <div className="flex items-center gap-1">
+        {/* Right cluster: in drawer mode the model dropdown moves here
+            next to the send button (matches the Gemini reference). */}
+        <div className="flex items-center gap-1.5">
+          {chrome === "drawer" && (
+            <ModelDropdown
+              dropdownRef={dropdownRef}
+              dropdownOpen={dropdownOpen}
+              setDropdownOpen={setDropdownOpen}
+              selectedModel={selectedModel}
+              setSelectedModel={setSelectedModel}
+              chrome={chrome}
+            />
+          )}
           <button
             type="button"
             onClick={onSubmit}
@@ -322,6 +334,117 @@ export function Composer({
       </div>
     </div>
   );
+}
+
+function ModelDropdown({
+  dropdownRef,
+  dropdownOpen,
+  setDropdownOpen,
+  selectedModel,
+  setSelectedModel,
+  chrome,
+}: {
+  dropdownRef: React.RefObject<HTMLDivElement | null>;
+  dropdownOpen: boolean;
+  setDropdownOpen: (updater: (o: boolean) => boolean) => void;
+  selectedModel: LLMOption;
+  setSelectedModel: (m: LLMOption) => void;
+  chrome?: "drawer";
+}) {
+  return (
+    <div ref={dropdownRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setDropdownOpen((o) => !o)}
+        className={
+          chrome === "drawer"
+            ? "flex items-center gap-1 rounded-md px-2 py-1 text-black/55 hover:bg-black/[0.04] hover:text-black/80"
+            : "flex items-center gap-1.5 rounded-full border border-[#e5e5e5]/80 px-3 py-1.5"
+        }
+      >
+        <span
+          className={
+            chrome === "drawer"
+              ? "text-[12px] tracking-[-0.06px]"
+              : "text-[13px] tracking-[-0.078px] text-[#0a0a0a]"
+          }
+        >
+          {chrome === "drawer" ? shortModelName(selectedModel) : selectedModel.name}
+        </span>
+        <motion.span
+          animate={{ rotate: dropdownOpen ? 180 : 0 }}
+          transition={{ duration: 0.2 }}
+          className="flex"
+        >
+          <ChevronDown
+            size={10}
+            className={chrome === "drawer" ? "text-current" : "text-[#0a0a0a]"}
+          />
+        </motion.span>
+      </button>
+
+      <AnimatePresence>
+        {dropdownOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 6, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 6, scale: 0.97 }}
+            transition={{ duration: 0.15, ease: [0.32, 0.72, 0, 1] }}
+            className={
+              chrome === "drawer"
+                ? "absolute bottom-full right-0 mb-2 w-52 overflow-hidden rounded-2xl border border-[#e5e5e5] bg-white shadow-[0_8px_24px_rgba(0,0,0,0.1)]"
+                : "absolute bottom-full left-0 mb-2 w-52 overflow-hidden rounded-2xl border border-[#e5e5e5] bg-white shadow-[0_8px_24px_rgba(0,0,0,0.1)]"
+            }
+          >
+            {(() => {
+              const grouped = LLM_OPTIONS.reduce<Record<string, LLMOption[]>>(
+                (acc, m) => {
+                  (acc[m.provider] ??= []).push(m);
+                  return acc;
+                },
+                {},
+              );
+              return Object.entries(grouped).map(([provider, models], gi) => (
+                <div key={provider}>
+                  {gi > 0 && <div className="mx-3 border-t border-[#f0f0f0]" />}
+                  <div className="px-3 pb-1 pt-2.5">
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.8px] text-black/30">
+                      {provider}
+                    </span>
+                  </div>
+                  {models.map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedModel(m);
+                        setDropdownOpen(() => false);
+                      }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-black/[0.03]"
+                    >
+                      <span className="flex-1 text-[13px] tracking-[-0.078px] text-[#0a0a0a]">
+                        {m.name}
+                      </span>
+                      {selectedModel.id === m.id && (
+                        <Check size={12} strokeWidth={2.5} className="text-[#0a0a0a]" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              ));
+            })()}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function shortModelName(m: LLMOption): string {
+  // Drawer mode shows a more compact label — strip the provider/family
+  // prefix so "Gemini 2.5 Flash" becomes "Flash", matching the Gemini ref.
+  const parts = m.name.split(" ");
+  return parts[parts.length - 1] ?? m.name;
 }
 
 function ModeChip({

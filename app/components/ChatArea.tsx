@@ -81,7 +81,19 @@ type ChatMessage =
       prompt: string;
     };
 
-export function ChatArea({ hideDailyDigest = false }: { hideDailyDigest?: boolean } = {}) {
+export function ChatArea({
+  hideDailyDigest = false,
+  chrome,
+}: {
+  hideDailyDigest?: boolean;
+  /**
+   * "drawer" flips the empty state into the Ask Wati drawer layout:
+   * "How can I help you?" greeting with starter chips above the
+   * composer; ModePillRow hidden; Composer surfaces a + menu instead
+   * of the home-screen mode pills. Default = full WorkForce surface.
+   */
+  chrome?: "drawer";
+} = {}) {
   const [messagesByThread, setMessagesByThread] = useState<
     Record<string, ChatMessage[]>
   >({});
@@ -602,9 +614,25 @@ export function ChatArea({ hideDailyDigest = false }: { hideDailyDigest?: boolea
                 </div>
                 <div className="pt-3">
                   <p className="text-center text-[16px] font-medium tracking-[-0.32px] text-black/70">
-                    How may I be of service?
+                    {chrome === "drawer"
+                      ? "How can I help you?"
+                      : "How may I be of service?"}
                   </p>
                 </div>
+                {chrome === "drawer" && (
+                  <div className="flex flex-col items-center gap-1.5 pt-5">
+                    {getStarterPrompts(Boolean(inboxCtx)).map((prompt) => (
+                      <button
+                        key={prompt}
+                        type="button"
+                        onClick={() => setInput(prompt)}
+                        className="rounded-full border border-[var(--wati-border-default)] bg-white px-3.5 py-1.5 text-[13px] tracking-[-0.078px] text-[var(--wati-text-body)] transition-colors hover:border-black/20 hover:bg-[var(--wati-surface-subtle)]"
+                      >
+                        {prompt}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -737,6 +765,8 @@ export function ChatArea({ hideDailyDigest = false }: { hideDailyDigest?: boolea
           hasMessages={hasContent}
           mode={mode}
           onModeChange={setMode}
+          chrome={chrome}
+          onCreateAgentClick={() => setMode("agent")}
           contextChips={
             inboxCtx && inboxScopeActive
               ? [
@@ -755,7 +785,7 @@ export function ChatArea({ hideDailyDigest = false }: { hideDailyDigest?: boolea
           Wrapped in a flex-1 spacer so it balances the top flex-1 hero block
           and centers the composer vertically. When a mode is picked, this
           block unmounts and the composer slides to the bottom. */}
-      {!hasContent && mode === null && (
+      {!hasContent && mode === null && chrome !== "drawer" && (
         <div className="flex flex-col">
           <ModePillRow onSelect={setMode} />
         </div>
@@ -772,6 +802,21 @@ export function ChatArea({ hideDailyDigest = false }: { hideDailyDigest?: boolea
       </div>
     </div>
   );
+}
+
+function getStarterPrompts(hasInboxContext: boolean): string[] {
+  if (hasInboxContext) {
+    return [
+      "Summarize my inbox queue",
+      "Which conversations need a response now?",
+      "What can you do?",
+    ];
+  }
+  return [
+    "Find customers ready to book",
+    "Show me delivery complaints today",
+    "What can you do?",
+  ];
 }
 
 function chipVariantFor(action: WatiAction): "primary" | "ghost" {

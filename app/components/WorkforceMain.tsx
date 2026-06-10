@@ -16,6 +16,7 @@ export function WorkforceMain({
   hideDailyDigest = false,
   hideDevTools = false,
   forceDemoMode,
+  chrome,
 }: {
   hideHandoffs?: boolean;
   panelDefaultCollapsed?: boolean;
@@ -24,6 +25,7 @@ export function WorkforceMain({
   hideDailyDigest?: boolean;
   hideDevTools?: boolean;
   forceDemoMode?: "first-time" | "returning";
+  chrome?: "drawer";
 } = {}) {
   return (
     <DemoStateProvider forceMode={forceDemoMode}>
@@ -37,7 +39,7 @@ export function WorkforceMain({
                 hideDevTools={hideDevTools}
                 panelStyle={panelStyle}
               />
-              <MainContent hideDailyDigest={hideDailyDigest} />
+              <MainContent hideDailyDigest={hideDailyDigest} chrome={chrome} />
             </AgentsProvider>
           </ChatThreadsProvider>
         </ChatModeProvider>
