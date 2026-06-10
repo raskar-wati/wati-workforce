@@ -573,9 +573,11 @@ export function ChatArea({
     >
       <div
         className={
-          isHomeScreen
-            ? "flex min-h-full flex-col justify-center"
-            : "flex h-full flex-col"
+          chrome === "drawer"
+            ? "flex h-full flex-col justify-end"
+            : isHomeScreen
+              ? "flex min-h-full flex-col justify-center"
+              : "flex h-full flex-col"
         }
       >
       {/* Top: hero (with greeting or tenant suggestions inside) or messages */}

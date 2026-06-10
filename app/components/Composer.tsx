@@ -185,19 +185,38 @@ export function Composer({
   };
 
   const activeMode = mode ? MODE_OPTIONS.find((o) => o.id === mode) ?? null : null;
-  // Drawer mode: surface context chips as a strip at the TOP of the
-  // composer card (with a divider underneath), matching the Gemini
-  // "Sharing X" pattern. Mode chips stay in their original middle row.
+  // Drawer mode: surface context chips as a separate card that sits
+  // BEHIND the composer with a 19px overlap (stacked-papers / Gemini
+  // pattern). Mode chips stay in their original middle row.
   const drawerTopChips = chrome === "drawer" ? contextChips ?? [] : [];
   const hasDrawerTopChips = drawerTopChips.length > 0;
   const middleRowChips = chrome === "drawer" ? undefined : contextChips;
 
   return (
-    <div
-      className={`relative flex w-full flex-col rounded-3xl bg-white shadow-[0_8px_16px_rgba(0,0,0,0.06),0_2px_4px_rgba(0,0,0,0.04)] ${
-        hasDrawerTopChips ? "pt-0" : "pt-4"
-      }`}
-    >
+    <>
+      {hasDrawerTopChips &&
+        drawerTopChips.map((chip) => (
+          <div
+            key={chip.id}
+            className="relative w-full rounded-tl-2xl rounded-tr-2xl border border-[var(--wati-border-default)] bg-[var(--wati-surface-subtle)] shadow-[0_8px_8px_rgba(0,0,0,0.06),0_2px_2px_rgba(0,0,0,0.04)]"
+            style={{ marginBottom: -19 }}
+          >
+            <div className="flex items-center justify-between px-[13px] pt-[9px] pb-[22px]">
+              <span className="text-[12px] leading-[18px] tracking-[-0.06px] text-[var(--wati-text-body)]">
+                {chip.label}
+              </span>
+              <button
+                type="button"
+                onClick={chip.onRemove}
+                aria-label={`Dismiss ${chip.label}`}
+                className="flex h-4 w-4 items-center justify-center rounded-full text-black/40 hover:bg-black/5 hover:text-black/70"
+              >
+                <X size={10} strokeWidth={2} />
+              </button>
+            </div>
+          </div>
+        ))}
+    <div className="relative flex w-full flex-col rounded-3xl border border-[var(--wati-border-default)] bg-white pt-4 shadow-[0_8px_16px_rgba(0,0,0,0.06),0_2px_4px_rgba(0,0,0,0.04)]">
       <AnimatePresence>
         {slashOpen && filteredModes.length > 0 && (
           <motion.div
@@ -234,35 +253,6 @@ export function Composer({
         )}
       </AnimatePresence>
 
-      {/* Drawer-mode context strip pinned to the top of the composer
-          card. Replaces the standalone "Sharing X" pill outside the
-          composer with an in-card affordance + divider. */}
-      {hasDrawerTopChips && (
-        <>
-          <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-2">
-            {drawerTopChips.map((chip) => (
-              <div
-                key={chip.id}
-                className="flex flex-1 items-center justify-between"
-              >
-                <span className="text-[13px] tracking-[-0.078px] text-[#0a0a0a]">
-                  {chip.label}
-                </span>
-                <button
-                  type="button"
-                  onClick={chip.onRemove}
-                  aria-label={`Dismiss ${chip.label}`}
-                  className="flex h-5 w-5 items-center justify-center rounded text-black/40 hover:bg-black/5 hover:text-black/70"
-                >
-                  <X size={12} strokeWidth={2} />
-                </button>
-              </div>
-            ))}
-          </div>
-          <div className="mx-4 border-t border-[#ececec]" />
-        </>
-      )}
-
       <AnimatePresence initial={false}>
         {(activeMode || (middleRowChips && middleRowChips.length > 0)) && (
           <motion.div
@@ -271,9 +261,7 @@ export function Composer({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.18, ease: [0.32, 0.72, 0, 1] }}
-            className={`flex flex-wrap items-center gap-1.5 px-4 pb-2 ${
-              hasDrawerTopChips ? "pt-3" : ""
-            }`}
+            className="flex flex-wrap items-center gap-1.5 px-4 pb-2"
           >
             {activeMode && (
               <ModeChip option={activeMode} onClear={() => onModeChange(null)} />
@@ -285,11 +273,7 @@ export function Composer({
         )}
       </AnimatePresence>
 
-      <div
-        className={`flex items-center gap-2 px-4 ${
-          hasDrawerTopChips && !activeMode ? "pt-3" : ""
-        }`}
-      >
+      <div className="flex items-center gap-2 px-4">
         <div className="relative flex-1">
           <input
             type="text"
@@ -388,6 +372,7 @@ export function Composer({
         </div>
       </div>
     </div>
+    </>
   );
 }
 
