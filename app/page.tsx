@@ -1,19 +1,5 @@
-import { AskWatiDrawer } from "./components/AskWatiDrawer";
-import { GlobalHeader } from "./components/GlobalHeader";
-import { MainSidebar } from "./components/MainSidebar";
-import { WorkforceMain } from "./components/WorkforceMain";
+import { redirect } from "next/navigation";
 
 export default function Home() {
-  return (
-    <div className="flex h-screen flex-col bg-[var(--wati-surface-subtle)]">
-      <GlobalHeader />
-      <div className="relative flex flex-1 overflow-hidden">
-        <MainSidebar />
-        <main className="m-0 flex min-w-0 flex-1 overflow-hidden rounded-tl-xl rounded-tr-xl border border-[var(--wati-border-default)] bg-white">
-          <WorkforceMain />
-        </main>
-        <AskWatiDrawer />
-      </div>
-    </div>
-  );
+  redirect("/preview");
 }
