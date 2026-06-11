@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowUp, Check, ChevronDown, Plus, Sparkles, X } from "lucide-react";
+import { ArrowUp, Check, ChevronDown, Plus, X } from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import type { ChatMode } from "../lib/chat-mode";
 
@@ -80,7 +80,6 @@ export function Composer({
   onModeChange,
   contextChips,
   chrome,
-  onCreateAgentClick,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -90,11 +89,9 @@ export function Composer({
   onModeChange: (mode: ChatMode | null) => void;
   /** Optional scope chips rendered alongside the mode chip (e.g. "@inbox"). */
   contextChips?: ComposerContextChip[];
-  /** "drawer" swaps the bottom row to [+]…[Model ▾] [Send] and restyles
-   *  the model selector minimally (no pill background). */
+  /** "drawer" restyles the model selector minimally (no pill background)
+   *  and right-aligns the bottom row (model + send only). */
   chrome?: "drawer";
-  /** Drawer-mode + menu → "Create an agent" → host triggers agent flow. */
-  onCreateAgentClick?: () => void;
 }) {
   const [selectedModel, setSelectedModel] = useState<LLMOption>(LLM_OPTIONS[0]);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -102,6 +99,16 @@ export function Composer({
   const [slashIndex, setSlashIndex] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const plusMenuRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-grow the textarea up to its max-height. Resets to single line when
+  // empty so the composer collapses back to its compact size.
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [value]);
 
   const slashOpen = !mode && value.startsWith("/");
   const slashQuery = slashOpen ? value.slice(1).trim().toLowerCase() : "";
@@ -124,17 +131,6 @@ export function Composer({
   }, [filteredModes.length, slashIndex]);
 
   useEffect(() => {
-    if (!dropdownOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setDropdownOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [dropdownOpen]);
-
-  useEffect(() => {
     if (!plusMenuOpen) return;
     const handler = (e: MouseEvent) => {
       if (plusMenuRef.current && !plusMenuRef.current.contains(e.target as Node)) {
@@ -145,12 +141,23 @@ export function Composer({
     return () => document.removeEventListener("mousedown", handler);
   }, [plusMenuOpen]);
 
+  useEffect(() => {
+    if (!dropdownOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [dropdownOpen]);
+
   const selectMode = (id: ChatMode) => {
     onModeChange(id);
     onChange("");
   };
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (slashOpen && filteredModes.length > 0) {
       if (e.key === "ArrowDown") {
         e.preventDefault();
@@ -178,7 +185,7 @@ export function Composer({
       onModeChange(null);
       return;
     }
-    if (e.key === "Enter") {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       onSubmit();
     }
@@ -273,13 +280,14 @@ export function Composer({
         )}
       </AnimatePresence>
 
-      <div className="flex items-center gap-2 px-4">
+      <div className="flex items-start gap-2 px-4">
         <div className="relative flex-1">
-          <input
-            type="text"
+          <textarea
+            ref={textareaRef}
             value={value}
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={handleKeyDown}
+            rows={1}
             placeholder={
               hasMessages
                 ? CONVERSATION_PLACEHOLDER
@@ -290,7 +298,7 @@ export function Composer({
                   : ""
             }
             autoFocus
-            className="w-full bg-transparent text-[13px] tracking-[-0.078px] text-black/80 placeholder:text-black/50 focus:outline-none"
+            className="block max-h-40 w-full resize-none overflow-y-auto bg-transparent text-[13px] leading-[20px] tracking-[-0.078px] text-black/80 placeholder:text-black/50 focus:outline-none"
           />
           {!hasMessages && !value && !activeMode && chrome !== "drawer" && (
             <AnimatedPlaceholder />
@@ -299,14 +307,17 @@ export function Composer({
       </div>
 
       <div className="flex w-full items-center justify-between px-3 pb-3 pt-2">
-        {/* Left cluster: drawer mode shows a + menu (Create an agent),
-            otherwise the model dropdown lives here. */}
+        {/* Left cluster: drawer mode shows a [+] mode picker (Agent /
+            Automation / Insights). Default chrome puts the model dropdown
+            here instead. */}
         {chrome === "drawer" ? (
           <div ref={plusMenuRef} className="relative">
             <button
               type="button"
               onClick={() => setPlusMenuOpen((o) => !o)}
-              aria-label="Open create menu"
+              aria-label="Pick a mode"
+              aria-haspopup="menu"
+              aria-expanded={plusMenuOpen}
               className="flex h-8 w-8 items-center justify-center rounded-full border border-[#e5e5e5]/80 text-[#0a0a0a] hover:bg-black/[0.04]"
             >
               <Plus size={16} strokeWidth={2} />
@@ -314,25 +325,32 @@ export function Composer({
             <AnimatePresence>
               {plusMenuOpen && (
                 <motion.div
+                  role="menu"
                   initial={{ opacity: 0, y: 6, scale: 0.97 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 6, scale: 0.97 }}
                   transition={{ duration: 0.15, ease: [0.32, 0.72, 0, 1] }}
-                  className="absolute bottom-full left-0 mb-2 w-48 overflow-hidden rounded-2xl border border-[#e5e5e5] bg-white shadow-[0_8px_24px_rgba(0,0,0,0.1)]"
+                  className="absolute bottom-full left-0 mb-2 w-56 overflow-hidden rounded-2xl border border-[#e5e5e5] bg-white shadow-[0_8px_24px_rgba(0,0,0,0.1)]"
                 >
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPlusMenuOpen(false);
-                      onCreateAgentClick?.();
-                    }}
-                    className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left hover:bg-black/[0.03]"
-                  >
-                    <Sparkles size={14} strokeWidth={1.75} className="text-[var(--wati-icon-default)]" />
-                    <span className="text-[13px] tracking-[-0.078px] text-[#0a0a0a]">
-                      Create an agent
-                    </span>
-                  </button>
+                  {MODE_OPTIONS.map((o) => (
+                    <button
+                      key={o.id}
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setPlusMenuOpen(false);
+                        selectMode(o.id);
+                      }}
+                      className="flex w-full flex-col gap-0.5 px-3 py-2 text-left hover:bg-black/[0.03]"
+                    >
+                      <span className="text-[13px] font-medium tracking-[-0.078px] text-[#0a0a0a]">
+                        {o.title}
+                      </span>
+                      <span className="text-[11px] tracking-[-0.055px] text-black/50">
+                        {o.description}
+                      </span>
+                    </button>
+                  ))}
                 </motion.div>
               )}
             </AnimatePresence>

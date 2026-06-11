@@ -17,15 +17,19 @@ export function WorkforceMain({
   hideDevTools = false,
   forceDemoMode,
   chrome,
+  panelCollapsed,
+  onPanelCollapsedChange,
 }: {
   hideHandoffs?: boolean;
   panelDefaultCollapsed?: boolean;
-  panelStyle?: "expandable" | "popover";
+  panelStyle?: "expandable" | "popover" | "drawer";
   defaultMode?: ChatMode | null;
   hideDailyDigest?: boolean;
   hideDevTools?: boolean;
   forceDemoMode?: "first-time" | "returning";
   chrome?: "drawer";
+  panelCollapsed?: boolean;
+  onPanelCollapsedChange?: (collapsed: boolean) => void;
 } = {}) {
   return (
     <DemoStateProvider forceMode={forceDemoMode}>
@@ -38,6 +42,8 @@ export function WorkforceMain({
                 defaultCollapsed={panelDefaultCollapsed}
                 hideDevTools={hideDevTools}
                 panelStyle={panelStyle}
+                collapsed={panelCollapsed}
+                onCollapsedChange={onPanelCollapsedChange}
               />
               <MainContent hideDailyDigest={hideDailyDigest} chrome={chrome} />
             </AgentsProvider>

@@ -19,7 +19,7 @@ export default function PreviewPage() {
     <InboxContextProvider stats={MOCK_INBOX_STATS}>
       <div className="flex h-screen flex-col bg-[var(--wati-surface-subtle)]">
         <GlobalHeader />
-        <div className="flex flex-1 overflow-hidden">
+        <div className="relative flex flex-1 overflow-hidden">
           <MainSidebar />
           <main className="m-0 flex min-w-0 flex-1 overflow-hidden rounded-tl-xl rounded-tr-xl border border-[var(--wati-border-default)] bg-white">
             <InboxSkeleton />

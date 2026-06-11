@@ -26,6 +26,7 @@ import { Composer, COMPOSER_TRANSITION } from "./Composer";
 import { DailyDigest } from "./digest/DailyDigest";
 import { InboxAskWatiSuggestions } from "./agents/InboxAskWatiSuggestions";
 import { useInboxContext } from "../lib/inbox-context";
+import { useAskWatiDrawer } from "../lib/ask-wati-drawer";
 import { HandoffInbox } from "./handoffs/HandoffInbox";
 import { ModePillRow } from "./ModePillRow";
 import { ThinkingIndicator } from "./ThinkingIndicator";
@@ -101,6 +102,15 @@ export function ChatArea({
   const [pendingWatcherTypeId, setPendingWatcherTypeId] =
     useState<WatcherTypeId | null>(null);
   const { mode, setMode, view, setView } = useChatMode();
+  const { pendingAction, clearAction } = useAskWatiDrawer();
+
+  // Drawer 3-dot menu → "Select an agent" opens the existing agent flow.
+  // "View older chats" has no history surface yet — consume and no-op.
+  useEffect(() => {
+    if (!pendingAction || chrome !== "drawer") return;
+    if (pendingAction === "select-agent") setMode("agent");
+    clearAction();
+  }, [pendingAction, chrome, setMode, clearAction]);
   const {
     threads,
     activeThreadId,
@@ -587,7 +597,10 @@ export function ChatArea({
             className={`flex flex-col justify-end pb-6 ${isHomeScreen ? "" : "flex-1"}`}
           >
             {mode === "agent" ? (
-              inboxCtx ? (
+              // Drawer always uses the tenant-suggested agents (watcher
+              // avatars + counts). Outside the drawer, inbox surfaces get
+              // the inbox-flavored "For your inbox" prompts.
+              inboxCtx && chrome !== "drawer" ? (
                 <InboxAskWatiSuggestions
                   stats={inboxCtx.stats}
                   onSelect={(prompt, watcherTypeId) => {
@@ -611,7 +624,7 @@ export function ChatArea({
               />
             ) : chrome === "drawer" ? (
               <div className="flex flex-col items-start gap-5 px-1">
-                <h2 className="text-[26px] font-semibold tracking-[-0.6px] text-[#0a0a0a]">
+                <h2 className="text-[20px] font-semibold tracking-[-0.4px] text-[#0a0a0a]">
                   How can I help you?
                 </h2>
                 <div className="flex flex-col items-start gap-2">
@@ -662,7 +675,7 @@ export function ChatArea({
                       className="flex items-center gap-1.5 rounded-full bg-[#0a0a0a] px-3 py-1.5 text-[13px] tracking-[-0.078px] text-white hover:bg-[#0a0a0a]/90"
                     >
                       <Play size={12} strokeWidth={2} />
-                      Run again
+                      Run now
                     </button>
                   }
                 />
@@ -734,11 +747,11 @@ export function ChatArea({
               })}
 
               {agentForThread && handoffs.length > 0 && (
-                <div className="flex flex-col gap-3 pt-2">
+                <div className="flex flex-col divide-y divide-[#f0f0f0] rounded-2xl border border-[#e5e5e5] bg-white">
                   {handoffs.map((h, i) => {
                     const runs = runsByHandoff[h.id] ?? [];
                     return (
-                      <div key={h.id} className="flex flex-col gap-2">
+                      <div key={h.id} className="flex flex-col px-1.5 py-1">
                         <Handoff
                           handoff={h}
                           agentName={agentForThread.name}
@@ -747,9 +760,13 @@ export function ChatArea({
                           onFireCta={(cta) => fireCta(h.id, cta)}
                           onExpand={() => markHandoffRead(h.id)}
                         />
-                        {runs.map((r) => (
-                          <AgentActionRun key={r.id} run={r} />
-                        ))}
+                        {runs.length > 0 && (
+                          <div className="flex flex-col gap-2 px-2 pb-3">
+                            {runs.map((r) => (
+                              <AgentActionRun key={r.id} run={r} />
+                            ))}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -770,7 +787,6 @@ export function ChatArea({
           mode={mode}
           onModeChange={setMode}
           chrome={chrome}
-          onCreateAgentClick={() => setMode("agent")}
           contextChips={
             inboxCtx && inboxScopeActive
               ? [

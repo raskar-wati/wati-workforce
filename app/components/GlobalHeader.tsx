@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Rocket, Sparkles, User } from "lucide-react";
+import { Bell, Rocket, User } from "lucide-react";
 import { useAskWatiDrawer } from "../lib/ask-wati-drawer";
 import { WatiLogo } from "./WatiLogo";
 
@@ -21,9 +21,8 @@ export function GlobalHeader() {
         <button
           type="button"
           onClick={toggle}
-          className="inline-flex items-center gap-1.5 rounded-full bg-[#262626] px-3 py-1 text-xs font-semibold text-white transition-colors hover:bg-[#0a0a0a]"
+          className="inline-flex items-center rounded-full bg-[#262626] px-3 py-1 text-xs font-semibold text-white transition-colors hover:bg-[#0a0a0a]"
         >
-          <Sparkles size={13} strokeWidth={2} />
           Ask Wati
         </button>
 
