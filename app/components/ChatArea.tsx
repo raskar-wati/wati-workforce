@@ -80,7 +80,9 @@ type ChatMessage =
       watcherTypeId: WatcherTypeId;
       agentName: string;
       prompt: string;
-    };
+    }
+  | { kind: "ai-thinking"; id: string }
+  | { kind: "ai-response"; id: string; content: string; streaming: boolean };
 
 export function ChatArea({
   hideDailyDigest = false,
@@ -296,33 +298,165 @@ export function ChatArea({
     markSeen,
   ]);
 
-  const submit = () => {
-    const text = input.trim();
-    if (!text) return;
+  const sendPrompt = (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
     let threadId = activeThreadId;
     if (!threadId) {
-      threadId = createThread(text);
+      threadId = createThread(trimmed);
     }
     const userMsg: ChatMessage = {
       kind: "user-text",
       id: crypto.randomUUID(),
-      content: text,
+      content: trimmed,
     };
     const startsAgentFlow = mode === "agent" && !agentForThread;
+    const thinkingId = crypto.randomUUID();
     const nextMessages: ChatMessage[] = [userMsg];
     if (startsAgentFlow) {
       nextMessages.push({
         kind: "agent-creation-flow",
         id: crypto.randomUUID(),
-        initialMessage: text,
+        initialMessage: trimmed,
         watcherTypeId: pendingWatcherTypeId ?? "custom",
       });
+    } else {
+      // Free-form chat: show the streaming indicator until the first
+      // chunk arrives, then it gets replaced with the streamed reply.
+      nextMessages.push({ kind: "ai-thinking", id: thinkingId });
     }
     setPendingWatcherTypeId(null);
     const tid = threadId;
-    appendMessages(tid, nextMessages);
+    // Drop any prior ai-thinking placeholder so only the most recent
+    // user prompt has a live indicator under it. Past turns keep their
+    // user message + final response in the transcript.
+    setMessagesByThread((prev) => {
+      const existing = prev[tid] ?? [];
+      const cleaned = existing.filter((m) => m.kind !== "ai-thinking");
+      return { ...prev, [tid]: [...cleaned, ...nextMessages] };
+    });
     setInput("");
     if (startsAgentFlow) setMode(null);
+    if (!startsAgentFlow) {
+      streamAssistantReply(tid, thinkingId, trimmed);
+    }
+    return tid;
+  };
+
+  const streamAssistantReply = useCallback(
+    async (threadId: string, thinkingId: string, userText: string) => {
+      // Reconstruct chat history from current transcript so the model
+      // has prior turns. We snapshot from the latest state at send time
+      // — `messagesByThread` may have been updated by sendPrompt already
+      // but it doesn't matter; we recompute below.
+      const history = (messagesByThread[threadId] ?? [])
+        .filter(
+          (m): m is Extract<ChatMessage, { kind: "user-text" | "ai-response" }> =>
+            m.kind === "user-text" || m.kind === "ai-response",
+        )
+        .map((m) => ({
+          role: m.kind === "user-text" ? ("user" as const) : ("assistant" as const),
+          content: m.kind === "user-text" ? m.content : m.content,
+        }));
+      const payloadMessages = [
+        ...history,
+        { role: "user" as const, content: userText },
+      ];
+      const responseId = crypto.randomUUID();
+      let started = false;
+      try {
+        const res = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messages: payloadMessages }),
+        });
+        if (!res.ok || !res.body) {
+          throw new Error(`Chat request failed: ${res.status}`);
+        }
+        const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+        let acc = "";
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          if (!value) continue;
+          acc += value;
+          setMessagesByThread((prev) => {
+            const list = prev[threadId];
+            if (!list) return prev;
+            if (!started) {
+              started = true;
+              return {
+                ...prev,
+                [threadId]: list.map((m) =>
+                  m.kind === "ai-thinking" && m.id === thinkingId
+                    ? {
+                        kind: "ai-response",
+                        id: responseId,
+                        content: acc,
+                        streaming: true,
+                      }
+                    : m,
+                ),
+              };
+            }
+            return {
+              ...prev,
+              [threadId]: list.map((m) =>
+                m.kind === "ai-response" && m.id === responseId
+                  ? { ...m, content: acc }
+                  : m,
+              ),
+            };
+          });
+        }
+        if (!started) {
+          // Stream closed with no chunks (e.g. server-side gateway error
+          // after headers were sent). Surface a friendly fallback.
+          throw new Error("Empty response stream");
+        }
+        // Mark stream complete.
+        setMessagesByThread((prev) => {
+          const list = prev[threadId];
+          if (!list) return prev;
+          return {
+            ...prev,
+            [threadId]: list.map((m) =>
+              m.kind === "ai-response" && m.id === responseId
+                ? { ...m, streaming: false }
+                : m,
+            ),
+          };
+        });
+      } catch (err) {
+        console.error("Ask Wati stream failed", err);
+        setMessagesByThread((prev) => {
+          const list = prev[threadId];
+          if (!list) return prev;
+          return {
+            ...prev,
+            [threadId]: list.map((m) =>
+              m.kind === "ai-thinking" && m.id === thinkingId
+                ? {
+                    kind: "ai-response",
+                    id: responseId,
+                    content:
+                      "Something went wrong reaching the model. Try again in a moment.",
+                    streaming: false,
+                  }
+                : m,
+            ),
+          };
+        });
+      }
+    },
+    [messagesByThread],
+  );
+
+  const submit = () => {
+    const text = input.trim();
+    if (!text) return;
+    const tid = sendPrompt(text);
+    if (!tid) return;
 
     // If a first-time user starts typing free-form in the onboarding
     // thread without tapping the lead chip, treat it as them finding
@@ -623,7 +757,10 @@ export function ChatArea({
                 onSelectPrompt={(prompt) => setInput(prompt)}
               />
             ) : chrome === "drawer" ? (
-              <div className="flex flex-col items-start gap-5 px-1">
+              <div className="flex flex-col items-start gap-4 px-1">
+                <div className="-ml-3">
+                  <ThinkingIndicator />
+                </div>
                 <h2 className="text-[20px] font-semibold tracking-[-0.4px] text-[#0a0a0a]">
                   How can I help you?
                 </h2>
@@ -632,7 +769,7 @@ export function ChatArea({
                     <button
                       key={prompt}
                       type="button"
-                      onClick={() => setInput(prompt)}
+                      onClick={() => sendPrompt(prompt)}
                       className="rounded-full bg-black/[0.04] px-3.5 py-1.5 text-[13px] tracking-[-0.078px] text-[#0a0a0a] transition-colors hover:bg-black/[0.07]"
                     >
                       {prompt}
@@ -711,6 +848,41 @@ export function ChatArea({
                         }));
                   return (
                     <WatiMessage key={m.id} text={m.text} chips={chips} />
+                  );
+                }
+                if (m.kind === "ai-thinking") {
+                  return (
+                    <motion.div
+                      key={m.id}
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+                      className="flex justify-start py-1"
+                    >
+                      <ThinkingIndicator variant="streaming" />
+                    </motion.div>
+                  );
+                }
+                if (m.kind === "ai-response") {
+                  return (
+                    <motion.div
+                      key={m.id}
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
+                      className="flex justify-start"
+                    >
+                      <div className="max-w-[88%] whitespace-pre-wrap text-[14px] leading-[21px] text-black/80">
+                        {m.content}
+                        {m.streaming && (
+                          <span
+                            aria-hidden="true"
+                            className="ml-0.5 inline-block h-[14px] w-[7px] translate-y-[2px] animate-pulse bg-black/40"
+                            style={{ verticalAlign: "baseline" }}
+                          />
+                        )}
+                      </div>
+                    </motion.div>
                   );
                 }
                 if (m.kind === "onboarding-preview") {

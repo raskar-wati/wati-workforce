@@ -83,7 +83,17 @@ type ThinkingState = {
   textIndex: number
 }
 
-export function ThinkingIndicator() {
+export function ThinkingIndicator({
+  variant = "welcome",
+}: {
+  /**
+   * "welcome" — just the orb (used as decoration above the greeting).
+   * "streaming" — orb on the left + rotating status text and elapsed
+   * timer to the right. Used inline in the chat thread as a system
+   * "doing something" indicator after the user submits.
+   */
+  variant?: "welcome" | "streaming"
+} = {}) {
   const startRef = useRef(0)
   const [thinking, setThinking] = useState<ThinkingState>({
     emotionalState: "focused",
@@ -121,6 +131,67 @@ export function ThinkingIndicator() {
   const textIndex = thinking.textIndex
   const pool = TEXT_POOLS[state]
   const currentText = pool[textIndex % pool.length] ?? ""
+
+  if (variant === "streaming") {
+    return (
+      <div className="flex items-center gap-2">
+        <motion.div
+          className="relative flex flex-shrink-0 items-center justify-center"
+          style={{ width: 32, height: 28 }}
+          // Whole-orb breathing: inhale (grow) → exhale (shrink). Slower
+          // and larger amplitude than the welcome variant so it reads as
+          // a living, calm signal rather than a tight pulse.
+          animate={{ scale: [0.88, 1.12, 0.88] }}
+          transition={{ duration: 3.6, repeat: Infinity, ease: "easeInOut" }}
+        >
+          <motion.div
+            className="absolute inset-0 rounded-full"
+            style={{
+              background:
+                "radial-gradient(ellipse at 50% 50%, rgba(186,220,255,0.65) 0%, rgba(200,228,255,0.28) 55%, transparent 100%)",
+              filter: "blur(5px)",
+            }}
+            animate={{ opacity: [0.75, 1, 0.75] }}
+            transition={{ duration: 3.6, repeat: Infinity, ease: "easeInOut" }}
+          />
+          <div
+            className="absolute rounded-full"
+            style={{
+              width: 18,
+              height: 14,
+              background:
+                "radial-gradient(ellipse at 50% 40%, rgba(210,235,255,0.95) 0%, rgba(186,220,255,0.55) 60%, transparent 100%)",
+              filter: "blur(2.5px)",
+            }}
+          />
+          <span
+            className="relative flex items-center gap-[3px]"
+            aria-hidden="true"
+          >
+            <Eye delay={0} size={2.5} />
+            <Eye delay={0.06} size={2.5} />
+          </span>
+        </motion.div>
+        <div className="flex min-w-0 items-center gap-2">
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.span
+              key={`${state}-${textIndex}`}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.28, ease: [0.32, 0.72, 0, 1] }}
+              className="text-[13px] leading-[18px] text-black/55"
+            >
+              {currentText}
+            </motion.span>
+          </AnimatePresence>
+          <span className="text-[11px] tabular-nums text-black/30">
+            {formatElapsed(elapsedMs)}
+          </span>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col items-center gap-3">
@@ -166,13 +237,13 @@ export function ThinkingIndicator() {
   )
 }
 
-function Eye({ delay = 0 }: { delay?: number }) {
+function Eye({ delay = 0, size = 4 }: { delay?: number; size?: number }) {
   return (
     <motion.span
       style={{
         display: "inline-block",
-        width: 4,
-        height: 4,
+        width: size,
+        height: size,
         background: EYE_COLOR,
         borderRadius: 1,
         transformOrigin: "center",
