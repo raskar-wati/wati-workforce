@@ -71,7 +71,8 @@ export function Handoff({
             transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
             className="overflow-hidden"
           >
-            <div className="flex flex-col gap-4 px-2 pb-4 pt-2">
+            {/* Faint left rail anchors children to the chevron column. */}
+            <div className="ml-[14.5px] flex flex-col gap-4 border-l border-black/[0.08] pb-4 pt-1 pl-4">
               {handoff.sections.map((s) => (
                 <HandoffSection
                   key={s.id}

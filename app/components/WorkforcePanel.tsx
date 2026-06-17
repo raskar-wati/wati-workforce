@@ -13,6 +13,8 @@ import { useState } from "react";
 import { useAgents } from "../lib/agents";
 import { useChatMode } from "../lib/chat-mode";
 import { useChatThreads } from "../lib/chat-threads";
+import { DAILY_DIGEST_THREAD_TITLE } from "../lib/daily-digest-data";
+import { getPixabot } from "../lib/pixabots";
 import { DemoStateToggleChip } from "./DemoStateToggleChip";
 import { TenantToggleChip } from "./TenantToggleChip";
 
@@ -47,7 +49,8 @@ export function WorkforcePanel({
    */
   panelStyle?: PanelStyle;
 } = {}) {
-  const { threads, activeThreadId, setActiveThreadId } = useChatThreads();
+  const { threads, activeThreadId, setActiveThreadId, createThread } =
+    useChatThreads();
   const { agents, getUnreadCountForAgent, unreadHandoffCount } = useAgents();
   const { mode, setMode, view, setView } = useChatMode();
   const [agentsOpen, setAgentsOpen] = useState(false);
@@ -94,6 +97,22 @@ export function WorkforcePanel({
     setActiveThreadId(threadId);
   };
 
+  // Pinned, undeletable "Daily Digest" agent. Lives outside the regular
+  // agent store; we just find-or-create a thread with a known title and
+  // let ChatArea bootstrap the digest message into it.
+  const openDailyDigest = () => {
+    setView("chat");
+    setMode(null);
+    const existing = threads.find(
+      (t) => t.title === DAILY_DIGEST_THREAD_TITLE,
+    );
+    const id = existing?.id ?? createThread(DAILY_DIGEST_THREAD_TITLE);
+    setActiveThreadId(id);
+  };
+
+  const dailyDigestThreadId =
+    threads.find((t) => t.title === DAILY_DIGEST_THREAD_TITLE)?.id ?? null;
+
   // ─── Drawer variant ────────────────────────────────────────────────
   if (panelStyle === "drawer") {
     return (
@@ -137,6 +156,8 @@ export function WorkforcePanel({
                 getUnreadCountForAgent={getUnreadCountForAgent}
                 onNewAgent={startNewAgent}
                 onOpenAgentThread={openAgentThread}
+                dailyDigestThreadId={dailyDigestThreadId}
+                onOpenDailyDigest={openDailyDigest}
               />
             )}
           </div>
@@ -551,6 +572,8 @@ function AgentsTabContent({
   getUnreadCountForAgent,
   onNewAgent,
   onOpenAgentThread,
+  dailyDigestThreadId,
+  onOpenDailyDigest,
 }: {
   agents: ReturnType<typeof useAgents>["agents"];
   activeThreadId: string | null;
@@ -559,7 +582,15 @@ function AgentsTabContent({
   getUnreadCountForAgent: (id: string) => number;
   onNewAgent: () => void;
   onOpenAgentThread: (threadId: string) => void;
+  /** Thread id if the Daily Digest has been opened this session; null otherwise. */
+  dailyDigestThreadId: string | null;
+  onOpenDailyDigest: () => void;
 }) {
+  const digestActive =
+    !inboxSelected &&
+    dailyDigestThreadId !== null &&
+    activeThreadId === dailyDigestThreadId;
+  const digestAvatar = getPixabot("daily-digest");
   return (
     <>
       <button
@@ -579,41 +610,61 @@ function AgentsTabContent({
         </span>
       </button>
 
-      {agents.length > 0 && (
-        <div className="flex flex-col gap-0.5">
-          {agents.map((a) => {
-            const unread = getUnreadCountForAgent(a.id);
-            const isActive = !inboxSelected && activeThreadId === a.threadId;
-            return (
-              <button
-                key={a.id}
-                type="button"
-                onClick={() => onOpenAgentThread(a.threadId)}
-                className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left transition-colors ${
-                  isActive
-                    ? "bg-[var(--wati-chip-bg)]"
-                    : "hover:bg-[var(--wati-surface-subtle)]"
-                }`}
-              >
-                <Image
-                  src={a.avatarSeed}
-                  alt=""
-                  width={18}
-                  height={18}
-                  className="shrink-0 rounded-full"
-                  aria-hidden
-                />
-                <p className="flex-1 truncate text-sm text-[#101828]">{a.name}</p>
-                {unread > 0 && (
-                  <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded border border-[var(--wati-border-default)] bg-[var(--wati-surface-subtle)] px-1 text-[10px] font-medium text-[var(--wati-text-body)]">
-                    {unread}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      )}
+      <div className="flex flex-col gap-0.5">
+        {/* Pinned, system-owned Daily Digest entry. Same visual treatment
+            as a normal agent row so it reads as one of them. */}
+        <button
+          type="button"
+          onClick={onOpenDailyDigest}
+          className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left transition-colors ${
+            digestActive
+              ? "bg-[var(--wati-chip-bg)]"
+              : "hover:bg-[var(--wati-surface-subtle)]"
+          }`}
+        >
+          <Image
+            src={digestAvatar}
+            alt=""
+            width={18}
+            height={18}
+            className="shrink-0 rounded-full"
+            aria-hidden
+          />
+          <p className="flex-1 truncate text-sm text-[#101828]">Daily Digest</p>
+        </button>
+
+        {agents.map((a) => {
+          const unread = getUnreadCountForAgent(a.id);
+          const isActive = !inboxSelected && activeThreadId === a.threadId;
+          return (
+            <button
+              key={a.id}
+              type="button"
+              onClick={() => onOpenAgentThread(a.threadId)}
+              className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left transition-colors ${
+                isActive
+                  ? "bg-[var(--wati-chip-bg)]"
+                  : "hover:bg-[var(--wati-surface-subtle)]"
+              }`}
+            >
+              <Image
+                src={a.avatarSeed}
+                alt=""
+                width={18}
+                height={18}
+                className="shrink-0 rounded-full"
+                aria-hidden
+              />
+              <p className="flex-1 truncate text-sm text-[#101828]">{a.name}</p>
+              {unread > 0 && (
+                <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded border border-[var(--wati-border-default)] bg-[var(--wati-surface-subtle)] px-1 text-[10px] font-medium text-[var(--wati-text-body)]">
+                  {unread}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
     </>
   );
 }

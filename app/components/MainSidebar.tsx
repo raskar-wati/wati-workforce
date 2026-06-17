@@ -11,6 +11,7 @@ import {
   LineChart,
   Mail,
   Megaphone,
+  PanelsTopLeft,
   Plug,
   Puzzle,
   Settings,
@@ -62,6 +63,18 @@ export function MainSidebar() {
     >
       {/* Scrollable nav region */}
       <div className="flex flex-1 flex-col overflow-y-auto overflow-x-hidden">
+        {/* WorkForce (active product) */}
+        <Section collapsed={collapsed}>
+          <NavRow
+            icon={PanelsTopLeft}
+            label="WorkForce"
+            href="/"
+            active={pathname === "/"}
+            collapsed={collapsed}
+          />
+        </Section>
+        <Divider collapsed={collapsed} />
+
         {/* Workspace */}
         <SectionHeading collapsed={collapsed}>Workspace</SectionHeading>
         <Section collapsed={collapsed}>

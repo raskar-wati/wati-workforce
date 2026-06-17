@@ -20,8 +20,15 @@ import { getWatcherType } from "../lib/watcher-types";
 import { AgentActionRun } from "./agents/AgentActionRun";
 import { AgentCreationFlow } from "./agents/AgentCreationFlow";
 import { AgentSummaryCard } from "./agents/AgentSummaryCard";
+import { DailyDigestEntry } from "./agents/DailyDigestEntry";
+import { DailyDigestSummaryCard } from "./agents/DailyDigestSummaryCard";
 import { Handoff } from "./agents/Handoff";
 import { TenantAgentSuggestions } from "./agents/TenantAgentSuggestions";
+import {
+  DAILY_DIGEST_ENTRIES,
+  DAILY_DIGEST_THREAD_TITLE,
+} from "../lib/daily-digest-data";
+import { getPixabot } from "../lib/pixabots";
 import { Composer, COMPOSER_TRANSITION } from "./Composer";
 import { DailyDigest } from "./digest/DailyDigest";
 import { InboxAskWatiSuggestions } from "./agents/InboxAskWatiSuggestions";
@@ -82,7 +89,8 @@ type ChatMessage =
       prompt: string;
     }
   | { kind: "ai-thinking"; id: string }
-  | { kind: "ai-response"; id: string; content: string; streaming: boolean };
+  | { kind: "ai-response"; id: string; content: string; streaming: boolean }
+  | { kind: "daily-digest"; id: string };
 
 export function ChatArea({
   hideDailyDigest = false,
@@ -121,6 +129,7 @@ export function ChatArea({
     hydrated: threadsHydrated,
   } = useChatThreads();
   const {
+    agents,
     getAgentsForThread,
     getHandoffs,
     addHandoff,
@@ -161,7 +170,13 @@ export function ChatArea({
   );
   const firedCtaIds = new Set(actionRuns.map((r) => r.ctaId));
   const hasMessages = messages.length > 0;
-  const hasContent = hasMessages || agentForThread !== null;
+  const activeThread = activeThreadId
+    ? threads.find((t) => t.id === activeThreadId) ?? null
+    : null;
+  const isDailyDigestThread =
+    activeThread?.title === DAILY_DIGEST_THREAD_TITLE;
+  const hasContent =
+    hasMessages || agentForThread !== null || isDailyDigestThread;
 
   const fireCta = (handoffId: string, cta: HandoffCta) => {
     if (!agentForThread) return;
@@ -196,8 +211,14 @@ export function ChatArea({
     [],
   );
 
+  // Truncate the run list (handoffs / digest entries) to RUN_LIST_LIMIT
+  // by default; user toggles to show all. Resets on thread change so each
+  // agent's collapse state is independent.
+  const [showAllRuns, setShowAllRuns] = useState(false);
+
   useEffect(() => {
     setInput("");
+    setShowAllRuns(false);
     // Mode is lifted to ChatModeProvider and managed by whoever sets it
     // (slash menu, pill row, sidebar New Agent button). Don't clobber it
     // here on thread change — that would race with sidebar-driven setMode.
@@ -711,7 +732,7 @@ export function ChatArea({
 
   return (
     <div
-      className={`mx-auto flex w-full max-w-[720px] flex-col px-6 pb-6 ${
+      className={`mx-auto flex w-full max-w-[720px] flex-col px-6 pb-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
         isHomeScreen ? "h-full overflow-y-auto" : "h-full"
       }`}
     >
@@ -792,9 +813,43 @@ export function ChatArea({
           </div>
         ) : (
           <div
-            className="flex flex-1 flex-col overflow-y-auto pt-12 pb-6"
+            className="flex flex-1 flex-col overflow-y-auto pt-12 pb-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             <div className="flex flex-col gap-4">
+              {isDailyDigestThread && (
+                <>
+                  <DailyDigestSummaryCard
+                    avatarPath={getPixabot("daily-digest")}
+                  />
+                  <div className="flex flex-col">
+                    {(showAllRuns
+                      ? DAILY_DIGEST_ENTRIES
+                      : DAILY_DIGEST_ENTRIES.slice(0, RUN_LIST_LIMIT)
+                    ).map((entry, i) => (
+                      <div key={entry.id} className="flex flex-col py-1">
+                        <DailyDigestEntry
+                          entry={entry}
+                          defaultExpanded={i === 0}
+                          onViewAgent={(agentName) => {
+                            const match = agents.find(
+                              (a) =>
+                                a.name.toLowerCase() === agentName.toLowerCase(),
+                            );
+                            if (match) setActiveThreadId(match.threadId);
+                          }}
+                        />
+                      </div>
+                    ))}
+                    {DAILY_DIGEST_ENTRIES.length > RUN_LIST_LIMIT && (
+                      <RunListToggle
+                        showingAll={showAllRuns}
+                        total={DAILY_DIGEST_ENTRIES.length}
+                        onToggle={() => setShowAllRuns((v) => !v)}
+                      />
+                    )}
+                  </div>
+                </>
+              )}
               {agentForThread && (
                 <AgentSummaryCard
                   data={{
@@ -849,6 +904,12 @@ export function ChatArea({
                   return (
                     <WatiMessage key={m.id} text={m.text} chips={chips} />
                   );
+                }
+                if (m.kind === "daily-digest") {
+                  // Legacy message kind from earlier iteration. Daily
+                  // Digest content is now rendered structurally at the
+                  // top of the thread, not as a chat message. Ignore.
+                  return null;
                 }
                 if (m.kind === "ai-thinking") {
                   return (
@@ -919,11 +980,14 @@ export function ChatArea({
               })}
 
               {agentForThread && handoffs.length > 0 && (
-                <div className="flex flex-col divide-y divide-[#f0f0f0] rounded-2xl border border-[#e5e5e5] bg-white">
-                  {handoffs.map((h, i) => {
+                <div className="flex flex-col">
+                  {(showAllRuns
+                    ? handoffs
+                    : handoffs.slice(0, RUN_LIST_LIMIT)
+                  ).map((h, i) => {
                     const runs = runsByHandoff[h.id] ?? [];
                     return (
-                      <div key={h.id} className="flex flex-col px-1.5 py-1">
+                      <div key={h.id} className="flex flex-col py-1">
                         <Handoff
                           handoff={h}
                           agentName={agentForThread.name}
@@ -942,6 +1006,13 @@ export function ChatArea({
                       </div>
                     );
                   })}
+                  {handoffs.length > RUN_LIST_LIMIT && (
+                    <RunListToggle
+                      showingAll={showAllRuns}
+                      total={handoffs.length}
+                      onToggle={() => setShowAllRuns((v) => !v)}
+                    />
+                  )}
                 </div>
               )}
             </div>
@@ -1009,6 +1080,30 @@ function getStarterPrompts(hasInboxContext: boolean): string[] {
     "Show me delivery complaints today",
     "What can you do?",
   ];
+}
+
+/** How many handoffs / digest entries to show before requiring "view more". */
+const RUN_LIST_LIMIT = 3;
+
+function RunListToggle({
+  showingAll,
+  total,
+  onToggle,
+}: {
+  showingAll: boolean;
+  total: number;
+  onToggle: () => void;
+}) {
+  const hidden = total - RUN_LIST_LIMIT;
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className="self-start rounded-md px-2 py-1.5 text-[12px] font-medium tracking-[-0.06px] text-black/55 transition-colors hover:bg-black/[0.03] hover:text-black/75"
+    >
+      {showingAll ? "Show less" : `View ${hidden} older`}
+    </button>
+  );
 }
 
 function chipVariantFor(action: WatiAction): "primary" | "ghost" {
