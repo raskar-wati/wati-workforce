@@ -33,6 +33,7 @@ import { Composer, COMPOSER_TRANSITION } from "./Composer";
 import { DailyDigest } from "./digest/DailyDigest";
 import { InboxAskWatiSuggestions } from "./agents/InboxAskWatiSuggestions";
 import { useInboxContext } from "../lib/inbox-context";
+import { useContactsContext } from "../lib/contacts-context";
 import { useAskWatiDrawer } from "../lib/ask-wati-drawer";
 import { HandoffInbox } from "./handoffs/HandoffInbox";
 import { ModePillRow } from "./ModePillRow";
@@ -139,7 +140,11 @@ export function ChatArea({
   const fireHandoffCta = useFireHandoffCta();
   const { profile: tenantProfile } = useTenantProfile();
   const inboxCtx = useInboxContext();
+  const contactsCtx = useContactsContext();
   const [inboxScopeActive, setInboxScopeActive] = useState(Boolean(inboxCtx));
+  const [contactsScopeActive, setContactsScopeActive] = useState(
+    Boolean(contactsCtx),
+  );
   const { mode: demoMode, hydrated: demoHydrated } = useDemoState();
   const { seen: onboardingSeen, hydrated: onboardingHydrated, markSeen } =
     useOnboardingSeen();
@@ -786,12 +791,15 @@ export function ChatArea({
                   How can I help you?
                 </h2>
                 <div className="flex flex-col items-start gap-2">
-                  {getStarterPrompts(Boolean(inboxCtx)).map((prompt) => (
+                  {getStarterPrompts({
+                    hasInboxContext: Boolean(inboxCtx),
+                    hasContactsContext: Boolean(contactsCtx),
+                  }).map((prompt) => (
                     <button
                       key={prompt}
                       type="button"
                       onClick={() => sendPrompt(prompt)}
-                      className="rounded-full bg-black/[0.04] px-3.5 py-1.5 text-[13px] tracking-[-0.078px] text-[#0a0a0a] transition-colors hover:bg-black/[0.07]"
+                      className="rounded-2xl bg-black/[0.04] px-3.5 py-1.5 text-left text-[13px] tracking-[-0.078px] text-[#0a0a0a] transition-colors hover:bg-black/[0.07]"
                     >
                       {prompt}
                     </button>
@@ -1030,17 +1038,33 @@ export function ChatArea({
           mode={mode}
           onModeChange={setMode}
           chrome={chrome}
-          contextChips={
-            inboxCtx && inboxScopeActive
-              ? [
-                  {
-                    id: "inbox",
-                    label: chrome === "drawer" ? "Team inbox" : "@inbox",
-                    onRemove: () => setInboxScopeActive(false),
-                  },
-                ]
-              : undefined
-          }
+          mentionables={agents.map((a) => ({
+            id: a.id,
+            name: a.name,
+            avatarPath: getPixabot(a.avatarSeed),
+          }))}
+          contextChips={(() => {
+            const chips: {
+              id: string;
+              label: string;
+              onRemove: () => void;
+            }[] = [];
+            if (inboxCtx && inboxScopeActive) {
+              chips.push({
+                id: "inbox",
+                label: chrome === "drawer" ? "Team inbox" : "@inbox",
+                onRemove: () => setInboxScopeActive(false),
+              });
+            }
+            if (contactsCtx && contactsScopeActive) {
+              chips.push({
+                id: "contacts",
+                label: chrome === "drawer" ? "Contacts" : "@contacts",
+                onRemove: () => setContactsScopeActive(false),
+              });
+            }
+            return chips.length > 0 ? chips : undefined;
+          })()}
         />
       </motion.div>
 
@@ -1067,7 +1091,20 @@ export function ChatArea({
   );
 }
 
-function getStarterPrompts(hasInboxContext: boolean): string[] {
+function getStarterPrompts({
+  hasInboxContext,
+  hasContactsContext,
+}: {
+  hasInboxContext: boolean;
+  hasContactsContext: boolean;
+}): string[] {
+  if (hasContactsContext) {
+    return [
+      "Find my top spenders this month",
+      "Which contacts haven't been messaged in 30 days?",
+      "What can you do?",
+    ];
+  }
   if (hasInboxContext) {
     return [
       "Summarize my inbox queue",

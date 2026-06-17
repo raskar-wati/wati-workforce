@@ -71,6 +71,12 @@ export type ComposerContextChip = {
   onRemove: () => void;
 };
 
+export type ComposerMentionable = {
+  id: string;
+  name: string;
+  avatarPath?: string;
+};
+
 export function Composer({
   value,
   onChange,
@@ -80,6 +86,7 @@ export function Composer({
   onModeChange,
   contextChips,
   chrome,
+  mentionables,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -92,11 +99,16 @@ export function Composer({
   /** "drawer" restyles the model selector minimally (no pill background)
    *  and right-aligns the bottom row (model + send only). */
   chrome?: "drawer";
+  /** Agents the user can @-mention. When typing `@`, a popover lists
+   *  these and selecting one inserts `@Name ` at the cursor. */
+  mentionables?: ComposerMentionable[];
 }) {
   const [selectedModel, setSelectedModel] = useState<LLMOption>(LLM_OPTIONS[0]);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const [slashIndex, setSlashIndex] = useState(0);
+  const [mentionIndex, setMentionIndex] = useState(0);
+  const [textareaScrollTop, setTextareaScrollTop] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const plusMenuRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -109,6 +121,21 @@ export function Composer({
     el.style.height = "auto";
     el.style.height = `${el.scrollHeight}px`;
   }, [value]);
+
+  // Detect a trailing `@query` token at the very end of the input. Allowed
+  // immediately after start-of-input or a whitespace char so typing an
+  // email address doesn't accidentally open the picker.
+  const mentionMatch =
+    mentionables && mentionables.length > 0
+      ? value.match(/(?:^|\s)@([\w-]*)$/)
+      : null;
+  const mentionOpen = Boolean(mentionMatch);
+  const mentionQuery = mentionMatch ? mentionMatch[1].toLowerCase() : "";
+  const filteredMentions = mentionOpen
+    ? (mentionables ?? []).filter(
+        (m) => !mentionQuery || m.name.toLowerCase().includes(mentionQuery),
+      )
+    : [];
 
   const slashOpen = !mode && value.startsWith("/");
   const slashQuery = slashOpen ? value.slice(1).trim().toLowerCase() : "";
@@ -129,6 +156,19 @@ export function Composer({
   useEffect(() => {
     if (slashIndex >= filteredModes.length) setSlashIndex(0);
   }, [filteredModes.length, slashIndex]);
+
+  useEffect(() => {
+    if (!mentionOpen) setMentionIndex(0);
+  }, [mentionOpen]);
+
+  useEffect(() => {
+    if (mentionIndex >= filteredMentions.length) setMentionIndex(0);
+  }, [filteredMentions.length, mentionIndex]);
+
+  const applyMention = (m: ComposerMentionable) => {
+    const replaced = value.replace(/@([\w-]*)$/, `@${m.name} `);
+    onChange(replaced);
+  };
 
   useEffect(() => {
     if (!plusMenuOpen) return;
@@ -158,6 +198,32 @@ export function Composer({
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (mentionOpen && filteredMentions.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setMentionIndex((i) => (i + 1) % filteredMentions.length);
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setMentionIndex(
+          (i) => (i - 1 + filteredMentions.length) % filteredMentions.length,
+        );
+        return;
+      }
+      if (e.key === "Enter" || e.key === "Tab") {
+        e.preventDefault();
+        applyMention(filteredMentions[mentionIndex]);
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        // Strip the trailing @query so the popover closes but the user
+        // keeps anything they typed before it.
+        onChange(value.replace(/@([\w-]*)$/, ""));
+        return;
+      }
+    }
     if (slashOpen && filteredModes.length > 0) {
       if (e.key === "ArrowDown") {
         e.preventDefault();
@@ -225,6 +291,53 @@ export function Composer({
         ))}
     <div className="relative flex w-full flex-col rounded-3xl border border-[var(--wati-border-default)] bg-white pt-4 shadow-[0_8px_16px_rgba(0,0,0,0.06),0_2px_4px_rgba(0,0,0,0.04)]">
       <AnimatePresence>
+        {mentionOpen && filteredMentions.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 6, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 6, scale: 0.98 }}
+            transition={{ duration: 0.15, ease: [0.32, 0.72, 0, 1] }}
+            className="absolute bottom-full left-0 mb-2 w-64 overflow-hidden rounded-2xl border border-[#e5e5e5] bg-white shadow-[0_8px_24px_rgba(0,0,0,0.1)]"
+          >
+            <div className="px-3 pb-1 pt-2.5">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.8px] text-black/30">
+                Agents
+              </span>
+            </div>
+            <div className="flex max-h-64 flex-col overflow-y-auto pb-1">
+              {filteredMentions.map((m, i) => {
+                const highlighted = i === mentionIndex;
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onMouseEnter={() => setMentionIndex(i)}
+                    onClick={() => applyMention(m)}
+                    className={`flex w-full items-center gap-2.5 px-3 py-1.5 text-left ${
+                      highlighted ? "bg-black/[0.04]" : ""
+                    }`}
+                  >
+                    {m.avatarPath ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={m.avatarPath}
+                        alt=""
+                        className="h-6 w-6 shrink-0 rounded-full"
+                      />
+                    ) : (
+                      <span className="h-6 w-6 shrink-0 rounded-full bg-black/[0.06]" />
+                    )}
+                    <span className="truncate text-[13px] tracking-[-0.078px] text-[#0a0a0a]">
+                      {m.name}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
         {slashOpen && filteredModes.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 6, scale: 0.98 }}
@@ -282,23 +395,33 @@ export function Composer({
 
       <div className="flex items-start gap-2 px-4">
         <div className="relative flex-1">
+          {/* Highlight overlay — mirrors textarea value, paints `@Mention`
+              tokens that match a known agent in blue. Sits behind the
+              textarea (which renders its own text transparent) so the
+              caret and selection stay native. */}
+          <MentionHighlight
+            value={value}
+            mentionables={mentionables ?? []}
+            scrollTop={textareaScrollTop}
+          />
           <textarea
             ref={textareaRef}
             value={value}
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={handleKeyDown}
+            onScroll={(e) => setTextareaScrollTop(e.currentTarget.scrollTop)}
             rows={1}
             placeholder={
               hasMessages
                 ? CONVERSATION_PLACEHOLDER
                 : chrome === "drawer"
                   ? hasDrawerTopChips
-                    ? "Ask about your inbox"
+                    ? `Ask about ${drawerTopChips[0].label.toLowerCase()}`
                     : "Ask Wati anything"
                   : ""
             }
             autoFocus
-            className="block max-h-40 w-full resize-none overflow-y-auto bg-transparent text-[13px] leading-[20px] tracking-[-0.078px] text-black/80 placeholder:text-black/50 focus:outline-none"
+            className="relative block max-h-40 w-full resize-none overflow-y-auto bg-transparent text-[13px] leading-[20px] tracking-[-0.078px] text-transparent caret-[#0a0a0a] placeholder:text-black/50 focus:outline-none [&::selection]:bg-[#1570EF]/20"
           />
           {!hasMessages && !value && !activeMode && chrome !== "drawer" && (
             <AnimatedPlaceholder />
@@ -546,6 +669,70 @@ function ContextChip({
         <X size={10} strokeWidth={2.5} />
       </button>
     </span>
+  );
+}
+
+function MentionHighlight({
+  value,
+  mentionables,
+  scrollTop,
+}: {
+  value: string;
+  mentionables: ComposerMentionable[];
+  scrollTop: number;
+}) {
+  // Tokenize the value into plain text + mention chunks. A mention is
+  // an `@` followed by a known mentionable name (longest match wins so
+  // "Hot Leads" beats a hypothetical "Hot"). Anything else falls through
+  // as plain text.
+  const sortedNames = [...mentionables]
+    .map((m) => m.name)
+    .sort((a, b) => b.length - a.length);
+  const parts: { text: string; mention: boolean }[] = [];
+  let buf = "";
+  let i = 0;
+  while (i < value.length) {
+    if (value[i] === "@") {
+      const rest = value.slice(i + 1);
+      const match = sortedNames.find((n) =>
+        rest.toLowerCase().startsWith(n.toLowerCase()),
+      );
+      if (match) {
+        if (buf) {
+          parts.push({ text: buf, mention: false });
+          buf = "";
+        }
+        parts.push({
+          text: "@" + value.substr(i + 1, match.length),
+          mention: true,
+        });
+        i += 1 + match.length;
+        continue;
+      }
+    }
+    buf += value[i];
+    i++;
+  }
+  if (buf) parts.push({ text: buf, mention: false });
+
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 max-h-40 overflow-hidden whitespace-pre-wrap break-words text-[13px] leading-[20px] tracking-[-0.078px] text-black/80"
+      style={{ transform: `translateY(${-scrollTop}px)` }}
+    >
+      {parts.map((p, idx) =>
+        p.mention ? (
+          <span key={idx} className="text-[#1570EF]">
+            {p.text}
+          </span>
+        ) : (
+          <span key={idx}>{p.text}</span>
+        ),
+      )}
+      {/* Trailing space so the overlay height tracks a trailing newline. */}
+      {"​"}
+    </div>
   );
 }
 

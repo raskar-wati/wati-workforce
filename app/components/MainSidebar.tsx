@@ -29,7 +29,7 @@ type NavItem = {
 
 const workspace: NavItem[] = [
   { label: "Conversations", icon: Mail, href: "/preview" },
-  { label: "Contacts", icon: BookUser },
+  { label: "Contacts", icon: BookUser, href: "/preview/contacts" },
   { label: "Commerce", icon: ShoppingCart },
   { label: "Campaigns", icon: Megaphone },
 ];
