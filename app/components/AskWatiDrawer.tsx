@@ -16,7 +16,7 @@ export function AskWatiDrawer() {
   // the expand arrow on the icon column reveals the 232px panel and
   // widens the drawer to fit — chat area width on the right is unchanged.
   const [panelCollapsed, setPanelCollapsed] = useState(true);
-  const drawerWidth = panelCollapsed ? 408 : 640;
+  const drawerWidth = panelCollapsed ? 458 : 690;
 
   // ESC closes — only while the drawer is open.
   useEffect(() => {

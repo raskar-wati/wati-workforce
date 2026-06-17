@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import { ChevronDown } from "lucide-react";
 import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import type { Handoff as HandoffType, HandoffCta } from "../../lib/agents";
 import { HandoffCtaButton } from "./HandoffCtaButton";
 import { HandoffSection } from "./HandoffSection";
@@ -22,6 +23,7 @@ export function Handoff({
   firedCtaIds,
   onFireCta,
   onExpand,
+  runsSlot,
 }: {
   handoff: HandoffType;
   agentName: string;
@@ -30,6 +32,10 @@ export function Handoff({
   onFireCta: (cta: HandoffCta) => void;
   /** Called the first time the handoff is expanded — used to mark it read. */
   onExpand?: () => void;
+  /** Optional follow-up content (e.g. AgentActionRun cards from CTAs)
+   *  rendered inside the expanded left rail so they stay anchored to
+   *  the chevron column rather than escaping into the parent layout. */
+  runsSlot?: ReactNode;
 }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
 
@@ -45,19 +51,19 @@ export function Handoff({
         onClick={() => setExpanded((v) => !v)}
         aria-expanded={expanded}
         aria-label={`${agentName} Handoff #${handoff.runNumber}`}
-        className="group flex items-center gap-2.5 rounded-md px-2 py-2 text-left hover:bg-black/[0.03]"
+        className="group flex items-center gap-2 px-0.5 py-1.5 text-left"
       >
         <motion.span
           animate={{ rotate: expanded ? 0 : -90 }}
           transition={{ duration: 0.2 }}
-          className="flex text-black/40 group-hover:text-black/60"
+          className="flex text-black/40 transition-colors group-hover:text-[#0a0a0a]"
         >
           <ChevronDown size={14} strokeWidth={2} />
         </motion.span>
         <span className="flex-1 truncate text-[13px] font-medium tracking-[-0.078px] text-[#0a0a0a]">
           Handoff #{handoff.runNumber}
         </span>
-        <span className="shrink-0 text-[12px] tracking-[-0.06px] text-black/45">
+        <span className="shrink-0 text-[12px] tracking-[-0.06px] text-black/45 transition-colors group-hover:text-black/70">
           {formatRunAt(handoff.runAt)}
         </span>
       </button>
@@ -72,7 +78,7 @@ export function Handoff({
             className="overflow-hidden"
           >
             {/* Faint left rail anchors children to the chevron column. */}
-            <div className="ml-[14.5px] flex flex-col gap-4 border-l border-black/[0.08] pb-4 pt-1 pl-4">
+            <div className="ml-[8.5px] flex flex-col gap-4 border-l border-black/[0.08] pb-4 pt-1 pl-4">
               {handoff.sections.map((s) => (
                 <HandoffSection
                   key={s.id}
@@ -93,6 +99,7 @@ export function Handoff({
                   ))}
                 </div>
               )}
+              {runsSlot}
             </div>
           </motion.div>
         )}

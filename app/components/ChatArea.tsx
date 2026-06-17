@@ -1003,14 +1003,16 @@ export function ChatArea({
                           firedCtaIds={firedCtaIds}
                           onFireCta={(cta) => fireCta(h.id, cta)}
                           onExpand={() => markHandoffRead(h.id)}
+                          runsSlot={
+                            runs.length > 0 ? (
+                              <div className="flex flex-col gap-2 pt-1">
+                                {runs.map((r) => (
+                                  <AgentActionRun key={r.id} run={r} />
+                                ))}
+                              </div>
+                            ) : null
+                          }
                         />
-                        {runs.length > 0 && (
-                          <div className="flex flex-col gap-2 px-2 pb-3">
-                            {runs.map((r) => (
-                              <AgentActionRun key={r.id} run={r} />
-                            ))}
-                          </div>
-                        )}
                       </div>
                     );
                   })}
