@@ -1,10 +1,12 @@
 "use client";
 
 import {
+  BarChart3,
   ChevronDown,
   ChevronsLeft,
   ChevronsRight,
   Inbox,
+  Pin,
   Plus,
   Sparkles,
 } from "lucide-react";
@@ -49,8 +51,13 @@ export function WorkforcePanel({
    */
   panelStyle?: PanelStyle;
 } = {}) {
-  const { threads, activeThreadId, setActiveThreadId, createThread } =
-    useChatThreads();
+  const {
+    threads,
+    activeThreadId,
+    setActiveThreadId,
+    createThread,
+    setThreadPinned,
+  } = useChatThreads();
   const { agents, getUnreadCountForAgent, unreadHandoffCount } = useAgents();
   const { mode, setMode, view, setView } = useChatMode();
   const [agentsOpen, setAgentsOpen] = useState(false);
@@ -146,6 +153,7 @@ export function WorkforcePanel({
                 askWatiSelected={askWatiSelected}
                 onNewChat={goHome}
                 onOpenThread={openAgentThread}
+                onTogglePinned={(id, pinned) => setThreadPinned(id, pinned)}
               />
             ) : (
               <AgentsTabContent
@@ -514,6 +522,7 @@ function ChatsTabContent({
   askWatiSelected,
   onNewChat,
   onOpenThread,
+  onTogglePinned,
 }: {
   threads: ReturnType<typeof useChatThreads>["threads"];
   activeThreadId: string | null;
@@ -521,8 +530,11 @@ function ChatsTabContent({
   askWatiSelected: boolean;
   onNewChat: () => void;
   onOpenThread: (threadId: string) => void;
+  onTogglePinned: (threadId: string, pinned: boolean) => void;
 }) {
   const chatThreads = threads.filter((t) => !t.agentId);
+  const { pinned, recent, older } = partitionChats(chatThreads);
+  const [showOlder, setShowOlder] = useState(false);
   return (
     <>
       <button
@@ -542,25 +554,158 @@ function ChatsTabContent({
         </span>
       </button>
 
-      {chatThreads.length > 0 && (
-        <div className="flex flex-col gap-1">
-          {chatThreads.map((thread) => (
-            <button
+      {pinned.length > 0 && (
+        <ChatGroup label="Pinned">
+          {pinned.map((thread) => (
+            <ChatRow
               key={thread.id}
-              type="button"
-              onClick={() => onOpenThread(thread.id)}
-              className={`w-full rounded px-2 py-1.5 text-left text-sm transition-colors ${
-                !inboxSelected && activeThreadId === thread.id
-                  ? "bg-[var(--wati-chip-bg)] font-medium text-[var(--wati-text-body)]"
-                  : "text-[var(--wati-text-subtitle)] hover:bg-[var(--wati-surface-subtle)]"
-              }`}
-            >
-              <span className="block truncate">{thread.title}</span>
-            </button>
+              thread={thread}
+              isActive={!inboxSelected && activeThreadId === thread.id}
+              onOpen={() => onOpenThread(thread.id)}
+              onTogglePinned={() => onTogglePinned(thread.id, !thread.pinned)}
+            />
           ))}
-        </div>
+        </ChatGroup>
+      )}
+
+      {recent.length > 0 && (
+        <ChatGroup label="Recent">
+          {recent.map((thread) => (
+            <ChatRow
+              key={thread.id}
+              thread={thread}
+              isActive={!inboxSelected && activeThreadId === thread.id}
+              onOpen={() => onOpenThread(thread.id)}
+              onTogglePinned={() => onTogglePinned(thread.id, !thread.pinned)}
+            />
+          ))}
+          {older.length > 0 && !showOlder && (
+            <button
+              type="button"
+              onClick={() => setShowOlder(true)}
+              className="mt-1 self-start rounded px-2 py-1 text-[12px] font-medium tracking-[-0.06px] text-[var(--wati-text-subtitle)] hover:bg-[var(--wati-surface-subtle)] hover:text-[var(--wati-text-body)]"
+            >
+              Load more
+            </button>
+          )}
+          {showOlder &&
+            older.map((thread) => (
+              <ChatRow
+                key={thread.id}
+                thread={thread}
+                isActive={!inboxSelected && activeThreadId === thread.id}
+                onOpen={() => onOpenThread(thread.id)}
+                onTogglePinned={() =>
+                  onTogglePinned(thread.id, !thread.pinned)
+                }
+              />
+            ))}
+        </ChatGroup>
       )}
     </>
+  );
+}
+
+/** Split non-agent chats into Pinned / Recent (last 30 days) / Older.
+ *  Threads missing `createdAt` (legacy persisted data) fall into Older. */
+function partitionChats(chatThreads: { id: string; title: string; agentId?: string; pinned?: boolean; createdAt?: number }[]) {
+  const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const pinned: typeof chatThreads = [];
+  const recent: typeof chatThreads = [];
+  const older: typeof chatThreads = [];
+  for (const t of chatThreads) {
+    if (t.pinned) pinned.push(t);
+    else if ((t.createdAt ?? 0) >= cutoff) recent.push(t);
+    else older.push(t);
+  }
+  recent.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+  older.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+  return { pinned, recent, older };
+}
+
+function ChatGroup({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <div className="px-2 pt-1 pb-0.5">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.6px] text-[var(--wati-text-caption)]">
+          {label}
+        </p>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function ChatRow({
+  thread,
+  isActive,
+  onOpen,
+  onTogglePinned,
+}: {
+  thread: {
+    id: string;
+    title: string;
+    pinned?: boolean;
+    hasVisuals?: boolean;
+  };
+  isActive: boolean;
+  onOpen: () => void;
+  onTogglePinned: () => void;
+}) {
+  return (
+    <div
+      className={`group relative flex items-center rounded ${
+        isActive
+          ? "bg-[var(--wati-chip-bg)]"
+          : "hover:bg-[var(--wati-surface-subtle)]"
+      }`}
+    >
+      <button
+        type="button"
+        onClick={onOpen}
+        className={`min-w-0 flex-1 px-2 py-1.5 pr-7 text-left text-sm transition-colors ${
+          isActive
+            ? "font-medium text-[var(--wati-text-body)]"
+            : "text-[var(--wati-text-subtitle)]"
+        }`}
+      >
+        <span className="block truncate">{thread.title}</span>
+      </button>
+      {/* Chart glyph — passive signifier that the chat contains a chart
+          or table. Sits in the right slot at rest; the pin button swaps
+          in on hover. Hidden once hover reveals pin. */}
+      {thread.hasVisuals && (
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute right-2 flex items-center justify-center text-black/35 group-hover:opacity-0"
+          title="Includes data"
+        >
+          <BarChart3 size={12} strokeWidth={2} />
+        </span>
+      )}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onTogglePinned();
+        }}
+        aria-label={thread.pinned ? "Unpin chat" : "Pin chat"}
+        title={thread.pinned ? "Unpin chat" : "Pin chat"}
+        className="absolute right-1 flex h-6 w-6 items-center justify-center rounded text-[var(--wati-icon-default)] opacity-0 transition-opacity hover:bg-black/[0.06] group-hover:opacity-100"
+      >
+        {thread.pinned ? (
+          <Pin size={12} strokeWidth={2} className="fill-current" />
+        ) : (
+          <Pin size={12} strokeWidth={1.75} />
+        )}
+      </button>
+    </div>
   );
 }
 

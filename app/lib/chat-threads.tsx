@@ -16,6 +16,15 @@ export type Thread = {
   id: string;
   title: string;
   agentId?: string;
+  /** Epoch ms when the thread was created. Older persisted threads may
+   *  be missing this — treat them as "Older" when grouping. */
+  createdAt?: number;
+  /** Pinned threads surface in a dedicated section above the date groups. */
+  pinned?: boolean;
+  /** True for analytics-style threads whose replies include charts/tables.
+   *  Drives a chart-glyph signifier on the row and routes the thread to
+   *  a mock analytics conversation when opened. */
+  hasVisuals?: boolean;
 };
 
 type ChatThreadsCtx = {
@@ -24,6 +33,7 @@ type ChatThreadsCtx = {
   setActiveThreadId: (id: string | null) => void;
   createThread: (firstMessage: string) => string;
   attachAgentToThread: (threadId: string, agentId: string) => void;
+  setThreadPinned: (threadId: string, pinned: boolean) => void;
   /** True once threads for the current demo mode have hydrated from storage. */
   hydrated: boolean;
 };
@@ -38,6 +48,40 @@ function initialThreadsFor(mode: DemoMode): Thread[] {
   if (mode !== "returning") return [];
   return buildReturningUserSeed().threads;
 }
+
+/**
+ * Stamp `createdAt` on any thread that's missing one. Legacy persisted
+ * chats from before timestamps were tracked all bucket to "Older" without
+ * this — and that defeats the date grouping. We assume the persisted
+ * order is newest-first (matches how `createThread` prepends), so we
+ * spread positions across the last few weeks: position 0 is "now", each
+ * subsequent position falls ~14h further into the past. That seeds a
+ * believable mix of Today / Yesterday / Last 7 days / Last 30 days for
+ * a typical session-length list of chats.
+ */
+function backfillTimestamps(threads: Thread[]): Thread[] {
+  const now = Date.now();
+  const STAGGER_MS = 14 * 60 * 60 * 1000;
+  const stamped = threads.map((t, i) =>
+    t.createdAt ? t : { ...t, createdAt: now - i * STAGGER_MS },
+  );
+  // Ensure one analytics demo thread is present so the chart-glyph
+  // signifier and mock visual conversation are discoverable. Only
+  // inject if none of the existing chats already carry visuals.
+  if (!stamped.some((t) => t.hasVisuals && !t.agentId)) {
+    stamped.unshift({
+      id: ANALYTICS_DEMO_THREAD_ID,
+      title: ANALYTICS_DEMO_THREAD_TITLE,
+      hasVisuals: true,
+      createdAt: now - 2 * 60 * 60 * 1000,
+    });
+  }
+  return stamped;
+}
+
+export const ANALYTICS_DEMO_THREAD_ID = "analytics-demo-thread";
+export const ANALYTICS_DEMO_THREAD_TITLE =
+  "What is our inbox performance this month";
 
 const ChatThreadsContext = createContext<ChatThreadsCtx | null>(null);
 
@@ -75,7 +119,7 @@ export function ChatThreadsProvider({ children }: { children: ReactNode }) {
     } catch {
       // ignore
     }
-    setThreads(next ?? initialThreadsFor(mode));
+    setThreads(backfillTimestamps(next ?? initialThreadsFor(mode)));
     setActiveThreadId(null);
     setHydratedForMode(mode);
   }, [mode, demoHydrated]);
@@ -98,7 +142,10 @@ export function ChatThreadsProvider({ children }: { children: ReactNode }) {
       firstMessage.length > 30
         ? firstMessage.slice(0, 29) + "…"
         : firstMessage;
-    setThreads((prev) => [{ id, title }, ...prev]);
+    setThreads((prev) => [
+      { id, title, createdAt: Date.now(), pinned: false },
+      ...prev,
+    ]);
     setActiveThreadId(id);
     return id;
   }, []);
@@ -107,6 +154,15 @@ export function ChatThreadsProvider({ children }: { children: ReactNode }) {
     (threadId: string, agentId: string) => {
       setThreads((prev) =>
         prev.map((t) => (t.id === threadId ? { ...t, agentId } : t)),
+      );
+    },
+    [],
+  );
+
+  const setThreadPinned = useCallback(
+    (threadId: string, pinned: boolean) => {
+      setThreads((prev) =>
+        prev.map((t) => (t.id === threadId ? { ...t, pinned } : t)),
       );
     },
     [],
@@ -121,9 +177,17 @@ export function ChatThreadsProvider({ children }: { children: ReactNode }) {
       setActiveThreadId,
       createThread,
       attachAgentToThread,
+      setThreadPinned,
       hydrated,
     }),
-    [threads, activeThreadId, createThread, attachAgentToThread, hydrated],
+    [
+      threads,
+      activeThreadId,
+      createThread,
+      attachAgentToThread,
+      setThreadPinned,
+      hydrated,
+    ],
   );
 
   return (

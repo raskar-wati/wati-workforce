@@ -18,6 +18,7 @@ import {
 } from "../lib/onboarding-script";
 import { getWatcherType } from "../lib/watcher-types";
 import { AgentActionRun } from "./agents/AgentActionRun";
+import { AnalyticsMockConversation } from "./analytics/AnalyticsMockConversation";
 import { AgentCreationFlow } from "./agents/AgentCreationFlow";
 import { AgentSummaryCard } from "./agents/AgentSummaryCard";
 import { DailyDigestEntry } from "./agents/DailyDigestEntry";
@@ -180,8 +181,12 @@ export function ChatArea({
     : null;
   const isDailyDigestThread =
     activeThread?.title === DAILY_DIGEST_THREAD_TITLE;
+  const isAnalyticsThread = Boolean(activeThread?.hasVisuals);
   const hasContent =
-    hasMessages || agentForThread !== null || isDailyDigestThread;
+    hasMessages ||
+    agentForThread !== null ||
+    isDailyDigestThread ||
+    isAnalyticsThread;
 
   const fireCta = (handoffId: string, cta: HandoffCta) => {
     if (!agentForThread) return;
@@ -824,6 +829,9 @@ export function ChatArea({
             className="flex flex-1 flex-col overflow-y-auto pt-12 pb-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             <div className="flex flex-col gap-4">
+              {isAnalyticsThread && !hasMessages && (
+                <AnalyticsMockConversation />
+              )}
               {isDailyDigestThread && (
                 <>
                   <DailyDigestSummaryCard
