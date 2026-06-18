@@ -47,6 +47,8 @@ export type Agent = {
   archetype: "watcher";
   watcherType: WatcherTypeId;
   description?: string;
+  /** Editable system prompt shown under "View Instructions". */
+  instructions?: string;
   schedule: AgentSchedule;
   actions: AchievementId[];
   /**
@@ -151,6 +153,9 @@ export type HandoffWithAgent = Handoff & { agent: Agent };
 type AgentsCtx = AgentsState & {
   createAgent: (draft: AgentDraft) => Agent;
   setAgentStatus: (id: string, status: AgentStatus) => void;
+  renameAgent: (id: string, name: string) => void;
+  updateAgentInstructions: (id: string, instructions: string) => void;
+  deleteAgent: (id: string) => void;
   addHandoff: (agentId: string, draft: HandoffDraft) => Handoff;
   startActionRun: (draft: ActionRunDraft) => AgentActionRun;
   completeActionRun: (runId: string) => void;
@@ -278,6 +283,42 @@ export function AgentsProvider({ children }: { children: ReactNode }) {
       ...prev,
       agents: prev.agents.map((a) => (a.id === id ? { ...a, status } : a)),
     }));
+  }, []);
+
+  const renameAgent = useCallback((id: string, name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    setState((prev) => ({
+      ...prev,
+      agents: prev.agents.map((a) =>
+        a.id === id ? { ...a, name: trimmed } : a,
+      ),
+    }));
+  }, []);
+
+  const updateAgentInstructions = useCallback(
+    (id: string, instructions: string) => {
+      setState((prev) => ({
+        ...prev,
+        agents: prev.agents.map((a) =>
+          a.id === id ? { ...a, instructions } : a,
+        ),
+      }));
+    },
+    [],
+  );
+
+  const deleteAgent = useCallback((id: string) => {
+    setState((prev) => {
+      const { [id]: _gone, ...remainingHandoffs } = prev.handoffsByAgent;
+      const { [id]: _gone2, ...remainingRuns } = prev.actionRunsByAgent;
+      return {
+        ...prev,
+        agents: prev.agents.filter((a) => a.id !== id),
+        handoffsByAgent: remainingHandoffs,
+        actionRunsByAgent: remainingRuns,
+      };
+    });
   }, []);
 
   const addHandoff = useCallback(
@@ -448,6 +489,9 @@ export function AgentsProvider({ children }: { children: ReactNode }) {
       readHandoffIds: state.readHandoffIds,
       createAgent,
       setAgentStatus,
+      renameAgent,
+      updateAgentInstructions,
+      deleteAgent,
       addHandoff,
       startActionRun,
       completeActionRun,
@@ -473,6 +517,9 @@ export function AgentsProvider({ children }: { children: ReactNode }) {
     state,
     createAgent,
     setAgentStatus,
+    renameAgent,
+    updateAgentInstructions,
+    deleteAgent,
     addHandoff,
     startActionRun,
     completeActionRun,

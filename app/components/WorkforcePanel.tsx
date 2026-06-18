@@ -16,6 +16,7 @@ import { useAgents } from "../lib/agents";
 import { useChatMode } from "../lib/chat-mode";
 import { useChatThreads } from "../lib/chat-threads";
 import { DAILY_DIGEST_THREAD_TITLE } from "../lib/daily-digest-data";
+import { useDailyDigestMeta } from "../lib/daily-digest-meta";
 import { getPixabot } from "../lib/pixabots";
 import { DemoStateToggleChip } from "./DemoStateToggleChip";
 import { TenantToggleChip } from "./TenantToggleChip";
@@ -758,6 +759,7 @@ function AgentsTabContent({
   dailyDigestThreadId: string | null;
   onOpenDailyDigest: () => void;
 }) {
+  const { deleted: digestDeleted, name: digestName } = useDailyDigestMeta();
   const digestActive =
     !inboxSelected &&
     dailyDigestThreadId !== null &&
@@ -784,26 +786,31 @@ function AgentsTabContent({
 
       <div className="flex flex-col gap-0.5">
         {/* Pinned, system-owned Daily Digest entry. Same visual treatment
-            as a normal agent row so it reads as one of them. */}
-        <button
-          type="button"
-          onClick={onOpenDailyDigest}
-          className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left transition-colors ${
-            digestActive
-              ? "bg-[var(--wati-chip-bg)]"
-              : "hover:bg-[var(--wati-surface-subtle)]"
-          }`}
-        >
-          <Image
-            src={digestAvatar}
-            alt=""
-            width={18}
-            height={18}
-            className="shrink-0 rounded-full"
-            aria-hidden
-          />
-          <p className="flex-1 truncate text-sm text-[#101828]">Daily Digest</p>
-        </button>
+            as a normal agent row so it reads as one of them. Hidden when
+            the user has deleted the digest. */}
+        {!digestDeleted && (
+          <button
+            type="button"
+            onClick={onOpenDailyDigest}
+            className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left transition-colors ${
+              digestActive
+                ? "bg-[var(--wati-chip-bg)]"
+                : "hover:bg-[var(--wati-surface-subtle)]"
+            }`}
+          >
+            <Image
+              src={digestAvatar}
+              alt=""
+              width={18}
+              height={18}
+              className="shrink-0 rounded-full"
+              aria-hidden
+            />
+            <p className="flex-1 truncate text-sm text-[#101828]">
+              {digestName}
+            </p>
+          </button>
+        )}
 
         {agents.map((a) => {
           const unread = getUnreadCountForAgent(a.id);

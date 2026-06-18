@@ -3,6 +3,7 @@
 import { AgentsProvider } from "../lib/agents";
 import { ChatModeProvider, type ChatMode } from "../lib/chat-mode";
 import { ChatThreadsProvider } from "../lib/chat-threads";
+import { DailyDigestMetaProvider } from "../lib/daily-digest-meta";
 import { DemoStateProvider } from "../lib/demo-state";
 import { TenantProfileProvider } from "../lib/tenant-signal-profile";
 import { MainContent } from "./MainContent";
@@ -37,7 +38,8 @@ export function WorkforceMain({
         <ChatModeProvider defaultMode={defaultMode}>
           <ChatThreadsProvider>
             <AgentsProvider>
-              <WorkforcePanel
+              <DailyDigestMetaProvider>
+                <WorkforcePanel
                 hideHandoffs={hideHandoffs}
                 defaultCollapsed={panelDefaultCollapsed}
                 hideDevTools={hideDevTools}
@@ -57,6 +59,7 @@ export function WorkforceMain({
                     : undefined
                 }
               />
+              </DailyDigestMetaProvider>
             </AgentsProvider>
           </ChatThreadsProvider>
         </ChatModeProvider>

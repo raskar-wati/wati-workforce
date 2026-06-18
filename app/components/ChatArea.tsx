@@ -20,9 +20,14 @@ import { getWatcherType } from "../lib/watcher-types";
 import { AgentActionRun } from "./agents/AgentActionRun";
 import { AnalyticsMockConversation } from "./analytics/AnalyticsMockConversation";
 import { AgentCreationFlow } from "./agents/AgentCreationFlow";
-import { AgentSummaryCard } from "./agents/AgentSummaryCard";
+import {
+  AgentSummaryCard,
+  getDefaultInstructions,
+} from "./agents/AgentSummaryCard";
 import { DailyDigestEntry } from "./agents/DailyDigestEntry";
 import { DailyDigestSummaryCard } from "./agents/DailyDigestSummaryCard";
+import { InstructionsPanel } from "./agents/InstructionsPanel";
+import { useDailyDigestMeta } from "../lib/daily-digest-meta";
 import { Handoff } from "./agents/Handoff";
 import { TenantAgentSuggestions } from "./agents/TenantAgentSuggestions";
 import {
@@ -137,6 +142,10 @@ export function ChatArea({
     addHandoff,
     getActionRuns,
     markHandoffRead,
+    renameAgent,
+    updateAgentInstructions,
+    deleteAgent,
+    setAgentStatus,
   } = useAgents();
   const fireHandoffCta = useFireHandoffCta();
   const { profile: tenantProfile } = useTenantProfile();
@@ -225,10 +234,15 @@ export function ChatArea({
   // by default; user toggles to show all. Resets on thread change so each
   // agent's collapse state is independent.
   const [showAllRuns, setShowAllRuns] = useState(false);
+  const [showDigestInstructions, setShowDigestInstructions] = useState(false);
+  const [confirmingDigestDelete, setConfirmingDigestDelete] = useState(false);
+  const digestMeta = useDailyDigestMeta();
 
   useEffect(() => {
     setInput("");
     setShowAllRuns(false);
+    setShowDigestInstructions(false);
+    setConfirmingDigestDelete(false);
     // Mode is lifted to ChatModeProvider and managed by whoever sets it
     // (slash menu, pill row, sidebar New Agent button). Don't clobber it
     // here on thread change — that would race with sidebar-driven setMode.
@@ -832,11 +846,36 @@ export function ChatArea({
               {isAnalyticsThread && !hasMessages && (
                 <AnalyticsMockConversation />
               )}
-              {isDailyDigestThread && (
+              {isDailyDigestThread && digestMeta.deleted && (
+                <DeletedDigestPlaceholder onRestore={digestMeta.restoreDigest} />
+              )}
+              {isDailyDigestThread && !digestMeta.deleted && (
                 <>
                   <DailyDigestSummaryCard
                     avatarPath={getPixabot("daily-digest")}
+                    showInstructions={showDigestInstructions}
+                    onToggleInstructions={() =>
+                      setShowDigestInstructions((v) => !v)
+                    }
+                    onDeleteRequest={() => setConfirmingDigestDelete(true)}
                   />
+                  {showDigestInstructions && (
+                    <InstructionsPanel
+                      instructions={digestMeta.instructions}
+                      onSave={(next) => digestMeta.setInstructions(next)}
+                      onClose={() => setShowDigestInstructions(false)}
+                    />
+                  )}
+                  {confirmingDigestDelete && (
+                    <DeleteAgentConfirm
+                      name={digestMeta.name}
+                      onCancel={() => setConfirmingDigestDelete(false)}
+                      onConfirm={() => {
+                        setConfirmingDigestDelete(false);
+                        digestMeta.deleteDigest();
+                      }}
+                    />
+                  )}
                   <div className="flex flex-col">
                     {(showAllRuns
                       ? DAILY_DIGEST_ENTRIES
@@ -867,26 +906,70 @@ export function ChatArea({
                 </>
               )}
               {agentForThread && (
-                <AgentSummaryCard
-                  data={{
-                    avatarPath: agentForThread.avatarSeed,
-                    name: agentForThread.name,
-                    watcherType: agentForThread.watcherType,
-                    schedule: agentForThread.schedule,
-                    description: agentForThread.description,
-                    status: agentForThread.status,
-                  }}
-                  actions={
-                    <button
-                      type="button"
-                      onClick={runAgentAgain}
-                      className="flex items-center gap-1.5 rounded-full bg-[#0a0a0a] px-3 py-1.5 text-[13px] tracking-[-0.078px] text-white hover:bg-[#0a0a0a]/90"
-                    >
-                      <Play size={12} strokeWidth={2} />
-                      Run now
-                    </button>
-                  }
-                />
+                <>
+                  <AgentSummaryCard
+                    agentId={agentForThread.id}
+                    data={{
+                      avatarPath: agentForThread.avatarSeed,
+                      name: agentForThread.name,
+                      watcherType: agentForThread.watcherType,
+                      schedule: agentForThread.schedule,
+                      description: agentForThread.description,
+                      status: agentForThread.status,
+                    }}
+                    showInstructions={showDigestInstructions}
+                    onToggleInstructions={() =>
+                      setShowDigestInstructions((v) => !v)
+                    }
+                    onRename={(next) =>
+                      renameAgent(agentForThread.id, next)
+                    }
+                    onToggleStatus={() =>
+                      setAgentStatus(
+                        agentForThread.id,
+                        agentForThread.status === "active"
+                          ? "paused"
+                          : "active",
+                      )
+                    }
+                    onDeleteRequest={() =>
+                      setConfirmingDigestDelete(true)
+                    }
+                    actions={
+                      <button
+                        type="button"
+                        onClick={runAgentAgain}
+                        className="flex items-center gap-1.5 rounded-full bg-[#0a0a0a] px-3 py-1.5 text-[13px] tracking-[-0.078px] text-white hover:bg-[#0a0a0a]/90"
+                      >
+                        <Play size={12} strokeWidth={2} />
+                        Run now
+                      </button>
+                    }
+                  />
+                  {showDigestInstructions && (
+                    <InstructionsPanel
+                      instructions={
+                        agentForThread.instructions ??
+                        getDefaultInstructions(agentForThread)
+                      }
+                      onSave={(next) =>
+                        updateAgentInstructions(agentForThread.id, next)
+                      }
+                      onClose={() => setShowDigestInstructions(false)}
+                    />
+                  )}
+                  {confirmingDigestDelete && (
+                    <DeleteAgentConfirm
+                      name={agentForThread.name}
+                      onCancel={() => setConfirmingDigestDelete(false)}
+                      onConfirm={() => {
+                        setConfirmingDigestDelete(false);
+                        deleteAgent(agentForThread.id);
+                        setActiveThreadId(null);
+                      }}
+                    />
+                  )}
+                </>
               )}
 
               {messages.map((m) => {
@@ -1091,11 +1174,72 @@ export function ChatArea({
       {/* Daily Digest — home screen only. Lives inside the centered wrapper
           so the whole cluster (hero + composer + pills + digest) reads as
           one vertically-centered group. */}
-      {isHomeScreen && !hideDailyDigest && (
+      {isHomeScreen && !hideDailyDigest && !digestMeta.deleted && (
         <div className="pt-6" data-daily-digest>
           <DailyDigest onSelectPointer={handleDigestPointer} />
         </div>
       )}
+      </div>
+    </div>
+  );
+}
+
+function DeletedDigestPlaceholder({ onRestore }: { onRestore: () => void }) {
+  return (
+    <div className="flex flex-col items-start gap-3 rounded-2xl border border-[#e5e5e5] bg-white p-4">
+      <div>
+        <p className="text-[14px] font-medium text-[#0a0a0a]">
+          Daily Digest deleted
+        </p>
+        <p className="text-[12px] text-black/55">
+          You won&apos;t receive a digest until it&apos;s restored.
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={onRestore}
+        className="rounded-full border border-[#e5e5e5] bg-white px-3 py-1.5 text-[13px] tracking-[-0.078px] text-[#0a0a0a] hover:bg-black/[0.04]"
+      >
+        Restore agent
+      </button>
+    </div>
+  );
+}
+
+function DeleteAgentConfirm({
+  name,
+  onConfirm,
+  onCancel,
+}: {
+  name: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-3 rounded-2xl border border-red-200 bg-red-50/60 p-4">
+      <div>
+        <p className="text-[13px] font-medium text-[#0a0a0a]">
+          Delete {name}?
+        </p>
+        <p className="text-[12px] text-black/60">
+          The agent and its history will be removed. This can&apos;t be undone.
+        </p>
+      </div>
+      <div className="flex items-center justify-end gap-2">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-full px-3 py-1.5 text-[13px] tracking-[-0.078px] text-black/70 hover:bg-black/[0.04]"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={onConfirm}
+          className="rounded-full bg-red-600 px-3 py-1.5 text-[13px] tracking-[-0.078px] text-white hover:bg-red-700"
+        >
+          Delete
+        </button>
       </div>
     </div>
   );
