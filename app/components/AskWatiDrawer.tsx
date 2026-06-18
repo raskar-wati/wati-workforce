@@ -34,7 +34,7 @@ export function AskWatiDrawer() {
     <aside
       role="region"
       aria-label="Ask Wati"
-      className="absolute right-1 top-0 bottom-0 z-40 flex flex-col overflow-hidden rounded-tl-xl rounded-tr-xl border border-[var(--wati-border-default)] bg-white shadow-[0_12px_32px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.06)] transition-[width] duration-200 ease-out"
+      className="absolute right-1 top-0 bottom-0 z-40 flex flex-col overflow-hidden rounded-tl-xl rounded-tr-xl border border-[var(--wati-border-default)] bg-white shadow-[0_12px_32px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.06)]"
       style={{ width: drawerWidth }}
     >
       <div className="absolute right-2 top-2 z-10 flex items-center gap-1">

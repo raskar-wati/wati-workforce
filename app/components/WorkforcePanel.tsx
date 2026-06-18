@@ -122,53 +122,38 @@ export function WorkforcePanel({
 
   // ─── Drawer variant ────────────────────────────────────────────────
   if (panelStyle === "drawer") {
+    if (collapsed) {
+      // The "WorkForce" header + expand control lives in MainContent
+      // (right pane) when the drawer is in chrome="drawer" mode, so when
+      // the left nav is hidden we just render nothing here.
+      return null;
+    }
     return (
-      <div className="relative flex h-full shrink-0">
-        <DrawerIconColumn
-          collapsed={collapsed}
-          activeTab={drawerTab}
-          onToggleCollapsed={() => setCollapsed((c) => !c)}
-          onPickChats={() => {
-            setCollapsed(false);
-            setDrawerTab("chats");
-          }}
-          onPickAgents={() => {
-            setCollapsed(false);
-            setDrawerTab("agents");
-          }}
-        />
-        {!collapsed && (
-          <div className="flex h-full w-[232px] shrink-0 flex-col gap-4 overflow-y-auto border-r border-[var(--wati-border-default)] bg-white p-3">
-            <div className="flex items-center justify-between px-1">
-              <p className="text-sm font-semibold text-[var(--wati-text-body)]">
-                WorkForce
-              </p>
-            </div>
+      <div className="flex h-full w-[232px] shrink-0 flex-col gap-3 overflow-y-auto border-r border-[var(--wati-border-default)] bg-white p-3">
+        <DrawerTabs activeTab={drawerTab} onChange={setDrawerTab} />
 
-            {drawerTab === "chats" ? (
-              <ChatsTabContent
-                threads={threads}
-                activeThreadId={activeThreadId}
-                inboxSelected={inboxSelected}
-                askWatiSelected={askWatiSelected}
-                onNewChat={goHome}
-                onOpenThread={openAgentThread}
-                onTogglePinned={(id, pinned) => setThreadPinned(id, pinned)}
-              />
-            ) : (
-              <AgentsTabContent
-                agents={agents}
-                activeThreadId={activeThreadId}
-                inboxSelected={inboxSelected}
-                newAgentSelected={newAgentSelected}
-                getUnreadCountForAgent={getUnreadCountForAgent}
-                onNewAgent={startNewAgent}
-                onOpenAgentThread={openAgentThread}
-                dailyDigestThreadId={dailyDigestThreadId}
-                onOpenDailyDigest={openDailyDigest}
-              />
-            )}
-          </div>
+        {drawerTab === "chats" ? (
+          <ChatsTabContent
+            threads={threads}
+            activeThreadId={activeThreadId}
+            inboxSelected={inboxSelected}
+            askWatiSelected={askWatiSelected}
+            onNewChat={goHome}
+            onOpenThread={openAgentThread}
+            onTogglePinned={(id, pinned) => setThreadPinned(id, pinned)}
+          />
+        ) : (
+          <AgentsTabContent
+            agents={agents}
+            activeThreadId={activeThreadId}
+            inboxSelected={inboxSelected}
+            newAgentSelected={newAgentSelected}
+            getUnreadCountForAgent={getUnreadCountForAgent}
+            onNewAgent={startNewAgent}
+            onOpenAgentThread={openAgentThread}
+            dailyDigestThreadId={dailyDigestThreadId}
+            onOpenDailyDigest={openDailyDigest}
+          />
         )}
       </div>
     );
@@ -449,6 +434,48 @@ export function WorkforcePanel({
 
 // ─── Drawer sub-components ───────────────────────────────────────────
 
+function DrawerTabs({
+  activeTab,
+  onChange,
+}: {
+  activeTab: "chats" | "agents";
+  onChange: (tab: "chats" | "agents") => void;
+}) {
+  const TABS: { id: "chats" | "agents"; label: string }[] = [
+    { id: "chats", label: "Chats" },
+    { id: "agents", label: "Agents" },
+  ];
+  return (
+    <div
+      role="tablist"
+      aria-label="Ask Wati navigation"
+      className="inline-flex self-start rounded-lg bg-[var(--wati-surface-subtle)] p-0.5"
+    >
+      {TABS.map((tab) => {
+        const active = activeTab === tab.id;
+        return (
+          <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(tab.id)}
+            className={`rounded-md px-3 py-1 text-[13px] font-medium tracking-[-0.078px] transition-colors ${
+              active
+                ? "bg-white text-[#0a0a0a] shadow-[0_1px_2px_rgba(0,0,0,0.06)]"
+                : "text-black/55 hover:text-black/80"
+            }`}
+          >
+            {tab.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// Legacy icon column kept available for non-drawer panel variants if any
+// caller revives them; the drawer variant no longer uses it.
 function DrawerIconColumn({
   collapsed,
   activeTab,

@@ -45,7 +45,18 @@ export function WorkforceMain({
                 collapsed={panelCollapsed}
                 onCollapsedChange={onPanelCollapsedChange}
               />
-              <MainContent hideDailyDigest={hideDailyDigest} chrome={chrome} />
+              <MainContent
+                hideDailyDigest={hideDailyDigest}
+                chrome={chrome}
+                panelCollapsed={
+                  chrome === "drawer" ? panelCollapsed : undefined
+                }
+                onTogglePanel={
+                  chrome === "drawer"
+                    ? () => onPanelCollapsedChange?.(!panelCollapsed)
+                    : undefined
+                }
+              />
             </AgentsProvider>
           </ChatThreadsProvider>
         </ChatModeProvider>
