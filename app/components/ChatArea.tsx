@@ -24,6 +24,7 @@ import {
   AgentSummaryCard,
   getDefaultInstructions,
 } from "./agents/AgentSummaryCard";
+import { AgentEmptyRunsState } from "./agents/AgentEmptyRunsState";
 import { DailyDigestEntry } from "./agents/DailyDigestEntry";
 import { DailyDigestSummaryCard } from "./agents/DailyDigestSummaryCard";
 import {
@@ -1024,6 +1025,10 @@ export function ChatArea({
                   </motion.div>
                 );
               })}
+
+              {agentForThread && handoffs.length === 0 && (
+                <AgentEmptyRunsState />
+              )}
 
               {agentForThread && handoffs.length > 0 && (
                 <div className="flex flex-col">
