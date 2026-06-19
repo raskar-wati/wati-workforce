@@ -13,6 +13,20 @@ const SECTION_TONE: Record<HandoffSectionKind, string> = {
   summary: "text-black/50",
 };
 
+/**
+ * Join the labels of a "did" / "what I scanned" section into one paragraph.
+ * Strips trailing punctuation on each line and rejoins with ". " so the
+ * block reads as a single sentence regardless of how the source data was
+ * authored.
+ */
+function joinScanLines(lines: string[]): string {
+  return lines
+    .map((s) => s.trim().replace(/[.;,]+$/, ""))
+    .filter(Boolean)
+    .join(". ")
+    .concat(".");
+}
+
 export function HandoffSection({
   section,
   firedCtaIds,
@@ -29,16 +43,24 @@ export function HandoffSection({
       >
         {section.title}
       </p>
-      <div className="flex flex-col gap-1.5">
-        {section.items.map((i) => (
-          <HandoffItem
-            key={i.id}
-            item={i}
-            firedCtaIds={firedCtaIds}
-            onFireCta={onFireCta}
-          />
-        ))}
-      </div>
+      {section.kind === "did" ? (
+        <div className="rounded-lg bg-black/[0.03] px-3 py-2.5">
+          <p className="text-[13px] leading-[20px] tracking-[-0.078px] text-[#0a0a0a]">
+            {joinScanLines(section.items.map((i) => i.label))}
+          </p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-1.5">
+          {section.items.map((i) => (
+            <HandoffItem
+              key={i.id}
+              item={i}
+              firedCtaIds={firedCtaIds}
+              onFireCta={onFireCta}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

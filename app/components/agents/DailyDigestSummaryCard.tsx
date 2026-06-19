@@ -72,7 +72,7 @@ export function DailyDigestSummaryCard({
           aria-pressed={showInstructions}
           className="rounded-full border border-[#0a0a0a] bg-white px-3 py-1.5 text-[13px] tracking-[-0.078px] text-[#0a0a0a] hover:bg-black/[0.04]"
         >
-          View Instructions
+          Edit Agent
         </button>
       </div>
     </div>

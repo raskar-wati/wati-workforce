@@ -12,25 +12,12 @@ export function GlobalHeader() {
       <WatiLogo />
 
       <div className="flex h-full items-center gap-2 pr-3">
-        <span className="text-sm font-semibold text-[var(--wati-text-subtitle)]">
-          Quick start
-        </span>
-
-        <div className="h-4 w-px bg-[var(--wati-divider-light)]" />
-
         <button
           type="button"
           onClick={toggle}
           className="inline-flex items-center rounded-full bg-[#262626] px-3 py-1 text-xs font-semibold text-white transition-colors hover:bg-[#0a0a0a]"
         >
           Ask Wati
-        </button>
-
-        <button
-          type="button"
-          className="rounded-full border border-[var(--wati-text-primary)] px-3 py-1 text-xs font-semibold text-[var(--wati-text-primary)]"
-        >
-          Book a Demo
         </button>
 
         <div className="flex h-full items-center pl-1">
