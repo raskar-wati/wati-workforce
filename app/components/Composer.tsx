@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { ArrowUp, Check, ChevronDown, Plus, X } from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import type { ChatMode } from "../lib/chat-mode";
+import { LLM_OPTIONS, type LLMOption } from "../lib/llm-models";
 
 export type ModeOption = {
   id: ChatMode;
@@ -41,22 +42,6 @@ const HERO_PLACEHOLDERS = [
 ];
 
 const CONVERSATION_PLACEHOLDER = "Write a message";
-
-type LLMOption = {
-  id: string;
-  name: string;
-  provider: string;
-};
-
-const LLM_OPTIONS: LLMOption[] = [
-  { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash", provider: "Google" },
-  { id: "gemini-2.0-pro", name: "Gemini 2.0 Pro", provider: "Google" },
-  { id: "gpt-4o", name: "GPT-4o", provider: "OpenAI" },
-  { id: "gpt-4o-mini", name: "GPT-4o mini", provider: "OpenAI" },
-  { id: "claude-sonnet-4", name: "Claude Sonnet 4", provider: "Anthropic" },
-  { id: "claude-haiku-4", name: "Claude Haiku 4", provider: "Anthropic" },
-  { id: "llama-3.3-70b", name: "Llama 3.3 70B", provider: "Meta" },
-];
 
 export const COMPOSER_TRANSITION = {
   type: "spring" as const,

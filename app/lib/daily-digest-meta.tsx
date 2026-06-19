@@ -12,11 +12,21 @@ import {
 
 export type DailyDigestStatus = "active" | "paused";
 
+export type DailyDigestSchedulePreset =
+  | "daily"
+  | "weekly"
+  | "every-other-day";
+
 export type DailyDigestMeta = {
   name: string;
+  description: string;
+  avatarSeed: string;
   instructions: string;
+  schedulePreset: DailyDigestSchedulePreset;
+  scheduleTime: string;
+  model: string;
   status: DailyDigestStatus;
-  /** Soft-deleted flag — when true, hide the Daily Digest thread + card. */
+  /** Soft-archived — when true, hide the Daily Digest thread + card. */
   deleted: boolean;
 };
 
@@ -34,7 +44,12 @@ Keep the tone factual and tight; lead with numbers, never with adjectives.`;
 
 const DEFAULT_META: DailyDigestMeta = {
   name: "Daily Digest",
+  description: "Yesterday in numbers",
+  avatarSeed: "daily-digest",
   instructions: DEFAULT_INSTRUCTIONS,
+  schedulePreset: "daily",
+  scheduleTime: "08:00",
+  model: "gemini-2.5-flash",
   status: "active",
   deleted: false,
 };
@@ -45,6 +60,7 @@ type Ctx = DailyDigestMeta & {
   setName: (name: string) => void;
   setInstructions: (instructions: string) => void;
   setStatus: (status: DailyDigestStatus) => void;
+  updateMeta: (patch: Partial<DailyDigestMeta>) => void;
   deleteDigest: () => void;
   restoreDigest: () => void;
   resetInstructions: () => void;
@@ -99,6 +115,10 @@ export function DailyDigestMetaProvider({ children }: { children: ReactNode }) {
     setMeta((m) => ({ ...m, status }));
   }, []);
 
+  const updateMeta = useCallback((patch: Partial<DailyDigestMeta>) => {
+    setMeta((m) => ({ ...m, ...patch }));
+  }, []);
+
   const deleteDigest = useCallback(() => {
     setMeta((m) => ({ ...m, deleted: true }));
   }, []);
@@ -117,6 +137,7 @@ export function DailyDigestMetaProvider({ children }: { children: ReactNode }) {
       setName,
       setInstructions,
       setStatus,
+      updateMeta,
       deleteDigest,
       restoreDigest,
       resetInstructions,
@@ -126,6 +147,7 @@ export function DailyDigestMetaProvider({ children }: { children: ReactNode }) {
       setName,
       setInstructions,
       setStatus,
+      updateMeta,
       deleteDigest,
       restoreDigest,
       resetInstructions,

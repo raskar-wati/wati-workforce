@@ -59,7 +59,12 @@ export function WorkforcePanel({
     createThread,
     setThreadPinned,
   } = useChatThreads();
-  const { agents, getUnreadCountForAgent, unreadHandoffCount } = useAgents();
+  const {
+    agents: allAgents,
+    getUnreadCountForAgent,
+    unreadHandoffCount,
+  } = useAgents();
+  const agents = allAgents.filter((a) => !a.archived);
   const { mode, setMode, view, setView } = useChatMode();
   const [agentsOpen, setAgentsOpen] = useState(false);
   const [collapsedInternal, setCollapsedInternal] = useState(defaultCollapsed);

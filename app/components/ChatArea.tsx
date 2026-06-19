@@ -26,7 +26,11 @@ import {
 } from "./agents/AgentSummaryCard";
 import { DailyDigestEntry } from "./agents/DailyDigestEntry";
 import { DailyDigestSummaryCard } from "./agents/DailyDigestSummaryCard";
-import { InstructionsPanel } from "./agents/InstructionsPanel";
+import {
+  EditAgentDialog,
+  type EditAgentValues,
+  type SchedulePreset,
+} from "./agents/EditAgentDialog";
 import { useDailyDigestMeta } from "../lib/daily-digest-meta";
 import { Handoff } from "./agents/Handoff";
 import { TenantAgentSuggestions } from "./agents/TenantAgentSuggestions";
@@ -142,9 +146,8 @@ export function ChatArea({
     addHandoff,
     getActionRuns,
     markHandoffRead,
-    renameAgent,
-    updateAgentInstructions,
-    deleteAgent,
+    updateAgent,
+    archiveAgent,
     setAgentStatus,
   } = useAgents();
   const fireHandoffCta = useFireHandoffCta();
@@ -234,15 +237,13 @@ export function ChatArea({
   // by default; user toggles to show all. Resets on thread change so each
   // agent's collapse state is independent.
   const [showAllRuns, setShowAllRuns] = useState(false);
-  const [showDigestInstructions, setShowDigestInstructions] = useState(false);
-  const [confirmingDigestDelete, setConfirmingDigestDelete] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const digestMeta = useDailyDigestMeta();
 
   useEffect(() => {
     setInput("");
     setShowAllRuns(false);
-    setShowDigestInstructions(false);
-    setConfirmingDigestDelete(false);
+    setEditDialogOpen(false);
     // Mode is lifted to ChatModeProvider and managed by whoever sets it
     // (slash menu, pill row, sidebar New Agent button). Don't clobber it
     // here on thread change — that would race with sidebar-driven setMode.
@@ -852,30 +853,10 @@ export function ChatArea({
               {isDailyDigestThread && !digestMeta.deleted && (
                 <>
                   <DailyDigestSummaryCard
-                    avatarPath={getPixabot("daily-digest")}
-                    showInstructions={showDigestInstructions}
-                    onToggleInstructions={() =>
-                      setShowDigestInstructions((v) => !v)
-                    }
-                    onDeleteRequest={() => setConfirmingDigestDelete(true)}
+                    avatarPath={getPixabot(digestMeta.avatarSeed)}
+                    showInstructions={editDialogOpen}
+                    onToggleInstructions={() => setEditDialogOpen(true)}
                   />
-                  {showDigestInstructions && (
-                    <InstructionsPanel
-                      instructions={digestMeta.instructions}
-                      onSave={(next) => digestMeta.setInstructions(next)}
-                      onClose={() => setShowDigestInstructions(false)}
-                    />
-                  )}
-                  {confirmingDigestDelete && (
-                    <DeleteAgentConfirm
-                      name={digestMeta.name}
-                      onCancel={() => setConfirmingDigestDelete(false)}
-                      onConfirm={() => {
-                        setConfirmingDigestDelete(false);
-                        digestMeta.deleteDigest();
-                      }}
-                    />
-                  )}
                   <div className="flex flex-col">
                     {(showAllRuns
                       ? DAILY_DIGEST_ENTRIES
@@ -906,70 +887,36 @@ export function ChatArea({
                 </>
               )}
               {agentForThread && (
-                <>
-                  <AgentSummaryCard
-                    agentId={agentForThread.id}
-                    data={{
-                      avatarPath: agentForThread.avatarSeed,
-                      name: agentForThread.name,
-                      watcherType: agentForThread.watcherType,
-                      schedule: agentForThread.schedule,
-                      description: agentForThread.description,
-                      status: agentForThread.status,
-                    }}
-                    showInstructions={showDigestInstructions}
-                    onToggleInstructions={() =>
-                      setShowDigestInstructions((v) => !v)
-                    }
-                    onRename={(next) =>
-                      renameAgent(agentForThread.id, next)
-                    }
-                    onToggleStatus={() =>
-                      setAgentStatus(
-                        agentForThread.id,
-                        agentForThread.status === "active"
-                          ? "paused"
-                          : "active",
-                      )
-                    }
-                    onDeleteRequest={() =>
-                      setConfirmingDigestDelete(true)
-                    }
-                    actions={
-                      <button
-                        type="button"
-                        onClick={runAgentAgain}
-                        className="flex items-center gap-1.5 rounded-full bg-[#0a0a0a] px-3 py-1.5 text-[13px] tracking-[-0.078px] text-white hover:bg-[#0a0a0a]/90"
-                      >
-                        <Play size={12} strokeWidth={2} />
-                        Run now
-                      </button>
-                    }
-                  />
-                  {showDigestInstructions && (
-                    <InstructionsPanel
-                      instructions={
-                        agentForThread.instructions ??
-                        getDefaultInstructions(agentForThread)
-                      }
-                      onSave={(next) =>
-                        updateAgentInstructions(agentForThread.id, next)
-                      }
-                      onClose={() => setShowDigestInstructions(false)}
-                    />
-                  )}
-                  {confirmingDigestDelete && (
-                    <DeleteAgentConfirm
-                      name={agentForThread.name}
-                      onCancel={() => setConfirmingDigestDelete(false)}
-                      onConfirm={() => {
-                        setConfirmingDigestDelete(false);
-                        deleteAgent(agentForThread.id);
-                        setActiveThreadId(null);
-                      }}
-                    />
-                  )}
-                </>
+                <AgentSummaryCard
+                  data={{
+                    avatarPath: agentForThread.avatarSeed,
+                    name: agentForThread.name,
+                    watcherType: agentForThread.watcherType,
+                    schedule: agentForThread.schedule,
+                    description: agentForThread.description,
+                    status: agentForThread.status,
+                  }}
+                  showInstructions={editDialogOpen}
+                  onToggleInstructions={() => setEditDialogOpen(true)}
+                  onToggleStatus={() =>
+                    setAgentStatus(
+                      agentForThread.id,
+                      agentForThread.status === "active"
+                        ? "paused"
+                        : "active",
+                    )
+                  }
+                  actions={
+                    <button
+                      type="button"
+                      onClick={runAgentAgain}
+                      className="flex items-center gap-1.5 rounded-full bg-[#0a0a0a] px-3 py-1.5 text-[13px] tracking-[-0.078px] text-white hover:bg-[#0a0a0a]/90"
+                    >
+                      <Play size={12} strokeWidth={2} />
+                      Run now
+                    </button>
+                  }
+                />
               )}
 
               {messages.map((m) => {
@@ -1180,6 +1127,79 @@ export function ChatArea({
         </div>
       )}
       </div>
+
+      {/* Edit Agent modal — opened by "View Instructions" on any card.
+          Initial values come from whichever card is active. */}
+      {isDailyDigestThread && !digestMeta.deleted && (
+        <EditAgentDialog
+          open={editDialogOpen}
+          initial={{
+            name: digestMeta.name,
+            description: digestMeta.description,
+            avatarPath: getPixabot(digestMeta.avatarSeed),
+            instructions: digestMeta.instructions,
+            schedulePreset: digestMeta.schedulePreset as SchedulePreset,
+            scheduleTime: digestMeta.scheduleTime,
+            model: digestMeta.model,
+            active: digestMeta.status === "active",
+          }}
+          onSave={(next: EditAgentValues) => {
+            digestMeta.updateMeta({
+              name: next.name,
+              description: next.description,
+              instructions: next.instructions,
+              schedulePreset: next.schedulePreset,
+              scheduleTime: next.scheduleTime,
+              model: next.model,
+              status: next.active ? "active" : "paused",
+            });
+            setEditDialogOpen(false);
+          }}
+          onArchive={() => {
+            setEditDialogOpen(false);
+            digestMeta.deleteDigest();
+          }}
+          onClose={() => setEditDialogOpen(false)}
+        />
+      )}
+      {agentForThread && (
+        <EditAgentDialog
+          open={editDialogOpen}
+          initial={{
+            name: agentForThread.name,
+            description: agentForThread.description ?? "",
+            avatarPath: agentForThread.avatarSeed,
+            instructions:
+              agentForThread.instructions ??
+              getDefaultInstructions(agentForThread),
+            schedulePreset:
+              agentForThread.schedule.kind === "recurring"
+                ? (agentForThread.schedule.preset as SchedulePreset)
+                : "daily",
+            scheduleTime: "08:00",
+            model: agentForThread.model ?? "gemini-2.5-flash",
+            active: agentForThread.status === "active",
+          }}
+          onSave={(next: EditAgentValues) => {
+            updateAgent(agentForThread.id, {
+              name: next.name,
+              description: next.description,
+              avatarSeed: next.avatarPath,
+              instructions: next.instructions,
+              schedule: { kind: "recurring", preset: next.schedulePreset },
+              model: next.model,
+              status: next.active ? "active" : "paused",
+            });
+            setEditDialogOpen(false);
+          }}
+          onArchive={() => {
+            setEditDialogOpen(false);
+            archiveAgent(agentForThread.id);
+            setActiveThreadId(null);
+          }}
+          onClose={() => setEditDialogOpen(false)}
+        />
+      )}
     </div>
   );
 }
@@ -1202,45 +1222,6 @@ function DeletedDigestPlaceholder({ onRestore }: { onRestore: () => void }) {
       >
         Restore agent
       </button>
-    </div>
-  );
-}
-
-function DeleteAgentConfirm({
-  name,
-  onConfirm,
-  onCancel,
-}: {
-  name: string;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
-  return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-red-200 bg-red-50/60 p-4">
-      <div>
-        <p className="text-[13px] font-medium text-[#0a0a0a]">
-          Delete {name}?
-        </p>
-        <p className="text-[12px] text-black/60">
-          The agent and its history will be removed. This can&apos;t be undone.
-        </p>
-      </div>
-      <div className="flex items-center justify-end gap-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-full px-3 py-1.5 text-[13px] tracking-[-0.078px] text-black/70 hover:bg-black/[0.04]"
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          onClick={onConfirm}
-          className="rounded-full bg-red-600 px-3 py-1.5 text-[13px] tracking-[-0.078px] text-white hover:bg-red-700"
-        >
-          Delete
-        </button>
-      </div>
     </div>
   );
 }

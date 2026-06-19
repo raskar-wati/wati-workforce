@@ -58,6 +58,10 @@ export type Agent = {
   autoActions: HandoffCtaAction[];
   avatarSeed: string;
   status: AgentStatus;
+  /** Soft-archived agents stay in the store but are hidden from sidebars. */
+  archived?: boolean;
+  /** Model selection — display label only for now (no backend wired). */
+  model?: string;
   createdAt: string;
 };
 
@@ -155,6 +159,8 @@ type AgentsCtx = AgentsState & {
   setAgentStatus: (id: string, status: AgentStatus) => void;
   renameAgent: (id: string, name: string) => void;
   updateAgentInstructions: (id: string, instructions: string) => void;
+  updateAgent: (id: string, patch: Partial<Agent>) => void;
+  archiveAgent: (id: string) => void;
   deleteAgent: (id: string) => void;
   addHandoff: (agentId: string, draft: HandoffDraft) => Handoff;
   startActionRun: (draft: ActionRunDraft) => AgentActionRun;
@@ -307,6 +313,22 @@ export function AgentsProvider({ children }: { children: ReactNode }) {
     },
     [],
   );
+
+  const updateAgent = useCallback((id: string, patch: Partial<Agent>) => {
+    setState((prev) => ({
+      ...prev,
+      agents: prev.agents.map((a) => (a.id === id ? { ...a, ...patch } : a)),
+    }));
+  }, []);
+
+  const archiveAgent = useCallback((id: string) => {
+    setState((prev) => ({
+      ...prev,
+      agents: prev.agents.map((a) =>
+        a.id === id ? { ...a, archived: true } : a,
+      ),
+    }));
+  }, []);
 
   const deleteAgent = useCallback((id: string) => {
     setState((prev) => {
@@ -491,6 +513,8 @@ export function AgentsProvider({ children }: { children: ReactNode }) {
       setAgentStatus,
       renameAgent,
       updateAgentInstructions,
+      updateAgent,
+      archiveAgent,
       deleteAgent,
       addHandoff,
       startActionRun,
@@ -519,6 +543,8 @@ export function AgentsProvider({ children }: { children: ReactNode }) {
     setAgentStatus,
     renameAgent,
     updateAgentInstructions,
+    updateAgent,
+    archiveAgent,
     deleteAgent,
     addHandoff,
     startActionRun,
