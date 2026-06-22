@@ -2020,3 +2020,12 @@ export function pixabotIndexFromPath(path: string): number {
   if (!match) return -1
   return PIXABOT_IDS.indexOf(match[1] as (typeof PIXABOT_IDS)[number])
 }
+
+/** Animated GIF variant of the same pixabot seed. */
+export function pixabotGifFromPath(path: string): string {
+  return path.replace("/pixabots/240/", "/pixabots/480/").replace(".png", ".gif")
+}
+
+export function getPixabotGif(seed: string): string {
+  return pixabotGifFromPath(getPixabot(seed))
+}

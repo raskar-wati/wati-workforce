@@ -1,6 +1,6 @@
 "use client";
 
-import { Archive, Check, ChevronDown, X } from "lucide-react";
+import { Check, ChevronDown, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
   DEFAULT_LLM_ID,
@@ -37,22 +37,26 @@ export type EditAgentValues = {
 export function EditAgentDialog({
   open,
   initial,
-  archiveLabel = "Archive agent",
+  deleteLabel = "Delete agent",
   onSave,
-  onArchive,
+  onDelete,
   onClose,
 }: {
   open: boolean;
   initial: EditAgentValues;
-  archiveLabel?: string;
+  deleteLabel?: string;
   onSave: (next: EditAgentValues) => void;
-  onArchive: () => void;
+  onDelete: () => void;
   onClose: () => void;
 }) {
   const [values, setValues] = useState<EditAgentValues>(initial);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   useEffect(() => {
-    if (open) setValues(initial);
+    if (open) {
+      setValues(initial);
+      setConfirmingDelete(false);
+    }
   }, [open, initial]);
 
   useEffect(() => {
@@ -174,14 +178,44 @@ export function EditAgentDialog({
           </Field>
         </div>
 
+        {confirmingDelete ? (
+          <div className="flex flex-col gap-2 border-t border-black/[0.06] bg-red-50/40 px-5 py-3">
+            <p className="text-[13px] tracking-[-0.078px] text-[#0a0a0a]">
+              Delete <span className="font-medium">{values.name}</span>?
+              <span className="text-black/60">
+                {" "}
+                This can&apos;t be undone.
+              </span>
+            </p>
+            <div className="flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmingDelete(false)}
+                className="rounded-full px-3 py-1.5 text-[13px] tracking-[-0.078px] text-black/70 hover:bg-black/[0.04]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmingDelete(false);
+                  onDelete();
+                }}
+                className="rounded-full bg-red-600 px-3 py-1.5 text-[13px] tracking-[-0.078px] text-white hover:bg-red-700"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        ) : (
         <div className="flex items-center justify-between border-t border-black/[0.06] px-5 py-3">
           <button
             type="button"
-            onClick={onArchive}
-            className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] tracking-[-0.078px] text-black/65 hover:bg-black/[0.04] hover:text-[#0a0a0a]"
+            onClick={() => setConfirmingDelete(true)}
+            className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] tracking-[-0.078px] text-red-600 hover:bg-red-50"
           >
-            <Archive size={14} strokeWidth={1.75} />
-            {archiveLabel}
+            <Trash2 size={14} strokeWidth={1.75} />
+            {deleteLabel}
           </button>
           <div className="flex items-center gap-2">
             <button
@@ -200,6 +234,7 @@ export function EditAgentDialog({
             </button>
           </div>
         </div>
+        )}
       </div>
     </div>
   );

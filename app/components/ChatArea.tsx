@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
-import { Play } from "lucide-react";
+import { Loader2, Play } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useAgents, type HandoffCta, type WatcherTypeId } from "../lib/agents";
 import { useChatMode } from "../lib/chat-mode";
@@ -25,6 +25,8 @@ import {
   getDefaultInstructions,
 } from "./agents/AgentSummaryCard";
 import { AgentEmptyRunsState } from "./agents/AgentEmptyRunsState";
+import { AgentRunTheatre } from "./agents/AgentRunTheatre";
+import { getRunStepsFor } from "../lib/agent-run-steps";
 import { DailyDigestEntry } from "./agents/DailyDigestEntry";
 import { DailyDigestSummaryCard } from "./agents/DailyDigestSummaryCard";
 import {
@@ -39,7 +41,7 @@ import {
   DAILY_DIGEST_ENTRIES,
   DAILY_DIGEST_THREAD_TITLE,
 } from "../lib/daily-digest-data";
-import { getPixabot } from "../lib/pixabots";
+import { getPixabot, pixabotGifFromPath } from "../lib/pixabots";
 import { Composer, COMPOSER_TRANSITION } from "./Composer";
 import { DailyDigest } from "./digest/DailyDigest";
 import { InboxAskWatiSuggestions } from "./agents/InboxAskWatiSuggestions";
@@ -148,7 +150,7 @@ export function ChatArea({
     getActionRuns,
     markHandoffRead,
     updateAgent,
-    archiveAgent,
+    deleteAgent,
     setAgentStatus,
   } = useAgents();
   const fireHandoffCta = useFireHandoffCta();
@@ -239,12 +241,14 @@ export function ChatArea({
   // agent's collapse state is independent.
   const [showAllRuns, setShowAllRuns] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [runningAgentId, setRunningAgentId] = useState<string | null>(null);
   const digestMeta = useDailyDigestMeta();
 
   useEffect(() => {
     setInput("");
     setShowAllRuns(false);
     setEditDialogOpen(false);
+    setRunningAgentId(null);
     // Mode is lifted to ChatModeProvider and managed by whoever sets it
     // (slash menu, pill row, sidebar New Agent button). Don't clobber it
     // here on thread change — that would race with sidebar-driven setMode.
@@ -534,8 +538,14 @@ export function ChatArea({
 
   const runAgentAgain = () => {
     if (!agentForThread) return;
+    setRunningAgentId(agentForThread.id);
+  };
+
+  const completeRun = () => {
+    if (!agentForThread) return;
     const wt = getWatcherType(agentForThread.watcherType);
     addHandoff(agentForThread.id, wt.buildDraft());
+    setRunningAgentId(null);
   };
 
   // Resolves a WatiAction tapped by the user. The dispatcher is constructed
@@ -908,14 +918,29 @@ export function ChatArea({
                     )
                   }
                   actions={
-                    <button
-                      type="button"
-                      onClick={runAgentAgain}
-                      className="flex items-center gap-1.5 rounded-full bg-[#0a0a0a] px-3 py-1.5 text-[13px] tracking-[-0.078px] text-white hover:bg-[#0a0a0a]/90"
-                    >
-                      <Play size={12} strokeWidth={2} />
-                      Run now
-                    </button>
+                    runningAgentId === agentForThread.id ? (
+                      <button
+                        type="button"
+                        disabled
+                        className="flex items-center gap-1.5 rounded-full bg-[#0a0a0a] px-3 py-1.5 text-[13px] tracking-[-0.078px] text-white"
+                      >
+                        <Loader2
+                          size={12}
+                          strokeWidth={2.25}
+                          className="animate-spin text-emerald-400"
+                        />
+                        Running
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={runAgentAgain}
+                        className="flex items-center gap-1.5 rounded-full bg-[#0a0a0a] px-3 py-1.5 text-[13px] tracking-[-0.078px] text-white hover:bg-[#0a0a0a]/90"
+                      >
+                        <Play size={12} strokeWidth={2} />
+                        Run now
+                      </button>
+                    )
                   }
                 />
               )}
@@ -1026,9 +1051,18 @@ export function ChatArea({
                 );
               })}
 
-              {agentForThread && handoffs.length === 0 && (
-                <AgentEmptyRunsState />
+              {agentForThread && runningAgentId === agentForThread.id && (
+                <AgentRunTheatre
+                  avatarGifPath={pixabotGifFromPath(agentForThread.avatarSeed)}
+                  steps={getRunStepsFor(agentForThread.watcherType)}
+                  onComplete={completeRun}
+                />
               )}
+              {agentForThread &&
+                handoffs.length === 0 &&
+                runningAgentId !== agentForThread.id && (
+                  <AgentEmptyRunsState />
+                )}
 
               {agentForThread && handoffs.length > 0 && (
                 <div className="flex flex-col">
@@ -1160,7 +1194,7 @@ export function ChatArea({
             });
             setEditDialogOpen(false);
           }}
-          onArchive={() => {
+          onDelete={() => {
             setEditDialogOpen(false);
             digestMeta.deleteDigest();
           }}
@@ -1197,9 +1231,9 @@ export function ChatArea({
             });
             setEditDialogOpen(false);
           }}
-          onArchive={() => {
+          onDelete={() => {
             setEditDialogOpen(false);
-            archiveAgent(agentForThread.id);
+            deleteAgent(agentForThread.id);
             setActiveThreadId(null);
           }}
           onClose={() => setEditDialogOpen(false)}
