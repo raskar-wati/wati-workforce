@@ -122,6 +122,9 @@ export function ChatArea({
   const [messagesByThread, setMessagesByThread] = useState<
     Record<string, ChatMessage[]>
   >({});
+  const [messagesHydratedForMode, setMessagesHydratedForMode] = useState<
+    string | null
+  >(null);
   const [input, setInput] = useState("");
   const [pendingWatcherTypeId, setPendingWatcherTypeId] =
     useState<WatcherTypeId | null>(null);
@@ -165,6 +168,44 @@ export function ChatArea({
   const { seen: onboardingSeen, hydrated: onboardingHydrated, markSeen } =
     useOnboardingSeen();
 
+  // Persist messagesByThread per demo mode so threads keep their messages
+  // across reloads. Threads themselves are already persisted in
+  // chat-threads.tsx; without this, clicking a recent chat showed an empty
+  // hero because ephemeral message state was lost.
+  useEffect(() => {
+    if (!demoHydrated) return;
+    const key = `wati.messages.v1.${demoMode}`;
+    try {
+      const raw =
+        typeof window !== "undefined" ? window.localStorage.getItem(key) : null;
+      if (raw) {
+        const parsed = JSON.parse(raw) as Record<string, ChatMessage[]>;
+        if (parsed && typeof parsed === "object") {
+          setMessagesByThread(parsed);
+        } else {
+          setMessagesByThread({});
+        }
+      } else {
+        setMessagesByThread({});
+      }
+    } catch {
+      setMessagesByThread({});
+    }
+    setMessagesHydratedForMode(demoMode);
+  }, [demoMode, demoHydrated]);
+
+  useEffect(() => {
+    if (messagesHydratedForMode !== demoMode) return;
+    try {
+      window.localStorage.setItem(
+        `wati.messages.v1.${demoMode}`,
+        JSON.stringify(messagesByThread),
+      );
+    } catch {
+      // quota / disabled storage — ignore
+    }
+  }, [messagesByThread, messagesHydratedForMode, demoMode]);
+
   // Onboarding orchestration state. Lives in ChatArea so it can drive the
   // message timeline, but the thread itself is just a normal thread — we
   // remember its id so post-agent-creation we know to fire the closing
@@ -174,12 +215,33 @@ export function ChatArea({
   );
   const [onboardingClosingPosted, setOnboardingClosingPosted] = useState(false);
 
-  const messages = activeThreadId
-    ? messagesByThread[activeThreadId] ?? []
-    : [];
   const agentForThread = activeThreadId
     ? getAgentsForThread(activeThreadId)[0] ?? null
     : null;
+  const persistedMessages = activeThreadId
+    ? messagesByThread[activeThreadId] ?? []
+    : [];
+  // Threads created in prior sessions (before message persistence existed)
+  // can have a title but no stored messages. Fall back to rendering the
+  // title as the user's original prompt so the chat surface shows what
+  // the thread is actually about instead of the empty hero.
+  const activeThreadMeta = activeThreadId
+    ? threads.find((t) => t.id === activeThreadId)
+    : null;
+  const messages: ChatMessage[] =
+    persistedMessages.length === 0 &&
+    activeThreadMeta &&
+    !agentForThread &&
+    activeThreadMeta.title !== DAILY_DIGEST_THREAD_TITLE &&
+    !activeThreadMeta.hasVisuals
+      ? [
+          {
+            kind: "user-text",
+            id: `${activeThreadMeta.id}-ghost-user`,
+            content: activeThreadMeta.title,
+          },
+        ]
+      : persistedMessages;
   const handoffs = agentForThread ? getHandoffs(agentForThread.id) : [];
   const actionRuns = agentForThread ? getActionRuns(agentForThread.id) : [];
   const runsByHandoff = actionRuns.reduce<Record<string, typeof actionRuns>>(

@@ -20,6 +20,7 @@ export function WorkforceMain({
   chrome,
   panelCollapsed,
   onPanelCollapsedChange,
+  expanded = false,
 }: {
   hideHandoffs?: boolean;
   panelDefaultCollapsed?: boolean;
@@ -31,6 +32,9 @@ export function WorkforceMain({
   chrome?: "drawer";
   panelCollapsed?: boolean;
   onPanelCollapsedChange?: (collapsed: boolean) => void;
+  /** Drawer-only: when true, hide the WorkForce header panel toggle and
+   *  constrain main content to a centered max-width. */
+  expanded?: boolean;
 } = {}) {
   return (
     <DemoStateProvider forceMode={forceDemoMode}>
@@ -50,11 +54,12 @@ export function WorkforceMain({
               <MainContent
                 hideDailyDigest={hideDailyDigest}
                 chrome={chrome}
+                expanded={expanded}
                 panelCollapsed={
                   chrome === "drawer" ? panelCollapsed : undefined
                 }
                 onTogglePanel={
-                  chrome === "drawer"
+                  chrome === "drawer" && !expanded
                     ? () => onPanelCollapsedChange?.(!panelCollapsed)
                     : undefined
                 }
