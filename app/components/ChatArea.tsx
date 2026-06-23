@@ -1007,7 +1007,11 @@ export function ChatArea({
                 />
               )}
 
-              {messages.map((m) => {
+              {/* On an agent thread the chat surface shows the agent card,
+                  empty-state / run theatre, and handoffs only. The original
+                  user prompt that started the agent (and any chat messages)
+                  add no value here — the agent's context lives in Edit Agent. */}
+              {(agentForThread ? [] : messages).map((m) => {
                 if (m.kind === "user-text") {
                   return (
                     <motion.div
