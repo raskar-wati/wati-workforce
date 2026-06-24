@@ -135,32 +135,75 @@ export function WorkforcePanel({
       return null;
     }
     return (
-      <div className="flex h-full w-[232px] shrink-0 flex-col gap-3 overflow-y-auto border-r border-[var(--wati-border-default)] bg-white p-3">
-        <DrawerTabs activeTab={drawerTab} onChange={setDrawerTab} />
+      <div className="flex h-full w-[232px] shrink-0 flex-col border-r border-[var(--wati-border-default)] bg-white">
+        {/* Sticky header: tabs + the matching "+ New" action, always
+            visible while the list below scrolls. */}
+        <div className="flex shrink-0 flex-col gap-3 p-3 pb-0">
+          <DrawerTabs activeTab={drawerTab} onChange={setDrawerTab} />
+          {drawerTab === "chats" ? (
+            <button
+              type="button"
+              onClick={goHome}
+              className={`flex w-full items-center gap-1 rounded p-1 transition-colors ${
+                askWatiSelected
+                  ? "bg-[var(--wati-chip-bg)]"
+                  : "bg-white hover:bg-[var(--wati-surface-subtle)]"
+              }`}
+            >
+              <span className="flex h-5 w-5 items-center justify-center text-[var(--wati-icon-default)]">
+                <Plus size={16} strokeWidth={2} />
+              </span>
+              <span className="flex-1 text-left text-sm font-medium text-[var(--wati-text-body)]">
+                New Chat
+              </span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={startNewAgent}
+              className={`flex w-full items-center gap-1 rounded p-1 transition-colors ${
+                newAgentSelected
+                  ? "bg-[var(--wati-chip-bg)]"
+                  : "bg-white hover:bg-[var(--wati-surface-subtle)]"
+              }`}
+            >
+              <span className="flex h-5 w-5 items-center justify-center text-[var(--wati-icon-default)]">
+                <Plus size={16} strokeWidth={2} />
+              </span>
+              <span className="flex-1 text-left text-sm font-medium text-[var(--wati-text-body)]">
+                New Agent
+              </span>
+            </button>
+          )}
+        </div>
 
-        {drawerTab === "chats" ? (
-          <ChatsTabContent
-            threads={threads}
-            activeThreadId={activeThreadId}
-            inboxSelected={inboxSelected}
-            askWatiSelected={askWatiSelected}
-            onNewChat={goHome}
-            onOpenThread={openAgentThread}
-            onTogglePinned={(id, pinned) => setThreadPinned(id, pinned)}
-          />
-        ) : (
-          <AgentsTabContent
-            agents={agents}
-            activeThreadId={activeThreadId}
-            inboxSelected={inboxSelected}
-            newAgentSelected={newAgentSelected}
-            getUnreadCountForAgent={getUnreadCountForAgent}
-            onNewAgent={startNewAgent}
-            onOpenAgentThread={openAgentThread}
-            dailyDigestThreadId={dailyDigestThreadId}
-            onOpenDailyDigest={openDailyDigest}
-          />
-        )}
+        <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-3">
+          {drawerTab === "chats" ? (
+            <ChatsTabContent
+              threads={threads}
+              activeThreadId={activeThreadId}
+              inboxSelected={inboxSelected}
+              askWatiSelected={askWatiSelected}
+              onNewChat={goHome}
+              onOpenThread={openAgentThread}
+              onTogglePinned={(id, pinned) => setThreadPinned(id, pinned)}
+              hideNewButton
+            />
+          ) : (
+            <AgentsTabContent
+              agents={agents}
+              activeThreadId={activeThreadId}
+              inboxSelected={inboxSelected}
+              newAgentSelected={newAgentSelected}
+              getUnreadCountForAgent={getUnreadCountForAgent}
+              onNewAgent={startNewAgent}
+              onOpenAgentThread={openAgentThread}
+              dailyDigestThreadId={dailyDigestThreadId}
+              onOpenDailyDigest={openDailyDigest}
+              hideNewButton
+            />
+          )}
+        </div>
       </div>
     );
   }
@@ -277,7 +320,7 @@ export function WorkforcePanel({
             <Plus size={16} strokeWidth={2} />
           </span>
           <span className="flex-1 text-left text-sm font-medium text-[var(--wati-text-body)]">
-            Ask Wati
+            New Chat
           </span>
         </button>
 
@@ -556,6 +599,7 @@ function ChatsTabContent({
   onNewChat,
   onOpenThread,
   onTogglePinned,
+  hideNewButton,
 }: {
   threads: ReturnType<typeof useChatThreads>["threads"];
   activeThreadId: string | null;
@@ -564,28 +608,31 @@ function ChatsTabContent({
   onNewChat: () => void;
   onOpenThread: (threadId: string) => void;
   onTogglePinned: (threadId: string, pinned: boolean) => void;
+  hideNewButton?: boolean;
 }) {
   const chatThreads = threads.filter((t) => !t.agentId);
   const { pinned, recent, older } = partitionChats(chatThreads);
   const [showOlder, setShowOlder] = useState(false);
   return (
     <>
-      <button
-        type="button"
-        onClick={onNewChat}
-        className={`flex w-full items-center gap-1 rounded p-1 transition-colors ${
-          askWatiSelected
-            ? "bg-[var(--wati-chip-bg)]"
-            : "bg-white hover:bg-[var(--wati-surface-subtle)]"
-        }`}
-      >
-        <span className="flex h-5 w-5 items-center justify-center text-[var(--wati-icon-default)]">
-          <Plus size={16} strokeWidth={2} />
-        </span>
-        <span className="flex-1 text-left text-sm font-medium text-[var(--wati-text-body)]">
-          Ask Wati
-        </span>
-      </button>
+      {!hideNewButton && (
+        <button
+          type="button"
+          onClick={onNewChat}
+          className={`flex w-full items-center gap-1 rounded p-1 transition-colors ${
+            askWatiSelected
+              ? "bg-[var(--wati-chip-bg)]"
+              : "bg-white hover:bg-[var(--wati-surface-subtle)]"
+          }`}
+        >
+          <span className="flex h-5 w-5 items-center justify-center text-[var(--wati-icon-default)]">
+            <Plus size={16} strokeWidth={2} />
+          </span>
+          <span className="flex-1 text-left text-sm font-medium text-[var(--wati-text-body)]">
+            New Chat
+          </span>
+        </button>
+      )}
 
       {pinned.length > 0 && (
         <ChatGroup label="Pinned">
@@ -752,6 +799,7 @@ function AgentsTabContent({
   onOpenAgentThread,
   dailyDigestThreadId,
   onOpenDailyDigest,
+  hideNewButton,
 }: {
   agents: ReturnType<typeof useAgents>["agents"];
   activeThreadId: string | null;
@@ -763,6 +811,7 @@ function AgentsTabContent({
   /** Thread id if the Daily Digest has been opened this session; null otherwise. */
   dailyDigestThreadId: string | null;
   onOpenDailyDigest: () => void;
+  hideNewButton?: boolean;
 }) {
   const { deleted: digestDeleted, name: digestName } = useDailyDigestMeta();
   const digestActive =
@@ -772,22 +821,24 @@ function AgentsTabContent({
   const digestAvatar = getPixabot("daily-digest");
   return (
     <>
-      <button
-        type="button"
-        onClick={onNewAgent}
-        className={`flex w-full items-center gap-1 rounded p-1 transition-colors ${
-          newAgentSelected
-            ? "bg-[var(--wati-chip-bg)]"
-            : "bg-white hover:bg-[var(--wati-surface-subtle)]"
-        }`}
-      >
-        <span className="flex h-5 w-5 items-center justify-center text-[var(--wati-icon-default)]">
-          <Plus size={16} strokeWidth={2} />
-        </span>
-        <span className="flex-1 text-left text-sm font-medium text-[var(--wati-text-body)]">
-          New Agent
-        </span>
-      </button>
+      {!hideNewButton && (
+        <button
+          type="button"
+          onClick={onNewAgent}
+          className={`flex w-full items-center gap-1 rounded p-1 transition-colors ${
+            newAgentSelected
+              ? "bg-[var(--wati-chip-bg)]"
+              : "bg-white hover:bg-[var(--wati-surface-subtle)]"
+          }`}
+        >
+          <span className="flex h-5 w-5 items-center justify-center text-[var(--wati-icon-default)]">
+            <Plus size={16} strokeWidth={2} />
+          </span>
+          <span className="flex-1 text-left text-sm font-medium text-[var(--wati-text-body)]">
+            New Agent
+          </span>
+        </button>
+      )}
 
       <div className="flex flex-col gap-0.5">
         {/* Pinned, system-owned Daily Digest entry. Same visual treatment

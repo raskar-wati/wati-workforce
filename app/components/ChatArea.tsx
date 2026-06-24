@@ -47,6 +47,8 @@ import { DailyDigest } from "./digest/DailyDigest";
 import { InboxAskWatiSuggestions } from "./agents/InboxAskWatiSuggestions";
 import { useInboxContext } from "../lib/inbox-context";
 import { useContactsContext } from "../lib/contacts-context";
+import { useShopifyContext } from "../lib/shopify-context";
+import { useAnalyticsContext } from "../lib/analytics-context";
 import { useAskWatiDrawer } from "../lib/ask-wati-drawer";
 import { HandoffInbox } from "./handoffs/HandoffInbox";
 import { ModePillRow } from "./ModePillRow";
@@ -160,9 +162,17 @@ export function ChatArea({
   const { profile: tenantProfile } = useTenantProfile();
   const inboxCtx = useInboxContext();
   const contactsCtx = useContactsContext();
+  const shopifyCtx = useShopifyContext();
+  const analyticsCtx = useAnalyticsContext();
   const [inboxScopeActive, setInboxScopeActive] = useState(Boolean(inboxCtx));
   const [contactsScopeActive, setContactsScopeActive] = useState(
     Boolean(contactsCtx),
+  );
+  const [shopifyScopeActive, setShopifyScopeActive] = useState(
+    Boolean(shopifyCtx),
+  );
+  const [analyticsScopeActive, setAnalyticsScopeActive] = useState(
+    Boolean(analyticsCtx),
   );
   const { mode: demoMode, hydrated: demoHydrated } = useDemoState();
   const { seen: onboardingSeen, hydrated: onboardingHydrated, markSeen } =
@@ -887,6 +897,8 @@ export function ChatArea({
                   {getStarterPrompts({
                     hasInboxContext: Boolean(inboxCtx),
                     hasContactsContext: Boolean(contactsCtx),
+                    hasShopifyContext: Boolean(shopifyCtx),
+                    hasAnalyticsContext: Boolean(analyticsCtx),
                   }).map((prompt) => (
                     <button
                       key={prompt}
@@ -914,7 +926,7 @@ export function ChatArea({
           </div>
         ) : (
           <div
-            className="flex flex-1 flex-col overflow-y-auto pt-12 pb-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="flex flex-1 flex-col overflow-y-auto pt-4 pb-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             <div className="flex flex-col gap-4">
               {isAnalyticsThread && !hasMessages && (
@@ -960,6 +972,7 @@ export function ChatArea({
                 </>
               )}
               {agentForThread && (
+                <div className="sticky -top-4 z-10 bg-white pb-3 pt-4">
                 <AgentSummaryCard
                   data={{
                     avatarPath: agentForThread.avatarSeed,
@@ -1005,6 +1018,7 @@ export function ChatArea({
                     )
                   }
                 />
+                </div>
               )}
 
               {/* On an agent thread the chat surface shows the agent card,
@@ -1208,6 +1222,23 @@ export function ChatArea({
                 onRemove: () => setContactsScopeActive(false),
               });
             }
+            if (shopifyCtx && shopifyScopeActive) {
+              chips.push({
+                id: "shopify",
+                label:
+                  chrome === "drawer"
+                    ? "Shopify Analytics"
+                    : "@shopify",
+                onRemove: () => setShopifyScopeActive(false),
+              });
+            }
+            if (analyticsCtx && analyticsScopeActive) {
+              chips.push({
+                id: "analytics",
+                label: chrome === "drawer" ? "Inbox Analytics" : "@inbox-analytics",
+                onRemove: () => setAnalyticsScopeActive(false),
+              });
+            }
             return chips.length > 0 ? chips : undefined;
           })()}
         />
@@ -1334,10 +1365,28 @@ function DeletedDigestPlaceholder({ onRestore }: { onRestore: () => void }) {
 function getStarterPrompts({
   hasInboxContext,
   hasContactsContext,
+  hasShopifyContext,
+  hasAnalyticsContext,
 }: {
   hasInboxContext: boolean;
   hasContactsContext: boolean;
+  hasShopifyContext: boolean;
+  hasAnalyticsContext: boolean;
 }): string[] {
+  if (hasAnalyticsContext) {
+    return [
+      "Conversation trend",
+      "Incoming message trend",
+      "Which operator performs best?",
+    ];
+  }
+  if (hasShopifyContext) {
+    return [
+      "Show conversion trend",
+      "Show CSAT trend",
+      "Show which operator performs best",
+    ];
+  }
   if (hasContactsContext) {
     return [
       "Find my top spenders this month",

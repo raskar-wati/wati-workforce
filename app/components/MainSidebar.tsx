@@ -1,58 +1,81 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  BarChart3,
-  BookUser,
   ChevronsLeft,
   ChevronsRight,
-  LineChart,
-  Mail,
+  Inbox,
   Megaphone,
-  PanelsTopLeft,
+  MousePointer2,
+  PieChart,
   Plug,
-  Puzzle,
   Settings,
   ShoppingCart,
   Users,
+  Workflow,
 } from "lucide-react";
 
 type NavItem = {
   label: string;
   icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
-  active?: boolean;
   href?: string;
-  children?: { label: string; active?: boolean }[];
+  children?: { label: string }[];
 };
 
-const workspace: NavItem[] = [
-  { label: "Conversations", icon: Mail, href: "/preview" },
-  { label: "Contacts", icon: BookUser, href: "/preview/contacts" },
-  { label: "Commerce", icon: ShoppingCart },
+const nav: NavItem[] = [
   { label: "Campaigns", icon: Megaphone },
-];
-
-const insights: NavItem[] = [
-  { label: "Dashboards", icon: BarChart3 },
-  { label: "Analytics", icon: LineChart },
-];
-
-const setup: NavItem[] = [
-  { label: "Channels", icon: Puzzle },
+  { label: "Inbox", icon: Inbox, href: "/preview" },
+  { label: "Contacts", icon: Users, href: "/preview/contacts" },
+  { label: "Automations", icon: Workflow },
+  { label: "Commerce", icon: ShoppingCart, href: "/preview/shopify" },
+  { label: "Ads", icon: MousePointer2 },
+  { label: "Analytics", icon: PieChart, href: "/preview/analytics" },
   {
     label: "Connectors",
     icon: Plug,
-    children: [{ label: "Integrations" }, { label: "API" }, { label: "Webhooks" }],
+    children: [
+      { label: "Integrations" },
+      { label: "API Docs" },
+      { label: "Webhooks" },
+    ],
   },
-  { label: "Users", icon: Users },
-  { label: "Account", icon: Settings },
+  {
+    label: "Settings",
+    icon: Settings,
+    children: [
+      { label: "Channels" },
+      { label: "User Management" },
+      { label: "Account Details" },
+    ],
+  },
 ];
 
+const COLLAPSED_KEY = "wati.sidebar.collapsed";
+
 export function MainSidebar() {
+  // Lazy initializer reads the persisted value synchronously on mount so the
+  // sidebar doesn't flash from collapsed→expanded on every page navigation
+  // (it remounts inside each page route).
   const [collapsed, setCollapsed] = useState(true);
+  const [hydrated, setHydrated] = useState(false);
   const pathname = usePathname();
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(COLLAPSED_KEY);
+      if (raw === "false") setCollapsed(false);
+    } catch {}
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      window.localStorage.setItem(COLLAPSED_KEY, String(collapsed));
+    } catch {}
+  }, [collapsed, hydrated]);
 
   return (
     <aside
@@ -61,87 +84,29 @@ export function MainSidebar() {
         collapsed ? "w-[60px] px-1" : "w-[210px] px-1"
       }`}
     >
-      {/* Scrollable nav region */}
-      <div className="flex flex-1 flex-col overflow-y-auto overflow-x-hidden">
-        {/* WorkForce (active product) */}
-        <Section collapsed={collapsed}>
-          <NavRow
-            icon={PanelsTopLeft}
-            label="WorkForce"
-            href="/"
-            active={pathname === "/"}
-            collapsed={collapsed}
-          />
-        </Section>
-        <Divider collapsed={collapsed} />
-
-        {/* Workspace */}
-        <SectionHeading collapsed={collapsed}>Workspace</SectionHeading>
-        <Section collapsed={collapsed}>
-          {workspace.map((item) => (
-            <NavRow
-              key={item.label}
-              icon={item.icon}
-              label={item.label}
-              href={item.href}
-              active={item.href ? pathname === item.href : false}
-              collapsed={collapsed}
-            />
-          ))}
-        </Section>
-        <Divider collapsed={collapsed} />
-
-        {/* Insights */}
-        <SectionHeading collapsed={collapsed}>Insights</SectionHeading>
-        <Section collapsed={collapsed}>
-          {insights.map((item) => (
-            <NavRow
-              key={item.label}
-              icon={item.icon}
-              label={item.label}
-              href={item.href}
-              collapsed={collapsed}
-            />
-          ))}
-        </Section>
-        <Divider collapsed={collapsed} />
-
-        {/* Setup */}
-        <SectionHeading collapsed={collapsed}>Setup</SectionHeading>
-        <Section collapsed={collapsed}>
-          {setup.map((item) =>
+      <div className="flex flex-1 flex-col overflow-y-auto overflow-x-hidden pt-1">
+        <div
+          className={`flex w-full flex-col ${collapsed ? "items-center" : "items-stretch"}`}
+        >
+          {nav.map((item) =>
             item.children ? (
-              <div key={item.label}>
-                <NavRow
-                  icon={item.icon}
-                  label={item.label}
-                  collapsed={collapsed}
-                />
-                {!collapsed && (
-                  <div className="ml-[22px] border-l border-[var(--wati-tree-border)] py-0.5 pl-1.5">
-                    {item.children.map((child) => (
-                      <button
-                        key={child.label}
-                        type="button"
-                        className="block w-full rounded-md px-4 py-1 text-left text-sm font-medium text-[var(--wati-text-subtitle)] hover:bg-[var(--wati-hover-bg)]"
-                      >
-                        {child.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <ExpandableRow
+                key={item.label}
+                item={item}
+                collapsed={collapsed}
+              />
             ) : (
               <NavRow
                 key={item.label}
                 icon={item.icon}
                 label={item.label}
+                href={item.href}
+                active={item.href ? pathname === item.href : false}
                 collapsed={collapsed}
               />
-            )
+            ),
           )}
-        </Section>
-        <Divider collapsed={collapsed} />
+        </div>
       </div>
 
       {/* Collapse toggle pinned at the bottom */}
@@ -167,50 +132,35 @@ export function MainSidebar() {
   );
 }
 
-function Section({
-  children,
+function ExpandableRow({
+  item,
   collapsed,
 }: {
-  children: React.ReactNode;
+  item: NavItem;
   collapsed: boolean;
 }) {
+  const [open, setOpen] = useState(true);
   return (
-    <div
-      className={`flex w-full flex-col ${collapsed ? "items-center" : "items-stretch"}`}
-    >
-      {children}
-    </div>
-  );
-}
-
-function SectionHeading({
-  children,
-  collapsed,
-}: {
-  children: React.ReactNode;
-  collapsed: boolean;
-}) {
-  if (collapsed) return <div className="h-2" aria-hidden />;
-  return (
-    <div className="flex items-center px-2 pb-1 pt-2">
-      <span className="text-[12px] font-semibold uppercase tracking-[1px] text-[var(--wati-text-caption)]">
-        {children}
-      </span>
-    </div>
-  );
-}
-
-function Divider({ collapsed }: { collapsed: boolean }) {
-  return (
-    <div
-      className={`w-full py-2 ${collapsed ? "flex justify-center" : ""}`}
-      aria-hidden
-    >
-      <div
-        className={`h-px bg-[var(--wati-divider-light)] ${
-          collapsed ? "w-8" : "w-full"
-        }`}
+    <div>
+      <NavRow
+        icon={item.icon}
+        label={item.label}
+        collapsed={collapsed}
+        onClick={() => setOpen((v) => !v)}
       />
+      {!collapsed && open && item.children && (
+        <div className="ml-[22px] border-l border-[var(--wati-tree-border)] py-0.5 pl-1.5">
+          {item.children.map((child) => (
+            <button
+              key={child.label}
+              type="button"
+              className="block w-full rounded-md px-4 py-1 text-left text-sm font-medium text-[var(--wati-text-subtitle)] hover:bg-[var(--wati-hover-bg)]"
+            >
+              {child.label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -221,12 +171,14 @@ function NavRow({
   active,
   href,
   collapsed,
+  onClick,
 }: {
   icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
   label: string;
   active?: boolean;
   href?: string;
   collapsed: boolean;
+  onClick?: () => void;
 }) {
   const className = `flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium hover:bg-[var(--wati-hover-bg)] ${
     active
@@ -258,7 +210,12 @@ function NavRow({
   }
 
   return (
-    <button type="button" title={collapsed ? label : undefined} className={className}>
+    <button
+      type="button"
+      onClick={onClick}
+      title={collapsed ? label : undefined}
+      className={className}
+    >
       {body}
     </button>
   );
