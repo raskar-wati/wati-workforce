@@ -280,6 +280,49 @@ export function ChatArea({
     fireHandoffCta(agentForThread.id, handoffId, cta);
   };
 
+  // Shared row renderer for the agent-thread handoff list. Older rows report
+  // expand/collapse so the list's height cap can lift while one is open; the
+  // latest row starts expanded and never affects the cap.
+  const renderHandoff = (
+    h: (typeof handoffs)[number],
+    { isLatest }: { isLatest: boolean },
+  ) => {
+    if (!agentForThread) return null;
+    const runs = runsByHandoff[h.id] ?? [];
+    return (
+      <div key={h.id} className="flex flex-col py-1">
+        <Handoff
+          handoff={h}
+          agentName={agentForThread.name}
+          defaultExpanded={isLatest}
+          firedCtaIds={firedCtaIds}
+          onFireCta={(cta) => fireCta(h.id, cta)}
+          onExpand={() => markHandoffRead(h.id)}
+          onExpandedChange={
+            isLatest
+              ? undefined
+              : (open) =>
+                  setExpandedOlderIds((prev) => {
+                    const next = new Set(prev);
+                    if (open) next.add(h.id);
+                    else next.delete(h.id);
+                    return next;
+                  })
+          }
+          runsSlot={
+            runs.length > 0 ? (
+              <div className="flex flex-col gap-2 pt-1">
+                {runs.map((r) => (
+                  <AgentActionRun key={r.id} run={r} />
+                ))}
+              </div>
+            ) : null
+          }
+        />
+      </div>
+    );
+  };
+
   const appendMessages = useCallback(
     (threadId: string, msgs: ChatMessage[]) => {
       setMessagesByThread((prev) => ({
@@ -308,10 +351,15 @@ export function ChatArea({
     [],
   );
 
-  // Truncate the run list (handoffs / digest entries) to RUN_LIST_LIMIT
-  // by default; user toggles to show all. Resets on thread change so each
-  // agent's collapse state is independent.
+  // Truncate the run list (latest handoff only; digest entries to
+  // RUN_LIST_LIMIT) by default; user toggles to show all. Resets on thread
+  // change so each agent's collapse state is independent.
   const [showAllRuns, setShowAllRuns] = useState(false);
+  // Older handoffs currently expanded — while any are open, the older-list
+  // height cap lifts so their content shows in full.
+  const [expandedOlderIds, setExpandedOlderIds] = useState<ReadonlySet<string>>(
+    new Set(),
+  );
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [runningAgentId, setRunningAgentId] = useState<string | null>(null);
   const digestMeta = useDailyDigestMeta();
@@ -319,6 +367,7 @@ export function ChatArea({
   useEffect(() => {
     setInput("");
     setShowAllRuns(false);
+    setExpandedOlderIds(new Set());
     setEditDialogOpen(false);
     setRunningAgentId(null);
     // Mode is lifted to ChatModeProvider and managed by whoever sets it
@@ -964,7 +1013,7 @@ export function ChatArea({
                     {DAILY_DIGEST_ENTRIES.length > RUN_LIST_LIMIT && (
                       <RunListToggle
                         showingAll={showAllRuns}
-                        total={DAILY_DIGEST_ENTRIES.length}
+                        hidden={DAILY_DIGEST_ENTRIES.length - RUN_LIST_LIMIT}
                         onToggle={() => setShowAllRuns((v) => !v)}
                       />
                     )}
@@ -1010,7 +1059,7 @@ export function ChatArea({
                       <button
                         type="button"
                         onClick={runAgentAgain}
-                        className="flex items-center gap-1.5 rounded-full bg-[#0a0a0a] px-3 py-1.5 text-[13px] tracking-[-0.078px] text-white hover:bg-[#0a0a0a]/90"
+                        className="flex items-center gap-1.5 rounded-full bg-[#23A455] px-3 py-1.5 text-[13px] tracking-[-0.078px] text-white hover:bg-[#1F9349]"
                       >
                         <Play size={12} strokeWidth={2} />
                         Run now
@@ -1146,40 +1195,42 @@ export function ChatArea({
 
               {agentForThread && handoffs.length > 0 && (
                 <div className="flex flex-col">
-                  {(showAllRuns
-                    ? handoffs
-                    : handoffs.slice(0, RUN_LIST_LIMIT)
-                  ).map((h, i) => {
-                    const runs = runsByHandoff[h.id] ?? [];
-                    return (
-                      <div key={h.id} className="flex flex-col py-1">
-                        <Handoff
-                          handoff={h}
-                          agentName={agentForThread.name}
-                          defaultExpanded={i === 0}
-                          firedCtaIds={firedCtaIds}
-                          onFireCta={(cta) => fireCta(h.id, cta)}
-                          onExpand={() => markHandoffRead(h.id)}
-                          runsSlot={
-                            runs.length > 0 ? (
-                              <div className="flex flex-col gap-2 pt-1">
-                                {runs.map((r) => (
-                                  <AgentActionRun key={r.id} run={r} />
-                                ))}
-                              </div>
-                            ) : null
-                          }
-                        />
-                      </div>
-                    );
-                  })}
-                  {handoffs.length > RUN_LIST_LIMIT && (
+                  {handoffs.length > HANDOFF_LIST_LIMIT && (
                     <RunListToggle
                       showingAll={showAllRuns}
-                      total={handoffs.length}
-                      onToggle={() => setShowAllRuns((v) => !v)}
+                      hidden={handoffs.length - HANDOFF_LIST_LIMIT}
+                      onToggle={() => {
+                        setShowAllRuns((v) => !v);
+                        setExpandedOlderIds(new Set());
+                      }}
                     />
                   )}
+                  {/* Oldest at top, latest at bottom — the latest handoff sits
+                      next to the composer so continuing the conversation feels
+                      natural. Only the latest shows by default; the rest hide
+                      behind "View older" above. The older list is capped in
+                      height and scrolls internally while its rows are all
+                      collapsed; expanding one lifts the cap so its content
+                      shows in full. The latest handoff renders below, outside
+                      the cap, always at full height. */}
+                  {showAllRuns && (
+                    <div
+                      className={
+                        expandedOlderIds.size > 0
+                          ? "flex flex-col"
+                          : "flex max-h-[400px] flex-col overflow-y-auto overscroll-contain"
+                      }
+                    >
+                      {handoffs
+                        .slice(HANDOFF_LIST_LIMIT)
+                        .reverse()
+                        .map((h) => renderHandoff(h, { isLatest: false }))}
+                    </div>
+                  )}
+                  {handoffs
+                    .slice(0, HANDOFF_LIST_LIMIT)
+                    .reverse()
+                    .map((h) => renderHandoff(h, { isLatest: true }))}
                 </div>
               )}
             </div>
@@ -1408,19 +1459,21 @@ function getStarterPrompts({
   ];
 }
 
-/** How many handoffs / digest entries to show before requiring "view more". */
+/** How many digest entries to show before requiring "view more". */
 const RUN_LIST_LIMIT = 3;
+
+/** Only the latest handoff shows by default; older ones hide behind "View older". */
+const HANDOFF_LIST_LIMIT = 1;
 
 function RunListToggle({
   showingAll,
-  total,
+  hidden,
   onToggle,
 }: {
   showingAll: boolean;
-  total: number;
+  hidden: number;
   onToggle: () => void;
 }) {
-  const hidden = total - RUN_LIST_LIMIT;
   return (
     <button
       type="button"

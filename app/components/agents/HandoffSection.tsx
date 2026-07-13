@@ -1,7 +1,6 @@
 "use client";
 
 import type {
-  HandoffCta,
   HandoffSection as HandoffSectionType,
   HandoffSectionKind,
 } from "../../lib/agents";
@@ -29,12 +28,8 @@ function joinScanLines(lines: string[]): string {
 
 export function HandoffSection({
   section,
-  firedCtaIds,
-  onFireCta,
 }: {
   section: HandoffSectionType;
-  firedCtaIds: ReadonlySet<string>;
-  onFireCta: (cta: HandoffCta) => void;
 }) {
   return (
     <div className="flex flex-col gap-2">
@@ -52,12 +47,7 @@ export function HandoffSection({
       ) : (
         <div className="flex flex-col gap-1.5">
           {section.items.map((i) => (
-            <HandoffItem
-              key={i.id}
-              item={i}
-              firedCtaIds={firedCtaIds}
-              onFireCta={onFireCta}
-            />
+            <HandoffItem key={i.id} item={i} />
           ))}
         </div>
       )}

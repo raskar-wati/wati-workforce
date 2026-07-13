@@ -91,7 +91,7 @@ export function HandoffDetail({
             <button
               type="button"
               onClick={runNow}
-              className="flex items-center gap-1.5 rounded-full bg-[#0a0a0a] px-3 py-1.5 text-[12px] tracking-[-0.06px] text-white hover:bg-[#0a0a0a]/90"
+              className="flex items-center gap-1.5 rounded-full bg-[#23A455] px-3 py-1.5 text-[12px] tracking-[-0.06px] text-white hover:bg-[#1F9349]"
             >
               <Play size={12} strokeWidth={2} />
               Run Now
@@ -114,12 +114,7 @@ export function HandoffDetail({
           className={`mx-auto flex w-full ${DETAIL_CONTENT_WIDTH} flex-col gap-6 px-8 py-6`}
         >
           {handoff.sections.map((s) => (
-            <HandoffSection
-              key={s.id}
-              section={s}
-              firedCtaIds={firedCtaIds}
-              onFireCta={onFireCta}
-            />
+            <HandoffSection key={s.id} section={s} />
           ))}
 
           {handoff.ctas.length > 0 && (

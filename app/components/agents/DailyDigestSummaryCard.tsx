@@ -61,7 +61,7 @@ export function DailyDigestSummaryCard({
         <button
           type="button"
           onClick={onRunNow}
-          className="flex items-center gap-1.5 rounded-full bg-[#0a0a0a] px-3 py-1.5 text-[13px] tracking-[-0.078px] text-white hover:bg-[#0a0a0a]/90"
+          className="flex items-center gap-1.5 rounded-full bg-[#23A455] px-3 py-1.5 text-[13px] tracking-[-0.078px] text-white hover:bg-[#1F9349]"
         >
           <Play size={12} strokeWidth={2} />
           Run now

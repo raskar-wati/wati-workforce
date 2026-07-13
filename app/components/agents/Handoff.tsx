@@ -23,6 +23,7 @@ export function Handoff({
   firedCtaIds,
   onFireCta,
   onExpand,
+  onExpandedChange,
   runsSlot,
 }: {
   handoff: HandoffType;
@@ -32,6 +33,8 @@ export function Handoff({
   onFireCta: (cta: HandoffCta) => void;
   /** Called the first time the handoff is expanded — used to mark it read. */
   onExpand?: () => void;
+  /** Called on every expand/collapse toggle with the new state. */
+  onExpandedChange?: (expanded: boolean) => void;
   /** Optional follow-up content (e.g. AgentActionRun cards from CTAs)
    *  rendered inside the expanded left rail so they stay anchored to
    *  the chevron column rather than escaping into the parent layout. */
@@ -48,7 +51,11 @@ export function Handoff({
     <div className="flex flex-col">
       <button
         type="button"
-        onClick={() => setExpanded((v) => !v)}
+        onClick={() => {
+          const next = !expanded;
+          setExpanded(next);
+          onExpandedChange?.(next);
+        }}
         aria-expanded={expanded}
         aria-label={`${agentName} Handoff #${handoff.runNumber}`}
         className="group flex items-center gap-2 px-0.5 py-1.5 text-left"
@@ -80,12 +87,7 @@ export function Handoff({
             {/* Faint left rail anchors children to the chevron column. */}
             <div className="ml-[8.5px] flex flex-col gap-4 border-l border-black/[0.08] pb-4 pt-1 pl-4">
               {handoff.sections.map((s) => (
-                <HandoffSection
-                  key={s.id}
-                  section={s}
-                  firedCtaIds={firedCtaIds}
-                  onFireCta={onFireCta}
-                />
+                <HandoffSection key={s.id} section={s} />
               ))}
               {handoff.ctas.length > 0 && (
                 <div className="flex flex-wrap gap-2 pt-1">

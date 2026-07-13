@@ -34,7 +34,7 @@ export function HandoffActionPicker({
             <span
               className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
                 checked
-                  ? "border-[#0a0a0a] bg-[#0a0a0a] text-white"
+                  ? "border-[#23A455] bg-[#23A455] text-white"
                   : "border-[#d4d4d4] bg-white text-transparent"
               }`}
               aria-hidden
