@@ -20,6 +20,14 @@ What you don't do:
 
 type ClientMessage = { role: "user" | "assistant"; content: string };
 
+// Line-delimited JSON stream. Each line is one event:
+//   {"t":"r","d":"…"}  reasoning delta
+//   {"t":"t","d":"…"}  answer-text delta
+//   {"t":"e","d":"…"}  error
+// The client separates reasoning from the answer so the thinking trace can be
+// shown in a compact, collapsible disclosure rather than dumped inline.
+type StreamEvent = { t: "r" | "t" | "e"; d: string };
+
 export async function POST(req: Request) {
   const { messages }: { messages: ClientMessage[] } = await req.json();
 
@@ -32,7 +40,45 @@ export async function POST(req: Request) {
     model: "anthropic/claude-haiku-4.5",
     system: SYSTEM_PROMPT,
     messages: modelMessages,
+    // Extended thinking: the model reasons before answering. Reasoning is
+    // streamed separately (below) so the UI can collapse it.
+    providerOptions: {
+      anthropic: {
+        thinking: { type: "enabled", budgetTokens: 4000 },
+      },
+    },
   });
 
-  return result.toTextStreamResponse();
+  const encoder = new TextEncoder();
+  const send = (
+    controller: ReadableStreamDefaultController<Uint8Array>,
+    evt: StreamEvent,
+  ) => controller.enqueue(encoder.encode(JSON.stringify(evt) + "\n"));
+
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      try {
+        for await (const part of result.fullStream) {
+          if (part.type === "reasoning-delta") {
+            send(controller, { t: "r", d: part.text });
+          } else if (part.type === "text-delta") {
+            send(controller, { t: "t", d: part.text });
+          } else if (part.type === "error") {
+            send(controller, { t: "e", d: String(part.error) });
+          }
+        }
+      } catch {
+        send(controller, { t: "e", d: "stream failed" });
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "application/x-ndjson; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+    },
+  });
 }

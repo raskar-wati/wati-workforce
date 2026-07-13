@@ -53,6 +53,7 @@ import { useAskWatiDrawer } from "../lib/ask-wati-drawer";
 import { HandoffInbox } from "./handoffs/HandoffInbox";
 import { ModePillRow } from "./ModePillRow";
 import { ThinkingIndicator } from "./ThinkingIndicator";
+import { ReasoningTrace } from "./ReasoningTrace";
 import { WatiWelcome } from "./WatiWelcome";
 import { OnboardingHandoffPreview } from "./onboarding/OnboardingHandoffPreview";
 import { WatiMessage, type WatiChip } from "./onboarding/WatiMessage";
@@ -105,7 +106,16 @@ type ChatMessage =
       prompt: string;
     }
   | { kind: "ai-thinking"; id: string }
-  | { kind: "ai-response"; id: string; content: string; streaming: boolean }
+  | {
+      kind: "ai-response";
+      id: string;
+      content: string;
+      /** Model reasoning captured before the answer; shown collapsed. */
+      reasoning: string;
+      /** How long reasoning took, once the answer starts. */
+      reasoningMs?: number;
+      streaming: boolean;
+    }
   | { kind: "daily-digest"; id: string };
 
 export function ChatArea({
@@ -578,12 +588,16 @@ export function ChatArea({
           throw new Error(`Chat request failed: ${res.status}`);
         }
         const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
-        let acc = "";
-        while (true) {
-          const { value, done } = await reader.read();
-          if (done) break;
-          if (!value) continue;
-          acc += value;
+        // Server sends line-delimited JSON events: reasoning deltas ("r"),
+        // answer-text deltas ("t"), errors ("e"). We accumulate reasoning and
+        // answer separately so the reasoning renders in a collapsed trace.
+        let buffer = "";
+        let reasoning = "";
+        let content = "";
+        let reasoningStart = 0;
+        let reasoningMs: number | undefined;
+
+        const flushToState = () => {
           setMessagesByThread((prev) => {
             const list = prev[threadId];
             if (!list) return prev;
@@ -596,7 +610,9 @@ export function ChatArea({
                     ? {
                         kind: "ai-response",
                         id: responseId,
-                        content: acc,
+                        content,
+                        reasoning,
+                        reasoningMs,
                         streaming: true,
                       }
                     : m,
@@ -607,12 +623,47 @@ export function ChatArea({
               ...prev,
               [threadId]: list.map((m) =>
                 m.kind === "ai-response" && m.id === responseId
-                  ? { ...m, content: acc }
+                  ? { ...m, content, reasoning, reasoningMs }
                   : m,
               ),
             };
           });
+        };
+
+        const handleEvent = (line: string) => {
+          if (!line.trim()) return;
+          let evt: { t: "r" | "t" | "e"; d: string };
+          try {
+            evt = JSON.parse(line);
+          } catch {
+            return;
+          }
+          if (evt.t === "e") throw new Error(evt.d || "stream error");
+          if (evt.t === "r") {
+            if (!reasoningStart) reasoningStart = Date.now();
+            reasoning += evt.d;
+          } else if (evt.t === "t") {
+            // First answer token marks the end of the reasoning phase.
+            if (reasoningStart && reasoningMs === undefined) {
+              reasoningMs = Date.now() - reasoningStart;
+            }
+            content += evt.d;
+          }
+        };
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          if (!value) continue;
+          buffer += value;
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
+          for (const line of lines) handleEvent(line);
+          flushToState();
         }
+        if (buffer) handleEvent(buffer);
+        flushToState();
+
         if (!started) {
           // Stream closed with no chunks (e.g. server-side gateway error
           // after headers were sent). Surface a friendly fallback.
@@ -633,22 +684,35 @@ export function ChatArea({
         });
       } catch (err) {
         console.error("Ask Wati stream failed", err);
+        const fallback =
+          "Something went wrong reaching the model. Try again in a moment.";
         setMessagesByThread((prev) => {
           const list = prev[threadId];
           if (!list) return prev;
           return {
             ...prev,
-            [threadId]: list.map((m) =>
-              m.kind === "ai-thinking" && m.id === thinkingId
-                ? {
-                    kind: "ai-response",
-                    id: responseId,
-                    content:
-                      "Something went wrong reaching the model. Try again in a moment.",
-                    streaming: false,
-                  }
-                : m,
-            ),
+            [threadId]: list.map((m) => {
+              // Error before any token: swap the thinking placeholder.
+              if (m.kind === "ai-thinking" && m.id === thinkingId) {
+                return {
+                  kind: "ai-response" as const,
+                  id: responseId,
+                  content: fallback,
+                  reasoning: "",
+                  streaming: false,
+                };
+              }
+              // Error mid-stream: stop the in-progress response, keeping
+              // whatever answer text already arrived (or the fallback).
+              if (m.kind === "ai-response" && m.id === responseId) {
+                return {
+                  ...m,
+                  content: m.content || fallback,
+                  streaming: false,
+                };
+              }
+              return m;
+            }),
           };
         });
       }
@@ -1176,14 +1240,25 @@ export function ChatArea({
                       transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
                       className="flex justify-start"
                     >
-                      <div className="max-w-[88%] whitespace-pre-wrap text-[14px] leading-[21px] text-black/80">
-                        {m.content}
-                        {m.streaming && (
-                          <span
-                            aria-hidden="true"
-                            className="ml-0.5 inline-block h-[14px] w-[7px] translate-y-[2px] animate-pulse bg-black/40"
-                            style={{ verticalAlign: "baseline" }}
+                      <div className="flex max-w-[88%] flex-col gap-2">
+                        {m.reasoning && (
+                          <ReasoningTrace
+                            reasoning={m.reasoning}
+                            active={m.streaming && m.content.length === 0}
+                            durationMs={m.reasoningMs}
                           />
+                        )}
+                        {m.content && (
+                          <div className="whitespace-pre-wrap text-[14px] leading-[21px] text-black/80">
+                            {m.content}
+                            {m.streaming && (
+                              <span
+                                aria-hidden="true"
+                                className="ml-0.5 inline-block h-[14px] w-[7px] translate-y-[2px] animate-pulse bg-black/40"
+                                style={{ verticalAlign: "baseline" }}
+                              />
+                            )}
+                          </div>
                         )}
                       </div>
                     </motion.div>
