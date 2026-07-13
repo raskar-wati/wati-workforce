@@ -17,10 +17,13 @@ import type { DailyDigestEntry as DailyDigestEntryType } from "../../lib/daily-d
 export function DailyDigestEntry({
   entry,
   defaultExpanded = false,
+  onExpandedChange,
   onViewAgent,
 }: {
   entry: DailyDigestEntryType;
   defaultExpanded?: boolean;
+  /** Called on every expand/collapse toggle with the new state. */
+  onExpandedChange?: (expanded: boolean) => void;
   onViewAgent?: (agentName: string) => void;
 }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
@@ -30,7 +33,11 @@ export function DailyDigestEntry({
     <div className="flex flex-col">
       <button
         type="button"
-        onClick={() => setExpanded((v) => !v)}
+        onClick={() => {
+          const next = !expanded;
+          setExpanded(next);
+          onExpandedChange?.(next);
+        }}
         aria-expanded={expanded}
         aria-label={`Daily Digest #${entry.runNumber}`}
         className="group flex items-center gap-2 px-0.5 py-1.5 text-left"

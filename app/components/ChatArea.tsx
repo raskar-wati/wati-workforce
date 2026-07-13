@@ -323,6 +323,38 @@ export function ChatArea({
     );
   };
 
+  // Shared row renderer for the Daily Digest run list — same behaviour as
+  // renderHandoff: older rows report expand/collapse so the list's height cap
+  // can lift while one is open; the latest row starts expanded.
+  const renderDigestEntry = (
+    entry: (typeof DAILY_DIGEST_ENTRIES)[number],
+    { isLatest }: { isLatest: boolean },
+  ) => (
+    <div key={entry.id} className="flex flex-col py-1">
+      <DailyDigestEntry
+        entry={entry}
+        defaultExpanded={isLatest}
+        onExpandedChange={
+          isLatest
+            ? undefined
+            : (open) =>
+                setExpandedOlderIds((prev) => {
+                  const next = new Set(prev);
+                  if (open) next.add(entry.id);
+                  else next.delete(entry.id);
+                  return next;
+                })
+        }
+        onViewAgent={(agentName) => {
+          const match = agents.find(
+            (a) => a.name.toLowerCase() === agentName.toLowerCase(),
+          );
+          if (match) setActiveThreadId(match.threadId);
+        }}
+      />
+    </div>
+  );
+
   const appendMessages = useCallback(
     (threadId: string, msgs: ChatMessage[]) => {
       setMessagesByThread((prev) => ({
@@ -351,9 +383,9 @@ export function ChatArea({
     [],
   );
 
-  // Truncate the run list (latest handoff only; digest entries to
-  // RUN_LIST_LIMIT) by default; user toggles to show all. Resets on thread
-  // change so each agent's collapse state is independent.
+  // Truncate the run list (handoffs and digest entries alike) to the latest
+  // run by default; user toggles to show all. Resets on thread change so each
+  // agent's collapse state is independent.
   const [showAllRuns, setShowAllRuns] = useState(false);
   // Older handoffs currently expanded — while any are open, the older-list
   // height cap lifts so their content shows in full.
@@ -991,32 +1023,42 @@ export function ChatArea({
                     showInstructions={editDialogOpen}
                     onToggleInstructions={() => setEditDialogOpen(true)}
                   />
+                  {/* Same run-list logic as watcher-agent handoffs: latest
+                      at the bottom next to the composer, only the latest shown
+                      by default with older runs behind "View older" above. The
+                      older list is height-capped and scrolls internally while
+                      collapsed; expanding one lifts the cap. */}
                   <div className="flex flex-col">
-                    {(showAllRuns
-                      ? DAILY_DIGEST_ENTRIES
-                      : DAILY_DIGEST_ENTRIES.slice(0, RUN_LIST_LIMIT)
-                    ).map((entry, i) => (
-                      <div key={entry.id} className="flex flex-col py-1">
-                        <DailyDigestEntry
-                          entry={entry}
-                          defaultExpanded={i === 0}
-                          onViewAgent={(agentName) => {
-                            const match = agents.find(
-                              (a) =>
-                                a.name.toLowerCase() === agentName.toLowerCase(),
-                            );
-                            if (match) setActiveThreadId(match.threadId);
-                          }}
-                        />
-                      </div>
-                    ))}
-                    {DAILY_DIGEST_ENTRIES.length > RUN_LIST_LIMIT && (
+                    {DAILY_DIGEST_ENTRIES.length > DIGEST_LIST_LIMIT && (
                       <RunListToggle
                         showingAll={showAllRuns}
-                        hidden={DAILY_DIGEST_ENTRIES.length - RUN_LIST_LIMIT}
-                        onToggle={() => setShowAllRuns((v) => !v)}
+                        hidden={DAILY_DIGEST_ENTRIES.length - DIGEST_LIST_LIMIT}
+                        onToggle={() => {
+                          setShowAllRuns((v) => !v);
+                          setExpandedOlderIds(new Set());
+                        }}
                       />
                     )}
+                    {showAllRuns && (
+                      <div
+                        className={
+                          expandedOlderIds.size > 0
+                            ? "flex flex-col"
+                            : "flex max-h-[400px] flex-col overflow-y-auto overscroll-contain"
+                        }
+                      >
+                        {DAILY_DIGEST_ENTRIES.slice(DIGEST_LIST_LIMIT)
+                          .reverse()
+                          .map((entry) =>
+                            renderDigestEntry(entry, { isLatest: false }),
+                          )}
+                      </div>
+                    )}
+                    {DAILY_DIGEST_ENTRIES.slice(0, DIGEST_LIST_LIMIT)
+                      .reverse()
+                      .map((entry) =>
+                        renderDigestEntry(entry, { isLatest: true }),
+                      )}
                   </div>
                 </>
               )}
@@ -1459,11 +1501,12 @@ function getStarterPrompts({
   ];
 }
 
-/** How many digest entries to show before requiring "view more". */
-const RUN_LIST_LIMIT = 3;
-
-/** Only the latest handoff shows by default; older ones hide behind "View older". */
+/**
+ * Only the latest run shows by default; older ones hide behind "View older".
+ * Watcher-agent handoffs and Daily Digest entries share this behaviour.
+ */
 const HANDOFF_LIST_LIMIT = 1;
+const DIGEST_LIST_LIMIT = 1;
 
 function RunListToggle({
   showingAll,
