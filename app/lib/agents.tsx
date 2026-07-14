@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import type { AchievementId } from "./achievements";
-import { getActionScript } from "./agent-actions";
+import { canAutoRun, getActionScript } from "./agent-actions";
 import {
   buildReturningUserReadSet,
   buildReturningUserSeed,
@@ -47,6 +47,8 @@ export type Agent = {
   archetype: "watcher";
   watcherType: WatcherTypeId;
   description?: string;
+  /** Editable system prompt shown under "View Instructions". */
+  instructions?: string;
   schedule: AgentSchedule;
   actions: AchievementId[];
   /**
@@ -56,14 +58,40 @@ export type Agent = {
   autoActions: HandoffCtaAction[];
   avatarSeed: string;
   status: AgentStatus;
+  /** Soft-archived agents stay in the store but are hidden from sidebars. */
+  archived?: boolean;
+  /** Model selection — display label only for now (no backend wired). */
+  model?: string;
   createdAt: string;
 };
 
 export type HandoffCtaAction =
+  // v1 actions
   | "create-segment"
   | "send-campaign"
   | "send-bulk-message"
-  | "create-inbox-filter";
+  | "create-inbox-filter"
+  // Skills Expansion — templates
+  | "create-template"
+  | "submit-template"
+  // Skills Expansion — broadcasts
+  | "schedule-broadcast"
+  // Skills Expansion — automations
+  | "create-keyword-reply"
+  | "create-automation-rule"
+  | "set-default-reply"
+  // Skills Expansion — chatbots
+  | "create-chatbot"
+  | "test-chatbot"
+  // Skills Expansion — contact data model
+  | "create-attribute"
+  | "create-tag"
+  | "update-segment"
+  // Skills Expansion — team routing
+  | "assign-team"
+  // Skills Expansion — inbox productivity
+  | "add-note"
+  | "create-quick-reply";
 
 export type HandoffCta = {
   id: string;
@@ -79,27 +107,6 @@ export type HandoffItem = {
   cta?: HandoffCta;
 };
 
-/** A single row in a customer table inside a handoff section. */
-export type HandoffTableRow = {
-  id: string;
-  /** Cell values aligned to the table's columns (excluding the action column). */
-  cells: string[];
-  /** Optional per-row action, rendered in the trailing action column. */
-  cta?: HandoffCta;
-  /**
-   * When true the row is a muted full-width note (e.g. "14 more contacts …")
-   * rather than a regular data row — its first cell spans all columns.
-   */
-  note?: boolean;
-};
-
-/** Compact tabular view of a customer list inside a handoff section. */
-export type HandoffTable = {
-  /** Header labels. The trailing action column has an empty-string header. */
-  columns: string[];
-  rows: HandoffTableRow[];
-};
-
 export type HandoffSectionKind = "did" | "attention" | "summary";
 
 export type HandoffSection = {
@@ -107,11 +114,6 @@ export type HandoffSection = {
   kind: HandoffSectionKind;
   title: string;
   items: HandoffItem[];
-  /**
-   * Optional table view. When present (for customer lists), the section
-   * renders this compact table instead of stacked item rows.
-   */
-  table?: HandoffTable;
 };
 
 export type Handoff = {
@@ -177,6 +179,11 @@ export type HandoffWithAgent = Handoff & { agent: Agent };
 type AgentsCtx = AgentsState & {
   createAgent: (draft: AgentDraft) => Agent;
   setAgentStatus: (id: string, status: AgentStatus) => void;
+  renameAgent: (id: string, name: string) => void;
+  updateAgentInstructions: (id: string, instructions: string) => void;
+  updateAgent: (id: string, patch: Partial<Agent>) => void;
+  archiveAgent: (id: string) => void;
+  deleteAgent: (id: string) => void;
   addHandoff: (agentId: string, draft: HandoffDraft) => Handoff;
   startActionRun: (draft: ActionRunDraft) => AgentActionRun;
   completeActionRun: (runId: string) => void;
@@ -306,6 +313,58 @@ export function AgentsProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const renameAgent = useCallback((id: string, name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    setState((prev) => ({
+      ...prev,
+      agents: prev.agents.map((a) =>
+        a.id === id ? { ...a, name: trimmed } : a,
+      ),
+    }));
+  }, []);
+
+  const updateAgentInstructions = useCallback(
+    (id: string, instructions: string) => {
+      setState((prev) => ({
+        ...prev,
+        agents: prev.agents.map((a) =>
+          a.id === id ? { ...a, instructions } : a,
+        ),
+      }));
+    },
+    [],
+  );
+
+  const updateAgent = useCallback((id: string, patch: Partial<Agent>) => {
+    setState((prev) => ({
+      ...prev,
+      agents: prev.agents.map((a) => (a.id === id ? { ...a, ...patch } : a)),
+    }));
+  }, []);
+
+  const archiveAgent = useCallback((id: string) => {
+    setState((prev) => ({
+      ...prev,
+      agents: prev.agents.map((a) =>
+        a.id === id ? { ...a, archived: true } : a,
+      ),
+    }));
+  }, []);
+
+  const deleteAgent = useCallback((id: string) => {
+    setState((prev) => {
+      const { [id]: _gone, ...remainingHandoffs } = prev.handoffsByAgent;
+      const { [id]: _gone2, ...remainingRuns } = prev.actionRunsByAgent;
+      return {
+        ...prev,
+        agents: prev.agents.filter((a) => a.id !== id),
+        handoffsByAgent: remainingHandoffs,
+        actionRunsByAgent: remainingRuns,
+      };
+    });
+  }, []);
+
   const addHandoff = useCallback(
     (agentId: string, draft: HandoffDraft): Handoff => {
       let created: Handoff | null = null;
@@ -325,6 +384,7 @@ export function AgentsProvider({ children }: { children: ReactNode }) {
         const autoRuns: AgentActionRun[] = [];
         const auto = agent?.autoActions ?? [];
         for (const action of auto) {
+          if (!canAutoRun(action)) continue;
           const cta = handoff.ctas.find((c) => c.action === action);
           if (!cta) continue;
           const script = getActionScript(action);
@@ -368,6 +428,7 @@ export function AgentsProvider({ children }: { children: ReactNode }) {
 
   const enableAutoAction = useCallback(
     (agentId: string, action: HandoffCtaAction) => {
+      if (!canAutoRun(action)) return;
       setState((prev) => ({
         ...prev,
         agents: prev.agents.map((a) => {
@@ -474,6 +535,11 @@ export function AgentsProvider({ children }: { children: ReactNode }) {
       readHandoffIds: state.readHandoffIds,
       createAgent,
       setAgentStatus,
+      renameAgent,
+      updateAgentInstructions,
+      updateAgent,
+      archiveAgent,
+      deleteAgent,
       addHandoff,
       startActionRun,
       completeActionRun,
@@ -499,6 +565,11 @@ export function AgentsProvider({ children }: { children: ReactNode }) {
     state,
     createAgent,
     setAgentStatus,
+    renameAgent,
+    updateAgentInstructions,
+    updateAgent,
+    archiveAgent,
+    deleteAgent,
     addHandoff,
     startActionRun,
     completeActionRun,

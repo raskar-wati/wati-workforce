@@ -26,10 +26,10 @@ export function AgentCreationStepCard({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
       transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
-      className="flex flex-col gap-4 rounded-2xl border border-[#e5e5e5] bg-white p-5"
+      className="flex flex-col gap-3 rounded-2xl border border-[#e5e5e5] bg-white px-3 py-3.5"
     >
-      <div className="flex items-start justify-between gap-3">
-        <p className="text-[15px] font-semibold tracking-[-0.075px] text-[#0a0a0a]">
+      <div className="flex items-start justify-between gap-3 px-1">
+        <p className="text-[14px] font-semibold leading-[20px] tracking-[-0.084px] text-[#0a0a0a]">
           {question}
         </p>
         <span className="shrink-0 pt-0.5 text-[12px] tracking-[-0.06px] text-black/40">

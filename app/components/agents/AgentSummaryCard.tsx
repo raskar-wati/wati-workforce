@@ -3,6 +3,7 @@
 import Image from "next/image";
 import type { ReactNode } from "react";
 import type {
+  Agent,
   AgentSchedule,
   AgentStatus,
   WatcherTypeId,
@@ -22,25 +23,45 @@ export type AgentSummaryData = {
 const STATUS_LABEL: Record<AgentStatus, string> = {
   draft: "Draft",
   active: "Active",
-  paused: "Paused",
+  paused: "Inactive",
 };
 
 const STATUS_TONE: Record<AgentStatus, string> = {
   draft: "bg-black/[0.06] text-black/60",
-  active: "bg-emerald-100 text-emerald-700",
-  paused: "bg-amber-100 text-amber-700",
+  active: "bg-emerald-100 text-emerald-700 hover:bg-emerald-200",
+  paused: "bg-amber-100 text-amber-700 hover:bg-amber-200",
 };
+
+/**
+ * Default instructions seeded from the watcher type. Used when an agent
+ * was created before the instructions field existed, or when it was never
+ * customized — kept as a function so it stays in sync with watcher-types.
+ */
+export function getDefaultInstructions(agent: Agent): string {
+  const wt = getWatcherType(agent.watcherType);
+  const role =
+    wt.id === "custom" && agent.description ? agent.description : wt.blurb;
+  return `You are ${agent.name}. ${role}\n\nRun on the configured schedule. Each run, deliver a concise handoff with:\n- What you observed in the last cycle.\n- What needs human attention now (with names, counts, and links).\n- A short summary the team can scan in under 30 seconds.\n\nLead with numbers. Don't speculate.`;
+}
 
 export function AgentSummaryCard({
   data,
   actions,
+  showInstructions,
+  onToggleInstructions,
+  onToggleStatus,
 }: {
   data: AgentSummaryData;
   actions?: ReactNode;
+  showInstructions?: boolean;
+  onToggleInstructions?: () => void;
+  onToggleStatus?: () => void;
 }) {
   const wt = getWatcherType(data.watcherType);
   const subtitle =
     wt.id === "custom" && data.description ? data.description : wt.label;
+  const pillStatus = data.status;
+  const toggleable = pillStatus && pillStatus !== "draft" && onToggleStatus;
 
   return (
     <div className="flex flex-col gap-4 rounded-2xl border border-[#e5e5e5] bg-white p-4">
@@ -63,16 +84,40 @@ export function AgentSummaryCard({
             {subtitle} · {formatSchedule(data.schedule)}
           </p>
         </div>
-        {data.status && (
-          <span
-            className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.5px] ${STATUS_TONE[data.status]}`}
-          >
-            {STATUS_LABEL[data.status]}
-          </span>
-        )}
+        {pillStatus &&
+          (toggleable ? (
+            <button
+              type="button"
+              onClick={onToggleStatus}
+              title={
+                pillStatus === "active" ? "Click to pause" : "Click to activate"
+              }
+              className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.5px] ${STATUS_TONE[pillStatus]}`}
+            >
+              {STATUS_LABEL[pillStatus]}
+            </button>
+          ) : (
+            <span
+              className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.5px] ${STATUS_TONE[pillStatus]}`}
+            >
+              {STATUS_LABEL[pillStatus]}
+            </span>
+          ))}
       </div>
-      {actions && (
-        <div className="flex flex-wrap items-center gap-2">{actions}</div>
+      {(actions || onToggleInstructions) && (
+        <div className="flex flex-wrap items-center gap-2">
+          {actions}
+          {onToggleInstructions && (
+            <button
+              type="button"
+              onClick={onToggleInstructions}
+              aria-pressed={showInstructions}
+              className="rounded-full border border-[#0a0a0a] bg-white px-3 py-1.5 text-[13px] tracking-[-0.078px] text-[#0a0a0a] hover:bg-black/[0.04]"
+            >
+              Edit Agent
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

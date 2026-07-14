@@ -94,6 +94,7 @@ function AgentCreationFlowInner({
   const [draft, setDraft] = useState<CreationDraft>(() => {
     const d = emptyDraft(initialMessage);
     d.watcherType = watcherTypeId;
+    d.name = getWatcherType(watcherTypeId).defaultName;
     return d;
   });
 
@@ -131,7 +132,7 @@ function AgentCreationFlowInner({
     if (!draft.watcherType || !draft.schedule) return "";
     const wt = getWatcherType(draft.watcherType);
     return generateInstructions({
-      agentName: wt.defaultName,
+      agentName: draft.name.trim() || wt.defaultName,
       watcherType: draft.watcherType,
       customDescription: draft.customDescription,
       achievements: draft.actions,
@@ -149,7 +150,7 @@ function AgentCreationFlowInner({
     const wt = getWatcherType(draft.watcherType);
     const agent = createAgent({
       threadId,
-      name: wt.defaultName,
+      name: draft.name.trim() || wt.defaultName,
       archetype: "watcher",
       watcherType: draft.watcherType,
       description:
@@ -260,7 +261,9 @@ function AgentCreationFlowInner({
 
       {showScheduleCard && draft.watcherType && draft.schedule && (
         <ScheduleTaskCard
-          agentName={getWatcherType(draft.watcherType).defaultName}
+          agentName={
+            draft.name.trim() || getWatcherType(draft.watcherType).defaultName
+          }
           schedule={draft.schedule}
           disabled={phase === "done"}
           onSchedule={() => finalize(false)}
@@ -303,10 +306,23 @@ function StepBody({
       />
     );
   }
+  const watcher = draft.watcherType ? getWatcherType(draft.watcherType) : null;
+  const placeholderName = watcher?.defaultName ?? "Agent name";
   return (
-    <AvatarShufflePicker
-      value={draft.avatarSeed}
-      onChange={(path: string) => setDraft((d) => ({ ...d, avatarSeed: path }))}
-    />
+    <div className="flex flex-col gap-3">
+      <input
+        value={draft.name}
+        onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
+        placeholder={placeholderName}
+        className="w-full rounded-xl border border-[#e5e5e5] bg-white px-3 py-2.5 text-[13px] tracking-[-0.078px] text-[#0a0a0a] outline-none focus:border-[#1570EF]"
+        aria-label="Agent name"
+      />
+      <AvatarShufflePicker
+        value={draft.avatarSeed}
+        onChange={(path: string) =>
+          setDraft((d) => ({ ...d, avatarSeed: path }))
+        }
+      />
+    </div>
   );
 }

@@ -45,7 +45,7 @@ export function ScheduleTaskCard({
           type="button"
           onClick={onSchedule}
           disabled={disabled}
-          className="rounded-lg bg-[#0a0a0a] px-4 py-1.5 text-[13px] tracking-[-0.078px] text-white hover:bg-[#0a0a0a]/90 disabled:cursor-not-allowed disabled:opacity-40"
+          className="rounded-lg bg-[#23A455] px-4 py-1.5 text-[13px] tracking-[-0.078px] text-white hover:bg-[#1F9349] disabled:cursor-not-allowed disabled:opacity-40"
         >
           Schedule
         </button>

@@ -19,7 +19,8 @@ export const CREATION_STEPS: readonly CreationStepDef[] = [
   },
   {
     id: "avatar",
-    question: "Pick an avatar — shuffle if you'd like a different one.",
+    question:
+      "Name your agent and pick an avatar — shuffle if you'd like a different one.",
   },
 ];
 
@@ -27,6 +28,7 @@ export type CreationDraft = {
   initialMessage: string;
   watcherType: WatcherTypeId | null;
   customDescription: string;
+  name: string;
   actions: AchievementId[];
   schedule: AgentSchedule | null;
   avatarSeed: string | null;
@@ -37,6 +39,7 @@ export function emptyDraft(initialMessage: string): CreationDraft {
     initialMessage,
     watcherType: null,
     customDescription: "",
+    name: "",
     actions: [],
     schedule: null,
     avatarSeed: null,
@@ -57,7 +60,7 @@ export function isStepAnswered(
           draft.schedule.description.trim().length > 0)
       );
     case "avatar":
-      return draft.avatarSeed !== null;
+      return draft.avatarSeed !== null && draft.name.trim().length > 0;
   }
 }
 

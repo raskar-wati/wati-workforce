@@ -3,67 +3,76 @@
 import { AnimatePresence, motion } from "motion/react";
 import { ChevronDown } from "lucide-react";
 import { useEffect, useState } from "react";
-import type {
-  AgentActionRun as AgentActionRunType,
-  Handoff as HandoffType,
-  HandoffCta,
-} from "../../lib/agents";
-import { AgentActionRun } from "./AgentActionRun";
+import type { ReactNode } from "react";
+import type { Handoff as HandoffType, HandoffCta } from "../../lib/agents";
 import { HandoffCtaButton } from "./HandoffCtaButton";
 import { HandoffSection } from "./HandoffSection";
 
+/**
+ * Compact handoff row — header is a single line (chevron + "Handoff #N" + date),
+ * separated from neighbours by hairlines instead of stacked card chrome.
+ * Expanded content reveals the full sections + CTAs in-place.
+ *
+ * Designed so a list of runs reads like a scannable log rather than a
+ * stack of heavy cards.
+ */
 export function Handoff({
   handoff,
   agentName,
   defaultExpanded = false,
   firedCtaIds,
-  actionRuns = [],
   onFireCta,
   onExpand,
+  onExpandedChange,
+  runsSlot,
 }: {
   handoff: HandoffType;
   agentName: string;
   defaultExpanded?: boolean;
   firedCtaIds: ReadonlySet<string>;
-  /** Action runs spawned from this handoff's CTAs — rendered inside the card. */
-  actionRuns?: AgentActionRunType[];
   onFireCta: (cta: HandoffCta) => void;
   /** Called the first time the handoff is expanded — used to mark it read. */
   onExpand?: () => void;
+  /** Called on every expand/collapse toggle with the new state. */
+  onExpandedChange?: (expanded: boolean) => void;
+  /** Optional follow-up content (e.g. AgentActionRun cards from CTAs)
+   *  rendered inside the expanded left rail so they stay anchored to
+   *  the chevron column rather than escaping into the parent layout. */
+  runsSlot?: ReactNode;
 }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
 
-  // Fire onExpand once on initial mount if defaultExpanded, then on every
-  // user-triggered open. The hook in agents.tsx is idempotent so duplicate
-  // calls are safe.
   useEffect(() => {
     if (expanded) onExpand?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expanded]);
 
   return (
-    <div className="flex flex-col rounded-2xl border border-[#e5e5e5] bg-white">
+    <div className="flex flex-col">
       <button
         type="button"
-        onClick={() => setExpanded((v) => !v)}
+        onClick={() => {
+          const next = !expanded;
+          setExpanded(next);
+          onExpandedChange?.(next);
+        }}
         aria-expanded={expanded}
-        className="flex items-center gap-2 px-4 py-3 text-left"
+        aria-label={`${agentName} Handoff #${handoff.runNumber}`}
+        className="group flex items-center gap-2 px-0.5 py-1.5 text-left"
       >
         <motion.span
           animate={{ rotate: expanded ? 0 : -90 }}
           transition={{ duration: 0.2 }}
-          className="flex text-black/40"
+          className="flex text-black/40 transition-colors group-hover:text-[#0a0a0a]"
         >
           <ChevronDown size={14} strokeWidth={2} />
         </motion.span>
-        <div className="flex-1">
-          <p className="text-[13px] font-medium tracking-[-0.078px] text-[#0a0a0a]">
-            {agentName} · Run #{handoff.runNumber}
-          </p>
-          <p className="text-[12px] tracking-[-0.06px] text-black/50">
-            {formatRunAt(handoff.runAt)}
-          </p>
-        </div>
+        <span className="flex-1 truncate text-[13px] font-medium tracking-[-0.078px] text-[#0a0a0a]">
+          Handoff #{handoff.runNumber}
+        </span>
+        <span className="shrink-0 text-[12px] tracking-[-0.06px] text-black/45 transition-colors group-hover:text-black/70">
+          {formatRunAt(handoff.runAt)}
+        </span>
       </button>
 
       <AnimatePresence initial={false}>
@@ -75,14 +84,10 @@ export function Handoff({
             transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
             className="overflow-hidden"
           >
-            <div className="flex flex-col gap-4 border-t border-[#f0f0f0] px-4 py-4">
+            {/* Faint left rail anchors children to the chevron column. */}
+            <div className="ml-[8.5px] flex flex-col gap-4 border-l border-black/[0.08] pb-4 pt-1 pl-4">
               {handoff.sections.map((s) => (
-                <HandoffSection
-                  key={s.id}
-                  section={s}
-                  firedCtaIds={firedCtaIds}
-                  onFireCta={onFireCta}
-                />
+                <HandoffSection key={s.id} section={s} />
               ))}
               {handoff.ctas.length > 0 && (
                 <div className="flex flex-wrap gap-2 pt-1">
@@ -96,17 +101,7 @@ export function Handoff({
                   ))}
                 </div>
               )}
-
-              {actionRuns.length > 0 && (
-                <div className="flex flex-col gap-2 border-t border-[#f0f0f0] pt-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.6px] text-black/40">
-                    Actions taken
-                  </p>
-                  {actionRuns.map((r) => (
-                    <AgentActionRun key={r.id} run={r} nested />
-                  ))}
-                </div>
-              )}
+              {runsSlot}
             </div>
           </motion.div>
         )}

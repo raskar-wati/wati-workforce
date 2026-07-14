@@ -1,23 +1,23 @@
+"use client";
+
 import { Bell, Rocket, User } from "lucide-react";
+import { useAskWatiDrawer } from "../lib/ask-wati-drawer";
 import { WatiLogo } from "./WatiLogo";
 
 export function GlobalHeader() {
+  const { toggle } = useAskWatiDrawer();
+
   return (
     <header className="flex h-11 w-full items-center justify-between bg-[var(--wati-surface-subtle)]">
       <WatiLogo />
 
       <div className="flex h-full items-center gap-2 pr-3">
-        <span className="text-sm font-semibold text-[var(--wati-text-subtitle)]">
-          Quick start
-        </span>
-
-        <div className="h-4 w-px bg-[var(--wati-divider-light)]" />
-
         <button
           type="button"
-          className="rounded-full border border-[var(--wati-text-primary)] px-3 py-1 text-xs font-semibold text-[var(--wati-text-primary)]"
+          onClick={toggle}
+          className="inline-flex items-center rounded-full bg-[#23A455] px-3 py-1 text-xs font-semibold text-white transition-colors hover:bg-[#1F9349]"
         >
-          Book a Demo
+          Ask Wati
         </button>
 
         <div className="flex h-full items-center pl-1">

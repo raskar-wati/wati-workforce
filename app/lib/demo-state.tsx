@@ -31,11 +31,22 @@ const DEFAULT_MODE: DemoMode = "first-time";
 
 const DemoStateContext = createContext<DemoStateCtx | null>(null);
 
-export function DemoStateProvider({ children }: { children: ReactNode }) {
-  const [mode, setModeState] = useState<DemoMode>(DEFAULT_MODE);
+export function DemoStateProvider({
+  children,
+  forceMode,
+}: {
+  children: ReactNode;
+  /** When set, ignore localStorage and lock the provider to this mode (used by Ask Wati drawer). */
+  forceMode?: DemoMode;
+}) {
+  const [mode, setModeState] = useState<DemoMode>(forceMode ?? DEFAULT_MODE);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
+    if (forceMode) {
+      setHydrated(true);
+      return;
+    }
     try {
       const raw =
         typeof window !== "undefined"
@@ -48,16 +59,16 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
       // ignore corrupted storage
     }
     setHydrated(true);
-  }, []);
+  }, [forceMode]);
 
   useEffect(() => {
-    if (!hydrated) return;
+    if (!hydrated || forceMode) return;
     try {
       window.localStorage.setItem(STORAGE_KEY, mode);
     } catch {
       // ignore
     }
-  }, [mode, hydrated]);
+  }, [mode, hydrated, forceMode]);
 
   const setMode = useCallback((next: DemoMode) => setModeState(next), []);
 

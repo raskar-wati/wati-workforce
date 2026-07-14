@@ -27,21 +27,21 @@ export function HandoffActionPicker({
             key={a.id}
             type="button"
             onClick={() => toggle(a.id)}
-            className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors ${
+            className={`flex items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors ${
               checked ? "bg-black/[0.04]" : "hover:bg-black/[0.02]"
             }`}
           >
             <span
               className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
                 checked
-                  ? "border-[#0a0a0a] bg-[#0a0a0a] text-white"
+                  ? "border-[#23A455] bg-[#23A455] text-white"
                   : "border-[#d4d4d4] bg-white text-transparent"
               }`}
               aria-hidden
             >
               <Check size={10} strokeWidth={3} />
             </span>
-            <span className="text-[14px] tracking-[-0.084px] text-[#0a0a0a]">
+            <span className="text-[13px] tracking-[-0.078px] text-[#0a0a0a]">
               {a.label}
             </span>
           </button>
