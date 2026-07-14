@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import type { AchievementId } from "./achievements";
-import { getActionScript } from "./agent-actions";
+import { canAutoRun, getActionScript } from "./agent-actions";
 import {
   buildReturningUserReadSet,
   buildReturningUserSeed,
@@ -66,10 +66,32 @@ export type Agent = {
 };
 
 export type HandoffCtaAction =
+  // v1 actions
   | "create-segment"
   | "send-campaign"
   | "send-bulk-message"
-  | "create-inbox-filter";
+  | "create-inbox-filter"
+  // Skills Expansion — templates
+  | "create-template"
+  | "submit-template"
+  // Skills Expansion — broadcasts
+  | "schedule-broadcast"
+  // Skills Expansion — automations
+  | "create-keyword-reply"
+  | "create-automation-rule"
+  | "set-default-reply"
+  // Skills Expansion — chatbots
+  | "create-chatbot"
+  | "test-chatbot"
+  // Skills Expansion — contact data model
+  | "create-attribute"
+  | "create-tag"
+  | "update-segment"
+  // Skills Expansion — team routing
+  | "assign-team"
+  // Skills Expansion — inbox productivity
+  | "add-note"
+  | "create-quick-reply";
 
 export type HandoffCta = {
   id: string;
@@ -362,6 +384,7 @@ export function AgentsProvider({ children }: { children: ReactNode }) {
         const autoRuns: AgentActionRun[] = [];
         const auto = agent?.autoActions ?? [];
         for (const action of auto) {
+          if (!canAutoRun(action)) continue;
           const cta = handoff.ctas.find((c) => c.action === action);
           if (!cta) continue;
           const script = getActionScript(action);
@@ -405,6 +428,7 @@ export function AgentsProvider({ children }: { children: ReactNode }) {
 
   const enableAutoAction = useCallback(
     (agentId: string, action: HandoffCtaAction) => {
+      if (!canAutoRun(action)) return;
       setState((prev) => ({
         ...prev,
         agents: prev.agents.map((a) => {

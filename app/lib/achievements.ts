@@ -5,7 +5,15 @@ export type AchievementId =
   | "list-customers"
   | "create-segment"
   | "inbox-filter"
-  | "draft-responses";
+  | "draft-responses"
+  // Skills Expansion (Agent Skills Expansion doc §3)
+  | "manage-templates"
+  | "schedule-broadcasts"
+  | "build-automations"
+  | "build-chatbots"
+  | "organize-contacts"
+  | "route-teams"
+  | "inbox-productivity";
 
 export type AchievementDef = {
   id: AchievementId;
@@ -33,6 +41,45 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
     id: "draft-responses",
     label: "Draft responses",
     enabledActions: ["send-bulk-message"],
+  },
+  {
+    id: "manage-templates",
+    label: "Draft & submit WhatsApp templates",
+    enabledActions: ["create-template", "submit-template"],
+  },
+  {
+    id: "schedule-broadcasts",
+    label: "Schedule broadcast campaigns",
+    enabledActions: ["schedule-broadcast"],
+  },
+  {
+    id: "build-automations",
+    label: "Set up keyword replies & automation rules",
+    enabledActions: [
+      "create-keyword-reply",
+      "create-automation-rule",
+      "set-default-reply",
+    ],
+  },
+  {
+    id: "build-chatbots",
+    label: "Build & test chatbot flows",
+    enabledActions: ["create-chatbot", "test-chatbot"],
+  },
+  {
+    id: "organize-contacts",
+    label: "Manage attributes, tags & segments",
+    enabledActions: ["create-attribute", "create-tag", "update-segment"],
+  },
+  {
+    id: "route-teams",
+    label: "Route conversations to teams",
+    enabledActions: ["assign-team"],
+  },
+  {
+    id: "inbox-productivity",
+    label: "Leave notes & save quick replies",
+    enabledActions: ["add-note", "create-quick-reply"],
   },
 ];
 

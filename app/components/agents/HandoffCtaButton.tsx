@@ -1,6 +1,25 @@
 "use client";
 
-import { Check, Filter, Megaphone, Send, Users, type LucideIcon } from "lucide-react";
+import {
+  Bot,
+  Check,
+  FileText,
+  FileUp,
+  Filter,
+  FlaskConical,
+  ListFilter,
+  Megaphone,
+  MessageSquarePlus,
+  MessageSquareText,
+  Reply,
+  Send,
+  StickyNote,
+  Tag,
+  UserPlus,
+  Users,
+  Zap,
+  type LucideIcon,
+} from "lucide-react";
 import type { HandoffCta, HandoffCtaAction } from "../../lib/agents";
 
 const ACTION_ICONS: Record<HandoffCtaAction, LucideIcon> = {
@@ -8,6 +27,20 @@ const ACTION_ICONS: Record<HandoffCtaAction, LucideIcon> = {
   "send-campaign": Megaphone,
   "send-bulk-message": Send,
   "create-inbox-filter": Filter,
+  "create-template": FileText,
+  "submit-template": FileUp,
+  "schedule-broadcast": Megaphone,
+  "create-keyword-reply": Reply,
+  "create-automation-rule": Zap,
+  "set-default-reply": MessageSquareText,
+  "create-chatbot": Bot,
+  "test-chatbot": FlaskConical,
+  "create-attribute": ListFilter,
+  "create-tag": Tag,
+  "update-segment": Users,
+  "assign-team": UserPlus,
+  "add-note": StickyNote,
+  "create-quick-reply": MessageSquarePlus,
 };
 
 export function HandoffCtaButton({

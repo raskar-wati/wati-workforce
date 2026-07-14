@@ -1,8 +1,9 @@
 "use client";
 
 import { motion } from "motion/react";
-import { ArrowUpRight, Check } from "lucide-react";
+import { ArrowUpRight, Check, PencilLine } from "lucide-react";
 import { useEffect, useState } from "react";
+import { getActionScript } from "../../lib/agent-actions";
 import type { AgentActionRun as AgentActionRunType } from "../../lib/agents";
 import { useAgents } from "../../lib/agents";
 import { StatusIndicator } from "./StatusIndicator";
@@ -92,6 +93,13 @@ function ActionRunResult({ run }: { run: AgentActionRunType }) {
   const agent = getAgent(run.agentId);
   const alwaysOn = agent?.autoActions.includes(run.action) ?? false;
 
+  // Draft-first actions produce an inert object awaiting activation; gated
+  // actions need a fresh human confirmation on every run, so they can't be
+  // promoted to auto-actions. See ActionApproval in lib/agent-actions.ts.
+  const { approval } = getActionScript(run.action);
+  const isDraft = approval === "draft-first";
+  const isGated = approval === "gated";
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -100,9 +108,15 @@ function ActionRunResult({ run }: { run: AgentActionRunType }) {
       className="flex flex-col gap-3 rounded-2xl border border-[#e5e5e5] bg-white px-5 py-4"
     >
       <div className="flex items-start gap-3">
-        <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
-          <Check size={12} strokeWidth={2.5} />
-        </span>
+        {isDraft ? (
+          <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+            <PencilLine size={12} strokeWidth={2.5} />
+          </span>
+        ) : (
+          <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+            <Check size={12} strokeWidth={2.5} />
+          </span>
+        )}
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <p className="text-[13px] font-medium tracking-[-0.078px] text-[#0a0a0a]">
             {run.resultLabel}
@@ -110,6 +124,11 @@ function ActionRunResult({ run }: { run: AgentActionRunType }) {
           <p className="text-[12px] tracking-[-0.06px] text-black/50">
             {run.resultDestination}
           </p>
+          {isDraft && (
+            <p className="text-[12px] tracking-[-0.06px] text-amber-700">
+              Draft — needs your approval to go live
+            </p>
+          )}
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -120,7 +139,11 @@ function ActionRunResult({ run }: { run: AgentActionRunType }) {
           {run.resultCtaLabel}
           <ArrowUpRight size={12} strokeWidth={2} />
         </span>
-        {alwaysOn ? (
+        {isGated ? (
+          <span className="text-[13px] tracking-[-0.078px] text-black/40">
+            Needs your confirmation each run
+          </span>
+        ) : alwaysOn ? (
           <span className="inline-flex items-center gap-1 text-[13px] tracking-[-0.078px] text-emerald-700">
             <Check size={12} strokeWidth={2.5} />
             Will always do this

@@ -75,6 +75,7 @@ const READY_TO_BUY: WatcherTypeDef = {
     ctas: [
       cta("create-segment", "Save as segment"),
       cta("send-campaign", "Launch re-engagement campaign"),
+      cta("create-quick-reply", "Save follow-up as quick reply"),
     ],
   }),
 };
@@ -123,6 +124,7 @@ const TOP_TOPICS: WatcherTypeDef = {
     ctas: [
       cta("create-segment", "Segment by topic"),
       cta("send-campaign", "Broadcast on top topic"),
+      cta("create-chatbot", "Draft FAQ bot for top topic"),
     ],
   }),
 };
@@ -156,6 +158,7 @@ const DEMAND_SPIKE: WatcherTypeDef = {
     ctas: [
       cta("create-segment", "Save spike cohort"),
       cta("send-campaign", "Capacity announcement"),
+      cta("create-keyword-reply", "Auto-reply to launch questions"),
     ],
   }),
 };
@@ -191,6 +194,7 @@ const PRICE_ALERT: WatcherTypeDef = {
     ctas: [
       cta("create-segment", "Save price-sensitive segment"),
       cta("send-campaign", "Launch discount campaign"),
+      cta("create-template", "Draft discount template"),
     ],
   }),
 };
@@ -223,6 +227,7 @@ const SENTIMENT_MONITOR: WatcherTypeDef = {
     ctas: [
       cta("create-segment", "Save at-risk segment"),
       cta("create-inbox-filter", "Always route negative to humans"),
+      cta("assign-team", "Route escalations to recovery team"),
     ],
   }),
 };
@@ -256,6 +261,7 @@ const VOLUME_SPIKE: WatcherTypeDef = {
     ctas: [
       cta("create-inbox-filter", "Add overflow routing"),
       cta("send-campaign", "Notify customers of delay"),
+      cta("set-default-reply", "Set delay auto-reply"),
     ],
   }),
 };
@@ -294,6 +300,7 @@ const URGENCY: WatcherTypeDef = {
     ctas: [
       cta("create-segment", "Save urgent cohort"),
       cta("create-inbox-filter", "Route urgent to priority queue"),
+      cta("assign-team", "Route to priority team"),
     ],
   }),
 };
@@ -327,6 +334,7 @@ const RESPONSE_GAP: WatcherTypeDef = {
     ctas: [
       cta("create-segment", "Save breached conversations"),
       cta("create-inbox-filter", "Auto-escalate on SLA breach"),
+      cta("add-note", "Add context notes for pickup"),
     ],
   }),
 };
@@ -365,6 +373,7 @@ const DELIVERY_ISSUE: WatcherTypeDef = {
     ctas: [
       cta("send-campaign", "Proactive delay notification"),
       cta("create-segment", "Save all delivery-complaint contacts"),
+      cta("create-template", "Draft delay-update template"),
     ],
   }),
 };
@@ -403,6 +412,7 @@ const PAID_ACQ: WatcherTypeDef = {
     ctas: [
       cta("create-segment", "Save high-intent ad leads"),
       cta("send-campaign", "Launch lead nurture sequence"),
+      cta("create-chatbot", "Draft lead-qualification bot"),
     ],
   }),
 };
@@ -436,6 +446,7 @@ const OPS_MISCLASSIFICATION: WatcherTypeDef = {
     ctas: [
       cta("create-inbox-filter", "Block internal senders from customer queue"),
       cta("create-segment", "Save misrouted thread list"),
+      cta("create-automation-rule", "Auto-route internal senders"),
     ],
   }),
 };
