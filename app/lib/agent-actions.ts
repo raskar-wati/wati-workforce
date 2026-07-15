@@ -72,6 +72,8 @@ export type AgentActionScript = {
   approveLabel?: string;
   /** Undo affordance on an active receipt — maps to a state revert. */
   undoLabel?: string;
+  /** Pill label override for the live state, e.g. "Approved" for templates. */
+  liveStateLabel?: string;
 };
 
 const CREATE_SEGMENT: AgentActionScript = {
@@ -178,6 +180,7 @@ const CREATE_TEMPLATE: AgentActionScript = {
     activeState: "pending-meta",
   },
   approveLabel: "Submit to Meta",
+  liveStateLabel: "Approved",
 };
 
 const SUBMIT_TEMPLATE: AgentActionScript = {
@@ -197,6 +200,7 @@ const SUBMIT_TEMPLATE: AgentActionScript = {
     confirmLabel: "Submit to Meta",
     resultState: "pending-meta",
   },
+  liveStateLabel: "Approved",
 };
 
 const SCHEDULE_BROADCAST: AgentActionScript = {

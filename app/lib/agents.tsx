@@ -15,6 +15,7 @@ import {
   getActionScript,
   type AgentObjectState,
 } from "./agent-actions";
+import { useNotifications } from "./notifications";
 import {
   buildReturningUserReadSet,
   buildReturningUserSeed,
@@ -230,6 +231,9 @@ type AgentsCtx = AgentsState & {
 };
 
 const STORAGE_KEY_BASE = "wati.agents.v1";
+
+/** Demo stand-in for Meta's ~48h template review window. */
+const META_REVIEW_MS = 20_000;
 
 function storageKeyFor(mode: DemoMode): string {
   return `${STORAGE_KEY_BASE}.${mode}`;
@@ -563,6 +567,61 @@ export function AgentsProvider({ children }: { children: ReactNode }) {
       return { ...prev, actionRunsByAgent: next };
     });
   }, []);
+
+  // ── Simulated Meta review ─────────────────────────────────────────
+  // Waiting-state receipts are live objects (PRD sub-page 6): an object in
+  // pending-meta self-resolves after the demo review window, the receipt
+  // updates in place, and the bell gets a notification. Scheduled from
+  // completedAt so reloads resume the countdown (past-due resolves at once).
+  const { push: pushNotification } = useNotifications();
+
+  const resolveMetaReview = useCallback(
+    (runId: string) => {
+      setState((prev) => {
+        const pending = Object.values(prev.actionRunsByAgent)
+          .flat()
+          .find((r) => r.id === runId && r.objectState === "pending-meta");
+        if (!pending) return prev;
+
+        const next: Record<string, AgentActionRun[]> = {};
+        for (const [agentId, runs] of Object.entries(prev.actionRunsByAgent)) {
+          next[agentId] = runs.map((r) =>
+            r.id === runId ? { ...r, objectState: "live" as const } : r,
+          );
+        }
+        // Deferred out of the updater so we never set another provider's
+        // state mid-render; the notification id dedupes re-invocations.
+        const destination = pending.resultDestination;
+        window.setTimeout(() => {
+          pushNotification({
+            id: `meta-approved-${runId}`,
+            title: "Template approved by Meta",
+            body: `${destination} — ready to use in rules and broadcasts`,
+          });
+        }, 0);
+        return { ...prev, actionRunsByAgent: next };
+      });
+    },
+    [pushNotification],
+  );
+
+  useEffect(() => {
+    const timers: number[] = [];
+    for (const runs of Object.values(state.actionRunsByAgent)) {
+      for (const r of runs) {
+        if (r.status !== "done" || r.objectState !== "pending-meta") continue;
+        const due =
+          new Date(r.completedAt ?? r.startedAt).getTime() + META_REVIEW_MS;
+        timers.push(
+          window.setTimeout(
+            () => resolveMetaReview(r.id),
+            Math.max(0, due - Date.now()),
+          ),
+        );
+      }
+    }
+    return () => timers.forEach((t) => window.clearTimeout(t));
+  }, [state.actionRunsByAgent, resolveMetaReview]);
 
   /** Receipt undo/approve — the state-revert model (disable/enable, disarm). */
   const setRunObjectState = useCallback(

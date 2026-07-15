@@ -204,6 +204,7 @@ function ActionRunReceipt({ run }: { run: AgentActionRunType }) {
       subtitle={run.resultDestination}
       note={governance === "B" ? script.inertNote : undefined}
       state={objectState}
+      stateLabel={objectState === "live" ? script.liveStateLabel : undefined}
       actions={
         <>
           <CardCtaChip>
