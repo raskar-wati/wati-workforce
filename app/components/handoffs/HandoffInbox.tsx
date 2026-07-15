@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAgents } from "../../lib/agents";
 import { useFireHandoffCta } from "../../lib/use-fire-handoff-cta";
+import { ApprovalQueue } from "./ApprovalQueue";
 import { HandoffDetail } from "./HandoffDetail";
 import { HandoffInboxEmpty } from "./HandoffInboxEmpty";
 import { HandoffInboxList, type InboxFilter } from "./HandoffInboxList";
@@ -25,6 +26,8 @@ export function HandoffInbox() {
     markHandoffsRead,
     markAllHandoffsRead,
     unreadHandoffCount,
+    approvalQueue,
+    waitingQueue,
   } = useAgents();
   const fireCta = useFireHandoffCta();
 
@@ -57,7 +60,9 @@ export function HandoffInbox() {
     [dedupedByAgent],
   );
 
-  const visible = filter === "attention" ? attentionDeduped : dedupedByAgent;
+  const visible =
+    filter === "attention" ? attentionDeduped : dedupedByAgent;
+  const queueOpen = filter === "approvals";
 
   // Total handoffs per agent — drives the count chip on each row.
   const agentHandoffCounts = useMemo(() => {
@@ -69,15 +74,17 @@ export function HandoffInbox() {
   }, [allHandoffs]);
 
   // Auto-select: if nothing selected or current selection isn't visible,
-  // pick the first one in the (filtered) list.
+  // pick the first one in the (filtered) list. The approvals queue replaces
+  // the detail pane, so selection is left alone while it's open.
   useEffect(() => {
+    if (queueOpen) return;
     if (visible.length === 0) {
       if (selectedId !== null) setSelectedId(null);
       return;
     }
     const inView = selectedId && visible.some((h) => h.id === selectedId);
     if (!inView) setSelectedId(visible[0].id);
-  }, [visible, selectedId]);
+  }, [visible, selectedId, queueOpen]);
 
   // Mark read: when an agent's row is selected, every handoff from that
   // agent gets marked read (older runs would otherwise be unreachable).
@@ -108,19 +115,25 @@ export function HandoffInbox() {
   return (
     <div className="flex h-full w-full">
       <HandoffInboxList
-        handoffs={visible}
+        handoffs={queueOpen ? dedupedByAgent : visible}
         filter={filter}
         onFilterChange={setFilter}
         attentionCount={attentionDeduped.length}
         totalCount={dedupedByAgent.length}
+        approvalsCount={approvalQueue.length + waitingQueue.length}
         agentHandoffCounts={agentHandoffCounts}
-        selectedId={selectedId}
-        onSelect={setSelectedId}
+        selectedId={queueOpen ? null : selectedId}
+        onSelect={(id) => {
+          setSelectedId(id);
+          if (queueOpen) setFilter("all");
+        }}
         unreadTotal={unreadHandoffCount}
         onMarkAllRead={markAllHandoffsRead}
       />
 
-      {selected ? (
+      {queueOpen ? (
+        <ApprovalQueue />
+      ) : selected ? (
         <HandoffDetail
           handoff={selected}
           firedCtaIds={firedCtaIds}

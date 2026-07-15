@@ -190,6 +190,9 @@ type AgentsState = {
 
 export type HandoffWithAgent = Handoff & { agent: Agent };
 
+/** One entry in the approval/waiting queue — a run joined with its agent. */
+export type ApprovalQueueItem = { run: AgentActionRun; agent: Agent };
+
 type AgentsCtx = AgentsState & {
   createAgent: (draft: AgentDraft) => Agent;
   setAgentStatus: (id: string, status: AgentStatus) => void;
@@ -218,6 +221,10 @@ type AgentsCtx = AgentsState & {
   getAllHandoffs: () => HandoffWithAgent[];
   /** Count of handoffs the user hasn't opened yet (across all agents). */
   unreadHandoffCount: number;
+  /** Class A drafts awaiting activation — the handoff queue (PRD sub-page 3). */
+  approvalQueue: ApprovalQueueItem[];
+  /** Objects waiting on an external decision (pending Meta) — self-resolve. */
+  waitingQueue: ApprovalQueueItem[];
   /** Unread count for a single agent. */
   getUnreadCountForAgent: (agentId: string) => number;
 };
@@ -623,6 +630,30 @@ export function AgentsProvider({ children }: { children: ReactNode }) {
       0,
     );
 
+    // The handoff queue: completed Class A runs still in draft (awaiting
+    // activation) and objects pending an external decision. Legacy persisted
+    // runs predate objectState — Class A defaults to draft, same as receipts.
+    const approvalQueue: ApprovalQueueItem[] = [];
+    const waitingQueue: ApprovalQueueItem[] = [];
+    for (const [agentId, runs] of Object.entries(state.actionRunsByAgent)) {
+      const agent = agentById.get(agentId);
+      if (!agent) continue;
+      for (const run of runs) {
+        if (run.status !== "done") continue;
+        const objectState =
+          run.objectState ??
+          (getActionScript(run.action).governance === "A" ? "draft" : undefined);
+        if (objectState === "draft") approvalQueue.push({ run, agent });
+        else if (objectState === "pending-meta") waitingQueue.push({ run, agent });
+      }
+    }
+    const byCompletedDesc = (a: ApprovalQueueItem, b: ApprovalQueueItem) =>
+      (a.run.completedAt ?? a.run.startedAt) < (b.run.completedAt ?? b.run.startedAt)
+        ? 1
+        : -1;
+    approvalQueue.sort(byCompletedDesc);
+    waitingQueue.sort(byCompletedDesc);
+
     return {
       agents: state.agents,
       handoffsByAgent: state.handoffsByAgent,
@@ -654,6 +685,8 @@ export function AgentsProvider({ children }: { children: ReactNode }) {
         state.agents.filter((a) => a.threadId === threadId),
       getAllHandoffs: () => allHandoffs,
       unreadHandoffCount,
+      approvalQueue,
+      waitingQueue,
       getUnreadCountForAgent: (agentId) =>
         (state.handoffsByAgent[agentId] ?? []).reduce(
           (n, h) => (readSet.has(h.id) ? n : n + 1),

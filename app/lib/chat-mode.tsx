@@ -18,10 +18,11 @@ export type ChatMode = "agent" | "automation" | "insights";
 
 /**
  * Which top-level surface is shown in the main area. "chat" is the default
- * thread/agent view; "handoffs" swaps in the Handoff Inbox. Other top-level
+ * thread/agent view; "handoffs" swaps in the Handoff Inbox; "approvals" is
+ * the handoff queue of drafts awaiting activation. Other top-level
  * destinations (e.g. settings) would slot in here later.
  */
-export type ChatView = "chat" | "handoffs";
+export type ChatView = "chat" | "handoffs" | "approvals";
 
 type ChatModeCtx = {
   mode: ChatMode | null;

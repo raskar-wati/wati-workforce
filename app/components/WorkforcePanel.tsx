@@ -5,6 +5,7 @@ import {
   ChevronDown,
   ChevronsLeft,
   ChevronsRight,
+  ClipboardCheck,
   Inbox,
   Pin,
   Plus,
@@ -63,8 +64,16 @@ export function WorkforcePanel({
     agents: allAgents,
     getUnreadCountForAgent,
     unreadHandoffCount,
+    approvalQueue,
   } = useAgents();
   const agents = allAgents.filter((a) => !a.archived);
+  // The Handoffs badge counts unread reports + drafts awaiting approval;
+  // amber whenever something is waiting on the user, not just unread.
+  const handoffBadgeCount = unreadHandoffCount + approvalQueue.length;
+  const handoffBadgeClass =
+    approvalQueue.length > 0
+      ? "bg-wati-state-draft-text"
+      : "bg-[var(--wati-text-primary)]";
   const { mode, setMode, view, setView } = useChatMode();
   const [agentsOpen, setAgentsOpen] = useState(false);
   const [collapsedInternal, setCollapsedInternal] = useState(defaultCollapsed);
@@ -82,10 +91,17 @@ export function WorkforcePanel({
   const [drawerTab, setDrawerTab] = useState<"chats" | "agents">("chats");
 
   const inboxSelected = view === "handoffs";
+  const approvalsSelected = view === "approvals";
   const askWatiSelected =
-    !inboxSelected && activeThreadId === null && mode !== "agent";
+    !inboxSelected &&
+    !approvalsSelected &&
+    activeThreadId === null &&
+    mode !== "agent";
   const newAgentSelected =
-    !inboxSelected && activeThreadId === null && mode === "agent";
+    !inboxSelected &&
+    !approvalsSelected &&
+    activeThreadId === null &&
+    mode === "agent";
 
   const goHome = () => {
     setView("chat");
@@ -95,6 +111,12 @@ export function WorkforcePanel({
 
   const openInbox = () => {
     setView("handoffs");
+    setActiveThreadId(null);
+    setMode(null);
+  };
+
+  const openApprovals = () => {
+    setView("approvals");
     setActiveThreadId(null);
     setMode(null);
   };
@@ -193,7 +215,7 @@ export function WorkforcePanel({
             <AgentsTabContent
               agents={agents}
               activeThreadId={activeThreadId}
-              inboxSelected={inboxSelected}
+              inboxSelected={inboxSelected || approvalsSelected}
               newAgentSelected={newAgentSelected}
               getUnreadCountForAgent={getUnreadCountForAgent}
               onNewAgent={startNewAgent}
@@ -201,6 +223,9 @@ export function WorkforcePanel({
               dailyDigestThreadId={dailyDigestThreadId}
               onOpenDailyDigest={openDailyDigest}
               hideNewButton
+              approvalsCount={approvalQueue.length}
+              approvalsSelected={approvalsSelected}
+              onOpenApprovals={openApprovals}
             />
           )}
         </div>
@@ -255,9 +280,11 @@ export function WorkforcePanel({
               strokeWidth={1.75}
               className="text-[var(--wati-icon-default)]"
             />
-            {unreadHandoffCount > 0 && (
-              <span className="absolute -right-0.5 -top-0.5 flex h-[14px] min-w-[14px] items-center justify-center rounded-full bg-[var(--wati-text-primary)] px-1 text-[9px] font-semibold text-white">
-                {unreadHandoffCount}
+            {handoffBadgeCount > 0 && (
+              <span
+                className={`absolute -right-0.5 -top-0.5 flex h-[14px] min-w-[14px] items-center justify-center rounded-full px-1 text-[9px] font-semibold text-white ${handoffBadgeClass}`}
+              >
+                {handoffBadgeCount}
               </span>
             )}
           </button>
@@ -340,9 +367,15 @@ export function WorkforcePanel({
             <span className="flex-1 text-left text-sm font-medium text-[var(--wati-text-body)]">
               Handoffs
             </span>
-            {unreadHandoffCount > 0 && (
-              <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded border border-[var(--wati-border-default)] bg-[var(--wati-surface-subtle)] px-1 text-[10px] font-medium text-[var(--wati-text-body)]">
-                {unreadHandoffCount}
+            {handoffBadgeCount > 0 && (
+              <span
+                className={
+                  approvalQueue.length > 0
+                    ? "flex h-[18px] min-w-[18px] items-center justify-center rounded bg-wati-state-draft-bg px-1 text-[10px] font-medium text-wati-state-draft-text"
+                    : "flex h-[18px] min-w-[18px] items-center justify-center rounded border border-[var(--wati-border-default)] bg-[var(--wati-surface-subtle)] px-1 text-[10px] font-medium text-[var(--wati-text-body)]"
+                }
+              >
+                {handoffBadgeCount}
               </span>
             )}
           </button>
@@ -800,6 +833,9 @@ function AgentsTabContent({
   dailyDigestThreadId,
   onOpenDailyDigest,
   hideNewButton,
+  approvalsCount,
+  approvalsSelected,
+  onOpenApprovals,
 }: {
   agents: ReturnType<typeof useAgents>["agents"];
   activeThreadId: string | null;
@@ -812,6 +848,10 @@ function AgentsTabContent({
   dailyDigestThreadId: string | null;
   onOpenDailyDigest: () => void;
   hideNewButton?: boolean;
+  /** Drafts awaiting activation — badges the Approvals row. */
+  approvalsCount?: number;
+  approvalsSelected?: boolean;
+  onOpenApprovals?: () => void;
 }) {
   const { deleted: digestDeleted, name: digestName } = useDailyDigestMeta();
   const digestActive =
@@ -900,6 +940,30 @@ function AgentsTabContent({
           );
         })}
       </div>
+
+      {/* The handoff queue — drafts the agents created, awaiting approval.
+          Sits under the roster: it aggregates across every agent. */}
+      {onOpenApprovals && (
+        <button
+          type="button"
+          onClick={onOpenApprovals}
+          className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left transition-colors ${
+            approvalsSelected
+              ? "bg-[var(--wati-chip-bg)]"
+              : "hover:bg-[var(--wati-surface-subtle)]"
+          }`}
+        >
+          <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center text-[var(--wati-icon-default)]">
+            <ClipboardCheck size={15} strokeWidth={1.75} />
+          </span>
+          <p className="flex-1 truncate text-sm text-[#101828]">Approvals</p>
+          {(approvalsCount ?? 0) > 0 && (
+            <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded bg-wati-state-draft-bg px-1 text-[10px] font-medium text-wati-state-draft-text">
+              {approvalsCount}
+            </span>
+          )}
+        </button>
+      )}
     </>
   );
 }

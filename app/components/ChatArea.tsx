@@ -51,6 +51,7 @@ import { useContactsContext } from "../lib/contacts-context";
 import { useShopifyContext } from "../lib/shopify-context";
 import { useAnalyticsContext } from "../lib/analytics-context";
 import { useAskWatiDrawer } from "../lib/ask-wati-drawer";
+import { ApprovalQueue } from "./handoffs/ApprovalQueue";
 import { HandoffInbox } from "./handoffs/HandoffInbox";
 import { ModePillRow } from "./ModePillRow";
 import { ThinkingIndicator } from "./ThinkingIndicator";
@@ -973,10 +974,17 @@ export function ChatArea({
     [appendMessages, tenantProfile],
   );
 
-  // Handoff inbox is a parallel top-level surface — render it instead of the
-  // chat column when the user has navigated there from the sidebar.
+  // Handoff inbox and the approval queue are parallel top-level surfaces —
+  // render them instead of the chat column when navigated to from the sidebar.
   if (view === "handoffs") {
     return <HandoffInbox />;
+  }
+  if (view === "approvals") {
+    return (
+      <div className="flex h-full min-h-0 flex-col">
+        <ApprovalQueue />
+      </div>
+    );
   }
 
   // On the home screen (no thread, no messages, no mode picked) we let the

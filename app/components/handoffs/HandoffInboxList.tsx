@@ -3,7 +3,7 @@
 import type { HandoffWithAgent } from "../../lib/agents";
 import { HandoffListItem } from "./HandoffListItem";
 
-export type InboxFilter = "all" | "attention";
+export type InboxFilter = "all" | "attention" | "approvals";
 
 type Group = { label: string; handoffs: HandoffWithAgent[] };
 
@@ -17,6 +17,7 @@ export function HandoffInboxList({
   onFilterChange,
   attentionCount,
   totalCount,
+  approvalsCount,
   agentHandoffCounts,
   selectedId,
   onSelect,
@@ -28,6 +29,8 @@ export function HandoffInboxList({
   onFilterChange: (f: InboxFilter) => void;
   attentionCount: number;
   totalCount: number;
+  /** Drafts + waiting objects in the approval queue. */
+  approvalsCount: number;
   /** Map of agent id → total handoff count, used to badge multi-handoff agents. */
   agentHandoffCounts: Record<string, number>;
   selectedId: string | null;
@@ -70,6 +73,12 @@ export function HandoffInboxList({
           count={attentionCount}
           active={filter === "attention"}
           onClick={() => onFilterChange("attention")}
+        />
+        <FilterChip
+          label="Approvals"
+          count={approvalsCount}
+          active={filter === "approvals"}
+          onClick={() => onFilterChange("approvals")}
         />
       </div>
 
