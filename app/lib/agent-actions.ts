@@ -1,38 +1,77 @@
 import type { HandoffCtaAction } from "./agents";
 
 /**
- * How an action gets approved, per the Skills Expansion doc §1:
- * - "autonomous"      — reads, notes, tests. No human in the loop.
- * - "conversational"  — data writes (segment, attribute, tag, routing).
- *                       The CTA tap is the one-tap approval.
- * - "draft-first"     — builder writes (template, automation, chatbot).
- *                       The agent creates the object in draft / disabled /
- *                       unsubmitted state; activating it is a separate,
- *                       human-approved step.
- * - "gated"           — sends and activations (campaign, bulk message,
- *                       template submit, armed broadcast). Human confirms
- *                       every occurrence, so these are excluded from the
- *                       "Always do this" auto-action toggle.
+ * Governance class per PRD sub-page 3 — every write belongs to one of three
+ * classes; reads are autonomous:
+ * - "read" — reads, tests, notes (the single autonomous write). No human in
+ *   the loop; run starts immediately.
+ * - "A"    — draft-first objects (template, rule, keyword action, chatbot,
+ *   broadcast). A pre-write draft card offers dual commit: create as draft
+ *   (inactive, approve later) or create-and-activate in one confirmation.
+ * - "B"    — inert objects (segments, tags, attributes, quick replies).
+ *   Created directly; no effect until referenced; receipt says so.
+ * - "C"    — immediate-effect actions (sends, assignment, segment update,
+ *   default reply). No draft state exists; a confirmation card states the
+ *   immediate effect before execution. Never promotable to auto-actions.
  */
-export type ActionApproval =
-  | "autonomous"
-  | "conversational"
-  | "draft-first"
-  | "gated";
+export type GovernanceClass = "read" | "A" | "B" | "C";
+
+/** Object states shown on receipt-card pills (PRD sub-page 6). */
+export type AgentObjectState = "draft" | "live" | "pending-meta" | "armed";
+
+export type DraftCheck = {
+  verdict: "ok" | "warn" | "blocker" | "info";
+  text: string;
+  metric?: string;
+};
+
+/** Class A pre-write draft card: dependency summary + verdicts + dual commit. */
+export type DraftSpec = {
+  /** Draft-card headline describing the object to create. */
+  title: string;
+  /** "Will create: …" dependency line. */
+  summary: string;
+  /** Evidence rows (shadowing verdict, blockers, context). */
+  checks: readonly DraftCheck[];
+  /** One-step commit label, e.g. "Create and enable". */
+  activateLabel: string;
+  /** Object state after the one-step commit (or after later approval). */
+  activeState: AgentObjectState;
+};
+
+/** Class C pre-execution confirmation: states the immediate effect. */
+export type ConfirmSpec = {
+  title: string;
+  /** Exactly what happens, and that it is immediate/irreversible. */
+  effect: string;
+  confirmLabel: string;
+  /** Receipt state after execution, when the object has one. */
+  resultState?: AgentObjectState;
+};
 
 export type AgentActionScript = {
   /** Title shown while the run is in flight, e.g. "Creating segments by topic". */
   runTitle: string;
   /** Status-indicator lines, cycled while the run is in flight. */
   steps: readonly string[];
-  /** Headline of the result card, e.g. "Segment created under Contacts". */
+  /** Headline of the receipt card, e.g. "Segment created under Contacts". */
   resultLabel: string;
   /** Where the user can find the result in Wati, e.g. "Contacts → Segments". */
   resultDestination: string;
-  /** Label of the (non-clickable) view CTA on the result card. */
+  /** Label of the (non-clickable) deep-link CTA on the receipt card. */
   resultCtaLabel: string;
-  /** Approval class — drives the result-card state and auto-action gating. */
-  approval: ActionApproval;
+  /** Governance class — drives the card sequence and auto-action gating. */
+  governance: GovernanceClass;
+  /** Class A only: the pre-write draft card. */
+  draft?: DraftSpec;
+  /** Class C only: the pre-execution confirmation card. */
+  confirm?: ConfirmSpec;
+  /** Class B only: receipt note, e.g. "Inert until a rule references it". */
+  inertNote?: string;
+  /** Approve action on a DRAFT receipt (governance handoff matrix). */
+  approveLabel?: string;
+  /** Undo affordance on an active receipt — maps to a state revert. */
+  undoLabel?: string;
 };
 
 const CREATE_SEGMENT: AgentActionScript = {
@@ -46,25 +85,38 @@ const CREATE_SEGMENT: AgentActionScript = {
   resultLabel: "Segment created under Contacts",
   resultDestination: "Wati → Contacts → Segments",
   resultCtaLabel: "View segment",
-  approval: "conversational",
+  governance: "B",
+  inertNote: "Inert until a broadcast or rule targets it",
 };
 
 const SEND_CAMPAIGN: AgentActionScript = {
-  runTitle: "Launching campaign in Broadcasts",
+  runTitle: "Preparing campaign in Broadcasts",
   steps: [
     "Drafting campaign copy",
     "Selecting target audience",
     "Validating WhatsApp template",
-    "Scheduling broadcast",
+    "Saving campaign",
   ],
-  resultLabel: "Campaign queued in Broadcasts",
-  resultDestination: "Wati → Broadcasts → Scheduled",
+  resultLabel: "Campaign created",
+  resultDestination: "Wati → Broadcasts → Campaigns",
   resultCtaLabel: "View campaign",
-  approval: "gated",
+  governance: "A",
+  draft: {
+    title: "Campaign: re-engage the matched contacts",
+    summary: "Will create: campaign draft · audience from this handoff · template mapping",
+    checks: [
+      { verdict: "ok", text: "Template approved and variable mapping complete" },
+      { verdict: "info", text: "Recipient count and cost are restated before arming" },
+    ],
+    activateLabel: "Create and schedule",
+    activeState: "armed",
+  },
+  approveLabel: "Confirm & schedule",
+  undoLabel: "Disarm",
 };
 
 const SEND_BULK_MESSAGE: AgentActionScript = {
-  runTitle: "Preparing bulk message",
+  runTitle: "Sending bulk message",
   steps: [
     "Drafting message",
     "Selecting recipients",
@@ -74,7 +126,12 @@ const SEND_BULK_MESSAGE: AgentActionScript = {
   resultLabel: "Bulk message sent",
   resultDestination: "Wati → Broadcasts → Bulk messages",
   resultCtaLabel: "View delivery",
-  approval: "gated",
+  governance: "C",
+  confirm: {
+    title: "Send a bulk message to the matched contacts?",
+    effect: "Sends immediately via WhatsApp — sent messages can't be recalled",
+    confirmLabel: "Confirm & send",
+  },
 };
 
 const CREATE_INBOX_FILTER: AgentActionScript = {
@@ -88,7 +145,14 @@ const CREATE_INBOX_FILTER: AgentActionScript = {
   resultLabel: "Filter active in Team Inbox",
   resultDestination: "Wati → Team Inbox → Filters",
   resultCtaLabel: "View filter",
-  approval: "conversational",
+  governance: "C",
+  confirm: {
+    title: "Activate this Team Inbox filter?",
+    effect: "Applies immediately to every operator's inbox view",
+    confirmLabel: "Confirm & activate",
+    resultState: "live",
+  },
+  undoLabel: "Disable",
 };
 
 const CREATE_TEMPLATE: AgentActionScript = {
@@ -97,12 +161,23 @@ const CREATE_TEMPLATE: AgentActionScript = {
     "Writing template copy",
     "Adding variables and buttons",
     "Setting category and language",
-    "Saving as unsubmitted draft",
+    "Saving template",
   ],
-  resultLabel: "Template drafted — not yet submitted",
+  resultLabel: "WhatsApp template created",
   resultDestination: "Wati → Broadcasts → Templates",
-  resultCtaLabel: "Review draft",
-  approval: "draft-first",
+  resultCtaLabel: "Review template",
+  governance: "A",
+  draft: {
+    title: "WhatsApp template for this reply",
+    summary: "Will create: message template · category and language set · unsubmitted",
+    checks: [
+      { verdict: "ok", text: "Name and variables pass Meta format rules" },
+      { verdict: "warn", text: "Meta review is required before anything can send it" },
+    ],
+    activateLabel: "Create and submit to Meta",
+    activeState: "pending-meta",
+  },
+  approveLabel: "Submit to Meta",
 };
 
 const SUBMIT_TEMPLATE: AgentActionScript = {
@@ -115,21 +190,39 @@ const SUBMIT_TEMPLATE: AgentActionScript = {
   resultLabel: "Template submitted — awaiting WhatsApp approval",
   resultDestination: "Wati → Broadcasts → Templates",
   resultCtaLabel: "View status",
-  approval: "gated",
+  governance: "C",
+  confirm: {
+    title: "Submit this template to Meta for review?",
+    effect: "Submission is irreversible — Meta typically reviews within 48 hours",
+    confirmLabel: "Submit to Meta",
+    resultState: "pending-meta",
+  },
 };
 
 const SCHEDULE_BROADCAST: AgentActionScript = {
-  runTitle: "Scheduling broadcast",
+  runTitle: "Preparing broadcast",
   steps: [
     "Selecting target segment",
     "Estimating recipient count and cost",
     "Confirming send window",
-    "Arming schedule",
+    "Saving broadcast",
   ],
-  resultLabel: "Broadcast scheduled",
+  resultLabel: "Broadcast created",
   resultDestination: "Wati → Broadcasts → Scheduled",
   resultCtaLabel: "View schedule",
-  approval: "gated",
+  governance: "A",
+  draft: {
+    title: "Broadcast to the matched segment",
+    summary: "Will create: broadcast draft · audience resolved · send window set",
+    checks: [
+      { verdict: "ok", text: "Template approved · audience has recipients" },
+      { verdict: "info", text: "Final count and cost are restated before arming" },
+    ],
+    activateLabel: "Create and schedule",
+    activeState: "armed",
+  },
+  approveLabel: "Confirm & schedule",
+  undoLabel: "Disarm",
 };
 
 const CREATE_KEYWORD_REPLY: AgentActionScript = {
@@ -137,12 +230,24 @@ const CREATE_KEYWORD_REPLY: AgentActionScript = {
   steps: [
     "Choosing trigger keywords",
     "Writing the auto-reply",
-    "Saving keyword action as disabled",
+    "Saving keyword action",
   ],
-  resultLabel: "Keyword reply created — disabled until you enable it",
+  resultLabel: "Keyword reply created",
   resultDestination: "Wati → Automations → Keyword actions",
   resultCtaLabel: "Review rule",
-  approval: "draft-first",
+  governance: "A",
+  draft: {
+    title: "Keyword auto-reply for the unhandled topic",
+    summary: "Will create: keyword action · reply material",
+    checks: [
+      { verdict: "ok", text: "Keywords are unclaimed by other rules" },
+      { verdict: "warn", text: "Takes priority over your catch-all reply for these keywords" },
+    ],
+    activateLabel: "Create and enable",
+    activeState: "live",
+  },
+  approveLabel: "Enable action",
+  undoLabel: "Disable",
 };
 
 const CREATE_AUTOMATION_RULE: AgentActionScript = {
@@ -150,12 +255,24 @@ const CREATE_AUTOMATION_RULE: AgentActionScript = {
   steps: [
     "Reading trigger schema",
     "Building condition and action",
-    "Saving rule as disabled",
+    "Saving rule",
   ],
-  resultLabel: "Automation rule created — disabled until you enable it",
+  resultLabel: "Automation rule created",
   resultDestination: "Wati → Automations → Rules",
   resultCtaLabel: "Review rule",
-  approval: "draft-first",
+  governance: "A",
+  draft: {
+    title: "Automation rule for this handoff",
+    summary: "Will create: trigger + condition + one action",
+    checks: [
+      { verdict: "ok", text: "No shadowing conflicts with your active rules" },
+      { verdict: "info", text: "Unspecified fields keep their defaults — nothing else changes" },
+    ],
+    activateLabel: "Create and enable",
+    activeState: "live",
+  },
+  approveLabel: "Enable rule",
+  undoLabel: "Disable",
 };
 
 const SET_DEFAULT_REPLY: AgentActionScript = {
@@ -168,7 +285,13 @@ const SET_DEFAULT_REPLY: AgentActionScript = {
   resultLabel: "Default reply updated",
   resultDestination: "Wati → Automations → Default reply",
   resultCtaLabel: "View reply",
-  approval: "conversational",
+  governance: "C",
+  confirm: {
+    title: "Apply this default reply?",
+    effect: "Every unmatched inbound message gets this reply, immediately",
+    confirmLabel: "Confirm & apply",
+    resultState: "live",
+  },
 };
 
 const CREATE_CHATBOT: AgentActionScript = {
@@ -177,12 +300,24 @@ const CREATE_CHATBOT: AgentActionScript = {
     "Picking a starting template from the flow store",
     "Laying out flow nodes",
     "Writing message copy",
-    "Saving as unpublished draft",
+    "Saving flow",
   ],
-  resultLabel: "Chatbot drafted — unpublished",
+  resultLabel: "Chatbot flow created",
   resultDestination: "Wati → Chatbots",
   resultCtaLabel: "Open in flow builder",
-  approval: "draft-first",
+  governance: "A",
+  draft: {
+    title: "Chatbot flow from a store template",
+    summary: "Will create: unpublished flow · nodes wired · copy drafted",
+    checks: [
+      { verdict: "ok", text: "All branches wired — no dead ends or unreachable nodes" },
+      { verdict: "info", text: "Node count is within your plan limit" },
+    ],
+    activateLabel: "Create and publish",
+    activeState: "live",
+  },
+  approveLabel: "Publish flow",
+  undoLabel: "Unpublish",
 };
 
 const TEST_CHATBOT: AgentActionScript = {
@@ -195,7 +330,7 @@ const TEST_CHATBOT: AgentActionScript = {
   resultLabel: "Test transcript ready",
   resultDestination: "Wati → Chatbots → Test runs",
   resultCtaLabel: "View transcript",
-  approval: "autonomous",
+  governance: "read",
 };
 
 const CREATE_ATTRIBUTE: AgentActionScript = {
@@ -208,7 +343,8 @@ const CREATE_ATTRIBUTE: AgentActionScript = {
   resultLabel: "Attribute added to contact schema",
   resultDestination: "Wati → Contacts → Attributes",
   resultCtaLabel: "View attribute",
-  approval: "conversational",
+  governance: "B",
+  inertNote: "Inert until a rule or segment references it",
 };
 
 const CREATE_TAG: AgentActionScript = {
@@ -217,7 +353,8 @@ const CREATE_TAG: AgentActionScript = {
   resultLabel: "Tag created",
   resultDestination: "Wati → Contacts → Tags",
   resultCtaLabel: "View tag",
-  approval: "conversational",
+  governance: "B",
+  inertNote: "Inert until applied to contacts",
 };
 
 const UPDATE_SEGMENT: AgentActionScript = {
@@ -230,7 +367,12 @@ const UPDATE_SEGMENT: AgentActionScript = {
   resultLabel: "Segment filter updated",
   resultDestination: "Wati → Contacts → Segments",
   resultCtaLabel: "View segment",
-  approval: "conversational",
+  governance: "C",
+  confirm: {
+    title: "Update the segment filter?",
+    effect: "Every broadcast and rule targeting this segment changes with it — membership re-evaluates now",
+    confirmLabel: "Confirm & update",
+  },
 };
 
 const ASSIGN_TEAM: AgentActionScript = {
@@ -243,7 +385,12 @@ const ASSIGN_TEAM: AgentActionScript = {
   resultLabel: "Conversations routed to team",
   resultDestination: "Wati → Team Inbox",
   resultCtaLabel: "View assignments",
-  approval: "conversational",
+  governance: "C",
+  confirm: {
+    title: "Route the matched conversations to this team?",
+    effect: "Reassignment takes effect immediately in Team Inbox",
+    confirmLabel: "Confirm & assign",
+  },
 };
 
 const ADD_NOTE: AgentActionScript = {
@@ -255,7 +402,7 @@ const ADD_NOTE: AgentActionScript = {
   resultLabel: "Note added to conversation",
   resultDestination: "Wati → Team Inbox → Notes",
   resultCtaLabel: "View note",
-  approval: "autonomous",
+  governance: "read",
 };
 
 const CREATE_QUICK_REPLY: AgentActionScript = {
@@ -264,7 +411,8 @@ const CREATE_QUICK_REPLY: AgentActionScript = {
   resultLabel: "Quick reply saved",
   resultDestination: "Wati → Team Inbox → Quick replies",
   resultCtaLabel: "View quick reply",
-  approval: "conversational",
+  governance: "B",
+  inertNote: "Available to operators — no automated effect",
 };
 
 const SCRIPTS: Record<HandoffCtaAction, AgentActionScript> = {
@@ -293,9 +441,11 @@ export function getActionScript(action: HandoffCtaAction): AgentActionScript {
 }
 
 /**
- * Gated actions need a human confirmation per occurrence, so they can never
- * be promoted to an agent's auto-actions ("Always do this").
+ * Class C actions need a human confirmation per occurrence, so they can never
+ * be promoted to an agent's auto-actions ("Always do this"). Class A actions
+ * CAN auto-run — the agent creates the object as an inactive draft and the
+ * activation stays human-approved (the Tool Registry's "Autonomous (draft)").
  */
 export function canAutoRun(action: HandoffCtaAction): boolean {
-  return getActionScript(action).approval !== "gated";
+  return getActionScript(action).governance !== "C";
 }

@@ -1,17 +1,23 @@
 "use client";
 
 import { motion } from "motion/react";
-import { ArrowUpRight, Check, PencilLine } from "lucide-react";
+import { ArrowUpRight, Check, Hourglass, PencilLine, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getActionScript } from "../../lib/agent-actions";
 import type { AgentActionRun as AgentActionRunType } from "../../lib/agents";
 import { useAgents } from "../../lib/agents";
-import { CardCtaChip, WorkforceCard } from "../cards/WorkforceCard";
+import { CardCtaChip, EvidenceRow, WorkforceCard } from "../cards/WorkforceCard";
 import { StatusIndicator } from "./StatusIndicator";
 
 const STEP_DURATION_MS = 1400;
 const SETTLE_MS = 900;
 
+/**
+ * One action run rendered as its governance-class card sequence:
+ * Class A: draft card (dual commit) → in-flight → receipt
+ * Class C: confirmation card → in-flight → receipt
+ * Class B / reads: in-flight → receipt
+ */
 export function AgentActionRun({ run }: { run: AgentActionRunType }) {
   const { completeActionRun } = useAgents();
 
@@ -26,10 +32,85 @@ export function AgentActionRun({ run }: { run: AgentActionRunType }) {
     return () => window.clearTimeout(id);
   }, [run.id, run.status, run.steps.length, completeActionRun]);
 
+  if (run.status === "proposed") {
+    return <ActionRunDraftCard run={run} />;
+  }
+  if (run.status === "confirming") {
+    return <ActionRunConfirmation run={run} />;
+  }
   if (run.status === "running") {
     return <ActionRunInFlight run={run} />;
   }
-  return <ActionRunResult run={run} />;
+  return <ActionRunReceipt run={run} />;
+}
+
+/** Class A pre-write draft card: "Will create" + verdicts + dual commit. */
+function ActionRunDraftCard({ run }: { run: AgentActionRunType }) {
+  const { commitActionRun, dismissActionRun } = useAgents();
+  const { draft } = getActionScript(run.action);
+  if (!draft) return null;
+
+  return (
+    <WorkforceCard
+      tone="draft"
+      icon={<PencilLine size={12} strokeWidth={2.5} />}
+      title={draft.title}
+      subtitle={draft.summary}
+      actions={
+        <>
+          <CardCtaChip primary onClick={() => commitActionRun(run.id, false)}>
+            Create as draft
+          </CardCtaChip>
+          <CardCtaChip onClick={() => commitActionRun(run.id, true)}>
+            {draft.activateLabel}
+          </CardCtaChip>
+          <DeclineButton onClick={() => dismissActionRun(run.id)} />
+        </>
+      }
+    >
+      {draft.checks.map((check, i) => (
+        <EvidenceRow key={i} verdict={check.verdict} metric={check.metric}>
+          {check.text}
+        </EvidenceRow>
+      ))}
+    </WorkforceCard>
+  );
+}
+
+/** Class C confirmation card: states the immediate effect, then executes. */
+function ActionRunConfirmation({ run }: { run: AgentActionRunType }) {
+  const { confirmActionRun, dismissActionRun } = useAgents();
+  const { confirm } = getActionScript(run.action);
+  if (!confirm) return null;
+
+  return (
+    <WorkforceCard
+      tone="info"
+      icon={<Zap size={12} strokeWidth={2.5} />}
+      title={confirm.title}
+      subtitle={confirm.effect}
+      actions={
+        <>
+          <CardCtaChip primary onClick={() => confirmActionRun(run.id)}>
+            {confirm.confirmLabel}
+          </CardCtaChip>
+          <DeclineButton onClick={() => dismissActionRun(run.id)} />
+        </>
+      }
+    />
+  );
+}
+
+function DeclineButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="text-[13px] tracking-[-0.078px] text-black/60 hover:text-[#0a0a0a]"
+    >
+      Not now
+    </button>
+  );
 }
 
 function ActionRunInFlight({ run }: { run: AgentActionRunType }) {
@@ -89,39 +170,69 @@ function CompletedStep({ text }: { text: string }) {
   );
 }
 
-function ActionRunResult({ run }: { run: AgentActionRunType }) {
-  const { getAgent, enableAutoAction } = useAgents();
+/**
+ * Receipt card: state pill + deep link + undo/approve (state revert model)
+ * + auto-action promotion for classes that allow it.
+ */
+function ActionRunReceipt({ run }: { run: AgentActionRunType }) {
+  const { getAgent, enableAutoAction, setRunObjectState } = useAgents();
   const agent = getAgent(run.agentId);
   const alwaysOn = agent?.autoActions.includes(run.action) ?? false;
 
-  // Draft-first actions produce an inert object awaiting activation; gated
-  // actions need a fresh human confirmation on every run, so they can't be
-  // promoted to auto-actions. See ActionApproval in lib/agent-actions.ts.
-  const { approval } = getActionScript(run.action);
-  const isDraft = approval === "draft-first";
-  const isGated = approval === "gated";
+  const script = getActionScript(run.action);
+  const { governance } = script;
+  // Legacy runs (persisted before governance classes) carry no objectState;
+  // Class A objects default to draft — the old behavior.
+  const objectState =
+    run.objectState ?? (governance === "A" ? "draft" : undefined);
+  const isDraftState = objectState === "draft";
+  const isPending = objectState === "pending-meta";
 
   return (
     <WorkforceCard
-      tone={isDraft ? "draft" : "success"}
+      tone={isDraftState ? "draft" : isPending ? "info" : "success"}
       icon={
-        isDraft ? (
+        isDraftState ? (
           <PencilLine size={12} strokeWidth={2.5} />
+        ) : isPending ? (
+          <Hourglass size={12} strokeWidth={2.5} />
         ) : (
           <Check size={12} strokeWidth={2.5} />
         )
       }
       title={run.resultLabel}
       subtitle={run.resultDestination}
-      note={isDraft ? "Draft — needs your approval to go live" : undefined}
-      state={isDraft ? "draft" : undefined}
+      note={governance === "B" ? script.inertNote : undefined}
+      state={objectState}
       actions={
         <>
           <CardCtaChip>
             {run.resultCtaLabel}
             <ArrowUpRight size={12} strokeWidth={2} />
           </CardCtaChip>
-          {isGated ? (
+          {governance === "A" && isDraftState && script.approveLabel && (
+            <CardCtaChip
+              primary
+              onClick={() =>
+                setRunObjectState(run.id, script.draft?.activeState ?? "live")
+              }
+            >
+              {script.approveLabel}
+            </CardCtaChip>
+          )}
+          {!isDraftState &&
+            objectState &&
+            objectState !== "pending-meta" &&
+            script.undoLabel && (
+              <button
+                type="button"
+                onClick={() => setRunObjectState(run.id, "draft")}
+                className="text-[13px] tracking-[-0.078px] text-black/60 hover:text-[#0a0a0a]"
+              >
+                {script.undoLabel}
+              </button>
+            )}
+          {governance === "C" ? (
             <span className="text-[13px] tracking-[-0.078px] text-black/40">
               Needs your confirmation each run
             </span>

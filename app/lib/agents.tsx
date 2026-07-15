@@ -10,7 +10,11 @@ import {
   type ReactNode,
 } from "react";
 import type { AchievementId } from "./achievements";
-import { canAutoRun, getActionScript } from "./agent-actions";
+import {
+  canAutoRun,
+  getActionScript,
+  type AgentObjectState,
+} from "./agent-actions";
 import {
   buildReturningUserReadSet,
   buildReturningUserSeed,
@@ -125,7 +129,13 @@ export type Handoff = {
   ctas: HandoffCta[];
 };
 
-export type AgentActionRunStatus = "running" | "done";
+/**
+ * Card sequence per governance class (PRD sub-page 3/6):
+ * - Class A: "proposed" (pre-write draft card, dual commit) → "running" → "done"
+ * - Class C: "confirming" (immediate-effect confirmation) → "running" → "done"
+ * - Class B / reads: "running" → "done"
+ */
+export type AgentActionRunStatus = "proposed" | "confirming" | "running" | "done";
 
 export type AgentActionRun = {
   id: string;
@@ -144,6 +154,10 @@ export type AgentActionRun = {
   /** Label of the (non-clickable) view CTA on the result card. */
   resultCtaLabel: string;
   status: AgentActionRunStatus;
+  /** Class A: whether the user chose the one-step create-and-activate commit. */
+  committedActivate?: boolean;
+  /** Receipt-card state pill; mutable via undo/approve (state revert model). */
+  objectState?: AgentObjectState;
   startedAt: string;
   completedAt?: string;
 };
@@ -187,6 +201,10 @@ type AgentsCtx = AgentsState & {
   addHandoff: (agentId: string, draft: HandoffDraft) => Handoff;
   startActionRun: (draft: ActionRunDraft) => AgentActionRun;
   completeActionRun: (runId: string) => void;
+  commitActionRun: (runId: string, activate: boolean) => void;
+  confirmActionRun: (runId: string) => void;
+  dismissActionRun: (runId: string) => void;
+  setRunObjectState: (runId: string, objectState: AgentObjectState) => void;
   enableAutoAction: (agentId: string, action: HandoffCtaAction) => void;
   markHandoffRead: (handoffId: string) => void;
   markHandoffsRead: (handoffIds: string[]) => void;
@@ -443,10 +461,15 @@ export function AgentsProvider({ children }: { children: ReactNode }) {
 
   const startActionRun = useCallback(
     (draft: ActionRunDraft): AgentActionRun => {
+      // Class A opens on the pre-write draft card; Class C on the
+      // immediate-effect confirmation. Nothing "runs" until the human commits.
+      const { governance } = getActionScript(draft.action);
+      const initialStatus: AgentActionRunStatus =
+        governance === "A" ? "proposed" : governance === "C" ? "confirming" : "running";
       const run: AgentActionRun = {
         ...draft,
         id: crypto.randomUUID(),
-        status: "running",
+        status: initialStatus,
         startedAt: new Date().toISOString(),
       };
       setState((prev) => {
@@ -468,15 +491,87 @@ export function AgentsProvider({ children }: { children: ReactNode }) {
     setState((prev) => {
       const next: Record<string, AgentActionRun[]> = {};
       for (const [agentId, runs] of Object.entries(prev.actionRunsByAgent)) {
+        next[agentId] = runs.map((r) => {
+          if (r.id !== runId) return r;
+          const script = getActionScript(r.action);
+          // Resolve the receipt's state pill: Class A lands on the chosen
+          // commit (draft unless activated); Class C on the confirmed effect.
+          const objectState =
+            script.governance === "A"
+              ? r.committedActivate
+                ? script.draft?.activeState
+                : "draft"
+              : script.confirm?.resultState;
+          return {
+            ...r,
+            status: "done" as const,
+            objectState,
+            completedAt: new Date().toISOString(),
+          };
+        });
+      }
+      return { ...prev, actionRunsByAgent: next };
+    });
+  }, []);
+
+  /** Class A dual commit: start the write with the chosen activation mode. */
+  const commitActionRun = useCallback((runId: string, activate: boolean) => {
+    setState((prev) => {
+      const next: Record<string, AgentActionRun[]> = {};
+      for (const [agentId, runs] of Object.entries(prev.actionRunsByAgent)) {
         next[agentId] = runs.map((r) =>
-          r.id === runId
-            ? { ...r, status: "done", completedAt: new Date().toISOString() }
+          r.id === runId && r.status === "proposed"
+            ? { ...r, status: "running", committedActivate: activate }
             : r,
         );
       }
       return { ...prev, actionRunsByAgent: next };
     });
   }, []);
+
+  /** Class C: the human confirmed the immediate effect — execute. */
+  const confirmActionRun = useCallback((runId: string) => {
+    setState((prev) => {
+      const next: Record<string, AgentActionRun[]> = {};
+      for (const [agentId, runs] of Object.entries(prev.actionRunsByAgent)) {
+        next[agentId] = runs.map((r) =>
+          r.id === runId && r.status === "confirming"
+            ? { ...r, status: "running" }
+            : r,
+        );
+      }
+      return { ...prev, actionRunsByAgent: next };
+    });
+  }, []);
+
+  /** Decline a proposed/confirming run — removes it, so the CTA re-arms. */
+  const dismissActionRun = useCallback((runId: string) => {
+    setState((prev) => {
+      const next: Record<string, AgentActionRun[]> = {};
+      for (const [agentId, runs] of Object.entries(prev.actionRunsByAgent)) {
+        next[agentId] = runs.filter(
+          (r) => r.id !== runId || r.status === "running" || r.status === "done",
+        );
+      }
+      return { ...prev, actionRunsByAgent: next };
+    });
+  }, []);
+
+  /** Receipt undo/approve — the state-revert model (disable/enable, disarm). */
+  const setRunObjectState = useCallback(
+    (runId: string, objectState: AgentObjectState) => {
+      setState((prev) => {
+        const next: Record<string, AgentActionRun[]> = {};
+        for (const [agentId, runs] of Object.entries(prev.actionRunsByAgent)) {
+          next[agentId] = runs.map((r) =>
+            r.id === runId && r.status === "done" ? { ...r, objectState } : r,
+          );
+        }
+        return { ...prev, actionRunsByAgent: next };
+      });
+    },
+    [],
+  );
 
   const markHandoffRead = useCallback((handoffId: string) => {
     setState((prev) => {
@@ -543,6 +638,10 @@ export function AgentsProvider({ children }: { children: ReactNode }) {
       addHandoff,
       startActionRun,
       completeActionRun,
+      commitActionRun,
+      confirmActionRun,
+      dismissActionRun,
+      setRunObjectState,
       enableAutoAction,
       markHandoffRead,
       markHandoffsRead,
@@ -573,6 +672,10 @@ export function AgentsProvider({ children }: { children: ReactNode }) {
     addHandoff,
     startActionRun,
     completeActionRun,
+    commitActionRun,
+    confirmActionRun,
+    dismissActionRun,
+    setRunObjectState,
     enableAutoAction,
     markHandoffRead,
     markHandoffsRead,
