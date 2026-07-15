@@ -91,14 +91,14 @@ export function HandoffDetail({
             <button
               type="button"
               onClick={runNow}
-              className="flex items-center gap-1.5 rounded-full bg-[#23A455] px-3 py-1.5 text-[12px] tracking-[-0.06px] text-white hover:bg-[#1F9349]"
+              className="flex items-center gap-1.5 rounded-full bg-wati-green px-3 py-1.5 text-[12px] tracking-[-0.06px] text-white hover:bg-wati-green-hover"
             >
               <Play size={12} strokeWidth={2} />
               Run Now
             </button>
             <button
               type="button"
-              className="flex items-center gap-1.5 rounded-full border border-[#e5e5e5] px-3 py-1.5 text-[12px] tracking-[-0.06px] text-[#0a0a0a] hover:bg-black/[0.03]"
+              className="flex items-center gap-1.5 rounded-full border border-wati-border px-3 py-1.5 text-[12px] tracking-[-0.06px] text-[#0a0a0a] hover:bg-black/[0.03]"
             >
               <User size={12} strokeWidth={2} />
               View Agent

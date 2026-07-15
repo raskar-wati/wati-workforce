@@ -40,9 +40,9 @@ export function AgentInstructionsBlock({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
-      className="rounded-2xl border border-[#e5e5e5] bg-[#f7faf7] px-5 py-4"
+      className="rounded-2xl border border-wati-border bg-[#f7faf7] px-5 py-4"
     >
-      <pre className="whitespace-pre-wrap break-words font-mono text-[12px] leading-[18px] text-emerald-700">
+      <pre className="whitespace-pre-wrap break-words font-mono text-[12px] leading-[18px] text-wati-green-text">
         {visible}
         {streaming && <BlinkingCursor />}
       </pre>
@@ -55,7 +55,7 @@ function BlinkingCursor() {
     <motion.span
       animate={{ opacity: [1, 0, 1] }}
       transition={{ duration: 0.9, repeat: Infinity, ease: "linear" }}
-      className="inline-block w-[6px] translate-y-[1px] bg-emerald-700"
+      className="inline-block w-[6px] translate-y-[1px] bg-wati-green-text"
       style={{ height: "0.9em" }}
       aria-hidden
     />

@@ -72,13 +72,13 @@ export function HandoffCtaButton({
         onClick={handle}
         disabled={fired}
         aria-disabled={fired}
-        className={`flex shrink-0 items-center gap-1 rounded-full border border-[#e5e5e5] bg-white px-2.5 py-1 text-[11px] tracking-[-0.066px] text-[#0a0a0a] ${
+        className={`flex shrink-0 items-center gap-1 rounded-full border border-wati-border bg-white px-2.5 py-1 text-[11px] tracking-[-0.066px] text-[#0a0a0a] ${
           fired
             ? "cursor-default opacity-60"
             : "hover:bg-black/[0.03]"
         }`}
       >
-        {fired && <Check size={10} strokeWidth={2.5} className="text-emerald-700" />}
+        {fired && <Check size={10} strokeWidth={2.5} className="text-wati-green-text" />}
         {fired ? "Done" : cta.label}
       </button>
     );
@@ -90,12 +90,12 @@ export function HandoffCtaButton({
       onClick={handle}
       disabled={fired}
       aria-disabled={fired}
-      className={`flex items-center gap-1.5 rounded-full border border-[#e5e5e5] bg-white px-3 py-1.5 text-[13px] tracking-[-0.078px] text-[#0a0a0a] ${
+      className={`flex items-center gap-1.5 rounded-full border border-wati-border bg-white px-3 py-1.5 text-[13px] tracking-[-0.078px] text-[#0a0a0a] ${
         fired ? "cursor-default opacity-60" : "hover:bg-black/[0.03]"
       }`}
     >
       {fired ? (
-        <Check size={12} strokeWidth={2.5} className="text-emerald-700" />
+        <Check size={12} strokeWidth={2.5} className="text-wati-green-text" />
       ) : (
         <Icon size={12} strokeWidth={2} />
       )}

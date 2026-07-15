@@ -28,7 +28,7 @@ const STATUS_LABEL: Record<AgentStatus, string> = {
 
 const STATUS_TONE: Record<AgentStatus, string> = {
   draft: "bg-black/[0.06] text-black/60",
-  active: "bg-emerald-100 text-emerald-700 hover:bg-emerald-200",
+  active: "bg-wati-green-soft text-wati-green-text hover:bg-wati-green-soft-hover",
   paused: "bg-amber-100 text-amber-700 hover:bg-amber-200",
 };
 
@@ -64,9 +64,9 @@ export function AgentSummaryCard({
   const toggleable = pillStatus && pillStatus !== "draft" && onToggleStatus;
 
   return (
-    <div className="flex flex-col gap-4 rounded-2xl border border-[#e5e5e5] bg-white p-4">
+    <div className="flex flex-col gap-4 rounded-2xl border border-wati-border bg-white p-4">
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#e5e5e5] bg-[#f5f5f5]">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-wati-border bg-[#f5f5f5]">
           <Image
             src={data.avatarPath}
             alt=""

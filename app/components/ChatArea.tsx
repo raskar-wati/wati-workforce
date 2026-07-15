@@ -1157,7 +1157,7 @@ export function ChatArea({
                         <Loader2
                           size={12}
                           strokeWidth={2.25}
-                          className="animate-spin text-emerald-400"
+                          className="animate-spin text-wati-green"
                         />
                         Running
                       </button>
@@ -1165,7 +1165,7 @@ export function ChatArea({
                       <button
                         type="button"
                         onClick={runAgentAgain}
-                        className="flex items-center gap-1.5 rounded-full bg-[#23A455] px-3 py-1.5 text-[13px] tracking-[-0.078px] text-white hover:bg-[#1F9349]"
+                        className="flex items-center gap-1.5 rounded-full bg-wati-green px-3 py-1.5 text-[13px] tracking-[-0.078px] text-white hover:bg-wati-green-hover"
                       >
                         <Play size={12} strokeWidth={2} />
                         Run now
@@ -1510,7 +1510,7 @@ export function ChatArea({
 
 function DeletedDigestPlaceholder({ onRestore }: { onRestore: () => void }) {
   return (
-    <div className="flex flex-col items-start gap-3 rounded-2xl border border-[#e5e5e5] bg-white p-4">
+    <div className="flex flex-col items-start gap-3 rounded-2xl border border-wati-border bg-white p-4">
       <div>
         <p className="text-[14px] font-medium text-[#0a0a0a]">
           Daily Digest deleted
@@ -1522,7 +1522,7 @@ function DeletedDigestPlaceholder({ onRestore }: { onRestore: () => void }) {
       <button
         type="button"
         onClick={onRestore}
-        className="rounded-full border border-[#e5e5e5] bg-white px-3 py-1.5 text-[13px] tracking-[-0.078px] text-[#0a0a0a] hover:bg-black/[0.04]"
+        className="rounded-full border border-wati-border bg-white px-3 py-1.5 text-[13px] tracking-[-0.078px] text-[#0a0a0a] hover:bg-black/[0.04]"
       >
         Restore agent
       </button>

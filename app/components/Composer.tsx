@@ -282,7 +282,7 @@ export function Composer({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 6, scale: 0.98 }}
             transition={{ duration: 0.15, ease: [0.32, 0.72, 0, 1] }}
-            className="absolute bottom-full left-0 mb-2 w-64 overflow-hidden rounded-2xl border border-[#e5e5e5] bg-white shadow-[0_8px_24px_rgba(0,0,0,0.1)]"
+            className="absolute bottom-full left-0 mb-2 w-64 overflow-hidden rounded-2xl border border-wati-border bg-white shadow-[0_8px_24px_rgba(0,0,0,0.1)]"
           >
             <div className="px-3 pb-1 pt-2.5">
               <span className="text-[10px] font-semibold uppercase tracking-[0.8px] text-black/30">
@@ -329,7 +329,7 @@ export function Composer({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 6, scale: 0.98 }}
             transition={{ duration: 0.15, ease: [0.32, 0.72, 0, 1] }}
-            className="absolute bottom-full left-0 right-0 mb-2 overflow-hidden rounded-2xl border border-[#e5e5e5] bg-white shadow-[0_8px_24px_rgba(0,0,0,0.1)]"
+            className="absolute bottom-full left-0 right-0 mb-2 overflow-hidden rounded-2xl border border-wati-border bg-white shadow-[0_8px_24px_rgba(0,0,0,0.1)]"
           >
             <div className="flex flex-col py-1">
               {filteredModes.map((o, i) => {
@@ -426,7 +426,7 @@ export function Composer({
               aria-label="Pick a mode"
               aria-haspopup="menu"
               aria-expanded={plusMenuOpen}
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-[#e5e5e5]/80 text-[#0a0a0a] hover:bg-black/[0.04]"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-wati-border/80 text-[#0a0a0a] hover:bg-black/[0.04]"
             >
               <Plus size={16} strokeWidth={2} />
             </button>
@@ -438,7 +438,7 @@ export function Composer({
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 6, scale: 0.97 }}
                   transition={{ duration: 0.15, ease: [0.32, 0.72, 0, 1] }}
-                  className="absolute bottom-full left-0 mb-2 w-56 overflow-hidden rounded-2xl border border-[#e5e5e5] bg-white shadow-[0_8px_24px_rgba(0,0,0,0.1)]"
+                  className="absolute bottom-full left-0 mb-2 w-56 overflow-hidden rounded-2xl border border-wati-border bg-white shadow-[0_8px_24px_rgba(0,0,0,0.1)]"
                 >
                   {MODE_OPTIONS.map((o) => (
                     <button
@@ -525,7 +525,7 @@ function ModelDropdown({
         className={
           chrome === "drawer"
             ? "flex items-center gap-1 rounded-md px-2 py-1 text-black/55 hover:bg-black/[0.04] hover:text-black/80"
-            : "flex items-center gap-1.5 rounded-full border border-[#e5e5e5]/80 px-3 py-1.5"
+            : "flex items-center gap-1.5 rounded-full border border-wati-border/80 px-3 py-1.5"
         }
       >
         <span
@@ -558,8 +558,8 @@ function ModelDropdown({
             transition={{ duration: 0.15, ease: [0.32, 0.72, 0, 1] }}
             className={
               chrome === "drawer"
-                ? "absolute bottom-full right-0 mb-2 w-52 overflow-hidden rounded-2xl border border-[#e5e5e5] bg-white shadow-[0_8px_24px_rgba(0,0,0,0.1)]"
-                : "absolute bottom-full left-0 mb-2 w-52 overflow-hidden rounded-2xl border border-[#e5e5e5] bg-white shadow-[0_8px_24px_rgba(0,0,0,0.1)]"
+                ? "absolute bottom-full right-0 mb-2 w-52 overflow-hidden rounded-2xl border border-wati-border bg-white shadow-[0_8px_24px_rgba(0,0,0,0.1)]"
+                : "absolute bottom-full left-0 mb-2 w-52 overflow-hidden rounded-2xl border border-wati-border bg-white shadow-[0_8px_24px_rgba(0,0,0,0.1)]"
             }
           >
             {(() => {
@@ -572,7 +572,7 @@ function ModelDropdown({
               );
               return Object.entries(grouped).map(([provider, models], gi) => (
                 <div key={provider}>
-                  {gi > 0 && <div className="mx-3 border-t border-[#f0f0f0]" />}
+                  {gi > 0 && <div className="mx-3 border-t border-wati-border" />}
                   <div className="px-3 pb-1 pt-2.5">
                     <span className="text-[10px] font-semibold uppercase tracking-[0.8px] text-black/30">
                       {provider}

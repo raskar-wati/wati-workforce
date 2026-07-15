@@ -30,9 +30,9 @@ export function DailyDigestSummaryCard({
   const meta = useDailyDigestMeta();
 
   return (
-    <div className="flex flex-col gap-4 rounded-2xl border border-[#e5e5e5] bg-white p-4">
+    <div className="flex flex-col gap-4 rounded-2xl border border-wati-border bg-white p-4">
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#e5e5e5] bg-[#f5f5f5]">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-wati-border bg-[#f5f5f5]">
           <Image
             src={avatarPath}
             alt=""
@@ -61,7 +61,7 @@ export function DailyDigestSummaryCard({
         <button
           type="button"
           onClick={onRunNow}
-          className="flex items-center gap-1.5 rounded-full bg-[#23A455] px-3 py-1.5 text-[13px] tracking-[-0.078px] text-white hover:bg-[#1F9349]"
+          className="flex items-center gap-1.5 rounded-full bg-wati-green px-3 py-1.5 text-[13px] tracking-[-0.078px] text-white hover:bg-wati-green-hover"
         >
           <Play size={12} strokeWidth={2} />
           Run now
@@ -88,7 +88,7 @@ function StatusPill({
 }) {
   const tone =
     status === "active"
-      ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+      ? "bg-wati-green-soft text-wati-green-text hover:bg-wati-green-soft-hover"
       : "bg-amber-100 text-amber-700 hover:bg-amber-200";
   const label = status === "active" ? "Active" : "Inactive";
   return (

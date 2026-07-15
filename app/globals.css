@@ -5,6 +5,7 @@
   --wati-surface-subtle: #f6f7f6;
   --wati-surface-default: #ffffff;
   --wati-border-default: #e7e9e8;
+  --wati-border-strong: #d4d4d4;
   --wati-divider-light: #e7e9e8;
   --wati-text-primary: #23a455;
   --wati-text-body: #353735;
@@ -16,11 +17,47 @@
   --wati-active-bg: #e7f6ee;
   --wati-tree-border: #ececf2;
   --wati-chip-bg: #f1f0f1;
+
+  /* Brand green scale — the only green in the app */
+  --wati-green: #23a455;
+  --wati-green-hover: #1f9349;
+  --wati-green-text: #17793c; /* readable green on soft/white backgrounds */
+  --wati-green-soft: #e7f6ee;
+  --wati-green-soft-hover: #d3eede;
+
+  /* Object-state vocabulary (PRD sub-page 6: receipt/draft state pills) */
+  --wati-state-draft-bg: #fef3c7;
+  --wati-state-draft-text: #b45309;
+  --wati-state-live-bg: #e7f6ee;
+  --wati-state-live-text: #17793c;
+  --wati-state-pending-bg: #eff6ff;
+  --wati-state-pending-text: #1570ef;
+  --wati-state-armed-bg: #f3efff;
+  --wati-state-armed-text: #7c3aed;
+  --wati-state-danger-bg: #fef2f2;
+  --wati-state-danger-text: #dc2626;
 }
 
 @theme inline {
   --color-background: var(--wati-surface-subtle);
   --color-foreground: var(--wati-text-body);
+  --color-wati-border: var(--wati-border-default);
+  --color-wati-border-strong: var(--wati-border-strong);
+  --color-wati-green: var(--wati-green);
+  --color-wati-green-hover: var(--wati-green-hover);
+  --color-wati-green-text: var(--wati-green-text);
+  --color-wati-green-soft: var(--wati-green-soft);
+  --color-wati-green-soft-hover: var(--wati-green-soft-hover);
+  --color-wati-state-draft-bg: var(--wati-state-draft-bg);
+  --color-wati-state-draft-text: var(--wati-state-draft-text);
+  --color-wati-state-live-bg: var(--wati-state-live-bg);
+  --color-wati-state-live-text: var(--wati-state-live-text);
+  --color-wati-state-pending-bg: var(--wati-state-pending-bg);
+  --color-wati-state-pending-text: var(--wati-state-pending-text);
+  --color-wati-state-armed-bg: var(--wati-state-armed-bg);
+  --color-wati-state-armed-text: var(--wati-state-armed-text);
+  --color-wati-state-danger-bg: var(--wati-state-danger-bg);
+  --color-wati-state-danger-text: var(--wati-state-danger-text);
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system,
     "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }

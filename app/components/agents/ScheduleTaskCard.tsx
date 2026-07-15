@@ -23,7 +23,7 @@ export function ScheduleTaskCard({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
-      className="flex flex-col gap-4 rounded-2xl border border-[#e5e5e5] bg-white p-5"
+      className="flex flex-col gap-4 rounded-2xl border border-wati-border bg-white p-5"
     >
       <div className="flex flex-col gap-2">
         <p className="text-[12px] tracking-[-0.06px] text-black/50">
@@ -45,7 +45,7 @@ export function ScheduleTaskCard({
           type="button"
           onClick={onSchedule}
           disabled={disabled}
-          className="rounded-lg bg-[#23A455] px-4 py-1.5 text-[13px] tracking-[-0.078px] text-white hover:bg-[#1F9349] disabled:cursor-not-allowed disabled:opacity-40"
+          className="rounded-lg bg-wati-green px-4 py-1.5 text-[13px] tracking-[-0.078px] text-white hover:bg-wati-green-hover disabled:cursor-not-allowed disabled:opacity-40"
         >
           Schedule
         </button>
@@ -53,7 +53,7 @@ export function ScheduleTaskCard({
           type="button"
           onClick={onRunNow}
           disabled={disabled}
-          className="flex items-center gap-1.5 rounded-lg border border-[#e5e5e5] bg-white px-3 py-1.5 text-[13px] tracking-[-0.078px] text-[#0a0a0a] hover:bg-black/[0.03] disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex items-center gap-1.5 rounded-lg border border-wati-border bg-white px-3 py-1.5 text-[13px] tracking-[-0.078px] text-[#0a0a0a] hover:bg-black/[0.03] disabled:cursor-not-allowed disabled:opacity-40"
         >
           <Play size={12} strokeWidth={2} />
           Run now

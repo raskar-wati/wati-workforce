@@ -59,7 +59,7 @@ function SuggestionCard({
     <button
       type="button"
       onClick={() => onSelect(suggestion.prompt, suggestion.watcherTypeId)}
-      className="flex flex-col items-start gap-2 rounded-[10px] border border-[#e5e5e5] bg-white p-4 text-left transition-colors hover:bg-[var(--wati-surface-subtle)]"
+      className="flex flex-col items-start gap-2 rounded-[10px] border border-wati-border bg-white p-4 text-left transition-colors hover:bg-[var(--wati-surface-subtle)]"
     >
       <Image
         src={getPixabot(suggestion.id)}

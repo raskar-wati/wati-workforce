@@ -49,7 +49,7 @@ function ActionRunInFlight({ run }: { run: AgentActionRunType }) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
-      className="flex flex-col gap-3 rounded-2xl border border-[#e5e5e5] bg-[#f7faf7] px-5 py-4"
+      className="flex flex-col gap-3 rounded-2xl border border-wati-border bg-[#f7faf7] px-5 py-4"
     >
       <p className="text-[13px] font-medium tracking-[-0.078px] text-[#0a0a0a]">
         {run.runTitle}
@@ -81,7 +81,7 @@ function CompletedStep({ text }: { text: string }) {
   return (
     <div className="flex items-center gap-2 pl-1 text-[13px] leading-[18px] text-black/40">
       <span className="flex h-3 w-3 items-center justify-center">
-        <Check size={10} strokeWidth={2.5} className="text-emerald-700" />
+        <Check size={10} strokeWidth={2.5} className="text-wati-green-text" />
       </span>
       <span>{text}</span>
     </div>
@@ -105,7 +105,7 @@ function ActionRunResult({ run }: { run: AgentActionRunType }) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
-      className="flex flex-col gap-3 rounded-2xl border border-[#e5e5e5] bg-white px-5 py-4"
+      className="flex flex-col gap-3 rounded-2xl border border-wati-border bg-white px-5 py-4"
     >
       <div className="flex items-start gap-3">
         {isDraft ? (
@@ -113,7 +113,7 @@ function ActionRunResult({ run }: { run: AgentActionRunType }) {
             <PencilLine size={12} strokeWidth={2.5} />
           </span>
         ) : (
-          <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+          <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-wati-green-soft text-wati-green-text">
             <Check size={12} strokeWidth={2.5} />
           </span>
         )}
@@ -134,7 +134,7 @@ function ActionRunResult({ run }: { run: AgentActionRunType }) {
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <span
           aria-hidden
-          className="inline-flex items-center gap-1.5 rounded-full border border-[#e5e5e5] bg-white px-3 py-1.5 text-[13px] tracking-[-0.078px] text-[#0a0a0a]"
+          className="inline-flex items-center gap-1.5 rounded-full border border-wati-border bg-white px-3 py-1.5 text-[13px] tracking-[-0.078px] text-[#0a0a0a]"
         >
           {run.resultCtaLabel}
           <ArrowUpRight size={12} strokeWidth={2} />
@@ -144,7 +144,7 @@ function ActionRunResult({ run }: { run: AgentActionRunType }) {
             Needs your confirmation each run
           </span>
         ) : alwaysOn ? (
-          <span className="inline-flex items-center gap-1 text-[13px] tracking-[-0.078px] text-emerald-700">
+          <span className="inline-flex items-center gap-1 text-[13px] tracking-[-0.078px] text-wati-green-text">
             <Check size={12} strokeWidth={2.5} />
             Will always do this
           </span>

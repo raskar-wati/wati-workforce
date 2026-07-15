@@ -42,7 +42,7 @@ export function ModePillRow({
           key={id}
           type="button"
           onClick={() => onSelect(id)}
-          className="rounded-full border border-[#e5e5e5] bg-white px-4 py-2 text-[13px] tracking-[-0.078px] text-[#0a0a0a] transition-colors hover:bg-black/[0.03]"
+          className="rounded-full border border-wati-border bg-white px-4 py-2 text-[13px] tracking-[-0.078px] text-[#0a0a0a] transition-colors hover:bg-black/[0.03]"
         >
           {label}
         </button>

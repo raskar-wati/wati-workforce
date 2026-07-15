@@ -243,7 +243,7 @@ function Trend({ metric }: { metric: DigestMetric }) {
 function toneClass(tone: "good" | "bad" | "neutral"): string {
   switch (tone) {
     case "good":
-      return "text-emerald-600";
+      return "text-wati-green-text";
     case "bad":
       return "text-rose-600";
     default:

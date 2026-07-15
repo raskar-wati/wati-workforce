@@ -50,7 +50,7 @@ export function AgentActionMenu({
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full z-20 mt-1 w-44 overflow-hidden rounded-2xl border border-[#e5e5e5] bg-white py-1 shadow-[0_8px_24px_rgba(0,0,0,0.1)]"
+          className="absolute right-0 top-full z-20 mt-1 w-44 overflow-hidden rounded-2xl border border-wati-border bg-white py-1 shadow-[0_8px_24px_rgba(0,0,0,0.1)]"
         >
           <MenuItem
             icon={<Pencil size={14} strokeWidth={1.75} />}

@@ -46,7 +46,7 @@ export function AvatarShufflePicker({
 
   return (
     <div className="flex items-center gap-3">
-      <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#e5e5e5] bg-[#f5f5f5]">
+      <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-wati-border bg-[#f5f5f5]">
         <Image
           src={path}
           alt="Agent avatar"
@@ -59,7 +59,7 @@ export function AvatarShufflePicker({
         type="button"
         onClick={shuffle}
         aria-label="Shuffle avatar"
-        className="flex items-center gap-1.5 rounded-full border border-[#e5e5e5] bg-white px-3 py-1.5 text-[13px] tracking-[-0.078px] text-[#0a0a0a] hover:bg-black/[0.03]"
+        className="flex items-center gap-1.5 rounded-full border border-wati-border bg-white px-3 py-1.5 text-[13px] tracking-[-0.078px] text-[#0a0a0a] hover:bg-black/[0.03]"
       >
         <Shuffle size={12} strokeWidth={2} />
         Shuffle

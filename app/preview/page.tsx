@@ -79,7 +79,7 @@ function InboxSkeleton() {
               >
                 <div
                   className={`h-10 ${
-                    i % 2 === 0 ? "w-64 bg-white" : "w-72 bg-emerald-100"
+                    i % 2 === 0 ? "w-64 bg-white" : "w-72 bg-wati-green-soft"
                   } rounded-2xl`}
                 />
               </div>
@@ -87,7 +87,7 @@ function InboxSkeleton() {
           </div>
           <div className="flex h-14 shrink-0 items-center gap-2 border-t border-slate-200 bg-white px-4">
             <div className="h-9 flex-1 rounded bg-slate-100" />
-            <div className="h-9 w-16 rounded bg-emerald-200" />
+            <div className="h-9 w-16 rounded bg-wati-green-soft-hover" />
           </div>
         </div>
 

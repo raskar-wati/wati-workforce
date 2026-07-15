@@ -83,7 +83,7 @@ export function InboxAskWatiSuggestions({
               key={s.id}
               type="button"
               onClick={() => onSelect(s.prompt(stats), s.watcherTypeId)}
-              className="flex flex-col items-start gap-2 rounded-[10px] border border-[#e5e5e5] bg-white p-4 text-left transition-colors hover:bg-[var(--wati-surface-subtle)]"
+              className="flex flex-col items-start gap-2 rounded-[10px] border border-wati-border bg-white p-4 text-left transition-colors hover:bg-[var(--wati-surface-subtle)]"
             >
               <span className="flex h-6 w-6 items-center justify-center rounded-md bg-black/[0.04] text-[#0a0a0a]">
                 <Icon size={14} strokeWidth={1.75} />

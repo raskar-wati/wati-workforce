@@ -50,7 +50,7 @@ export function InstructionsPanel({
   };
 
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-[#e5e5e5] bg-white p-4">
+    <div className="flex flex-col gap-3 rounded-2xl border border-wati-border bg-white p-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <p className="text-[11px] font-medium uppercase tracking-[0.5px] text-black/45">
@@ -85,7 +85,7 @@ export function InstructionsPanel({
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           rows={Math.min(20, Math.max(6, draft.split("\n").length + 1))}
-          className="w-full resize-y rounded-xl border border-[#e5e5e5] bg-white px-3 py-2.5 text-[13px] leading-[20px] tracking-[-0.078px] text-[#0a0a0a] outline-none focus:border-[#1570EF]"
+          className="w-full resize-y rounded-xl border border-wati-border bg-white px-3 py-2.5 text-[13px] leading-[20px] tracking-[-0.078px] text-[#0a0a0a] outline-none focus:border-[#1570EF]"
         />
       ) : (
         <button

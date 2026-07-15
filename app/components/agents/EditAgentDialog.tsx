@@ -241,10 +241,10 @@ export function EditAgentDialog({
 }
 
 const INPUT_CLASS =
-  "w-full rounded-xl border border-[#e5e5e5] bg-white px-3 py-2.5 text-[13px] tracking-[-0.078px] text-[#0a0a0a] outline-none focus:border-[#1570EF]";
+  "w-full rounded-xl border border-wati-border bg-white px-3 py-2.5 text-[13px] tracking-[-0.078px] text-[#0a0a0a] outline-none focus:border-[#1570EF]";
 
 const SELECT_CLASS =
-  "rounded-xl border border-[#e5e5e5] bg-white px-3 py-2 text-[13px] tracking-[-0.078px] text-[#0a0a0a] outline-none focus:border-[#1570EF]";
+  "rounded-xl border border-wati-border bg-white px-3 py-2 text-[13px] tracking-[-0.078px] text-[#0a0a0a] outline-none focus:border-[#1570EF]";
 
 function StatusRow({
   active,
@@ -254,11 +254,11 @@ function StatusRow({
   onChange: (next: boolean) => void;
 }) {
   return (
-    <div className="flex items-center justify-between rounded-xl border border-[#e5e5e5] bg-[#fafafa] px-3 py-2.5">
+    <div className="flex items-center justify-between rounded-xl border border-wati-border bg-[#fafafa] px-3 py-2.5">
       <div className="flex items-center gap-2">
         <span
           aria-hidden
-          className={`h-2 w-2 rounded-full ${active ? "bg-emerald-500" : "bg-amber-500"}`}
+          className={`h-2 w-2 rounded-full ${active ? "bg-wati-green" : "bg-amber-500"}`}
         />
         <span className="text-[13px] font-medium tracking-[-0.078px] text-[#0a0a0a]">
           {active ? "Active" : "Inactive"}
@@ -288,7 +288,7 @@ function Switch({
       aria-checked={checked}
       onClick={() => onChange(!checked)}
       className={`relative inline-flex h-[22px] w-[38px] shrink-0 items-center rounded-full transition-colors ${
-        checked ? "bg-emerald-500" : "bg-black/20"
+        checked ? "bg-wati-green" : "bg-black/20"
       }`}
     >
       <span
@@ -349,7 +349,7 @@ function ModelPicker({
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="flex w-full items-center justify-between rounded-xl border border-[#e5e5e5] bg-white px-3 py-2.5 text-[13px] tracking-[-0.078px] text-[#0a0a0a] hover:border-black/30"
+        className="flex w-full items-center justify-between rounded-xl border border-wati-border bg-white px-3 py-2.5 text-[13px] tracking-[-0.078px] text-[#0a0a0a] hover:border-black/30"
       >
         <span>{selected.name}</span>
         <ChevronDown size={14} className="text-black/55" />
@@ -357,11 +357,11 @@ function ModelPicker({
       {open && (
         <div
           role="listbox"
-          className="absolute bottom-full left-0 right-0 z-10 mb-1 max-h-[280px] overflow-y-auto rounded-2xl border border-[#e5e5e5] bg-white py-1 shadow-[0_8px_24px_rgba(0,0,0,0.1)]"
+          className="absolute bottom-full left-0 right-0 z-10 mb-1 max-h-[280px] overflow-y-auto rounded-2xl border border-wati-border bg-white py-1 shadow-[0_8px_24px_rgba(0,0,0,0.1)]"
         >
           {groups.map(([provider, models], gi) => (
             <div key={provider}>
-              {gi > 0 && <div className="mx-3 border-t border-[#f0f0f0]" />}
+              {gi > 0 && <div className="mx-3 border-t border-wati-border" />}
               <div className="px-3 pb-1 pt-2.5">
                 <span className="text-[10px] font-semibold uppercase tracking-[0.8px] text-black/30">
                   {provider}

@@ -79,7 +79,7 @@ export function WatcherTypeOptionList({
                   onKeyDown={handleCustomKey}
                   placeholder="Describe what to watch for…"
                   autoFocus
-                  className="w-full rounded-md border border-[#e5e5e5] bg-white px-3 py-1.5 text-[13px] tracking-[-0.078px] text-[#0a0a0a] placeholder:text-black/40 focus:border-[#0a0a0a] focus:outline-none"
+                  className="w-full rounded-md border border-wati-border bg-white px-3 py-1.5 text-[13px] tracking-[-0.078px] text-[#0a0a0a] placeholder:text-black/40 focus:border-[#0a0a0a] focus:outline-none"
                 />
               </div>
             )}

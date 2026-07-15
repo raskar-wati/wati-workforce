@@ -15,7 +15,7 @@ export function GlobalHeader() {
         <button
           type="button"
           onClick={toggle}
-          className="inline-flex items-center rounded-full bg-[#23A455] px-3 py-1 text-xs font-semibold text-white transition-colors hover:bg-[#1F9349]"
+          className="inline-flex items-center rounded-full bg-wati-green px-3 py-1 text-xs font-semibold text-white transition-colors hover:bg-wati-green-hover"
         >
           Ask Wati
         </button>

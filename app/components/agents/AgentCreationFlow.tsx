@@ -314,7 +314,7 @@ function StepBody({
         value={draft.name}
         onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
         placeholder={placeholderName}
-        className="w-full rounded-xl border border-[#e5e5e5] bg-white px-3 py-2.5 text-[13px] tracking-[-0.078px] text-[#0a0a0a] outline-none focus:border-[#1570EF]"
+        className="w-full rounded-xl border border-wati-border bg-white px-3 py-2.5 text-[13px] tracking-[-0.078px] text-[#0a0a0a] outline-none focus:border-[#1570EF]"
         aria-label="Agent name"
       />
       <AvatarShufflePicker

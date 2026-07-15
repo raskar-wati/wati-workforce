@@ -52,7 +52,7 @@ function ContactsSkeleton() {
         </div>
         <div className="flex items-center gap-3">
           <div className="h-8 w-28 rounded bg-slate-100" />
-          <div className="h-8 w-24 rounded bg-emerald-200" />
+          <div className="h-8 w-24 rounded bg-wati-green-soft-hover" />
         </div>
       </div>
 
@@ -61,7 +61,7 @@ function ContactsSkeleton() {
         <div className="flex items-center gap-3">
           <div className="h-8 w-40 rounded bg-slate-100" />
           <div className="h-8 w-56 rounded bg-slate-100" />
-          <div className="h-8 w-8 rounded bg-emerald-200" />
+          <div className="h-8 w-8 rounded bg-wati-green-soft-hover" />
         </div>
         <div className="flex items-center gap-2">
           <div className="h-8 w-20 rounded bg-slate-100" />
@@ -102,7 +102,7 @@ function ContactsSkeleton() {
               <div className="flex items-center gap-2">
                 <div className="h-6 w-32 rounded-full bg-slate-100" />
                 <div className="h-6 w-28 rounded-full bg-slate-100" />
-                <div className="h-3 w-20 rounded bg-emerald-100" />
+                <div className="h-3 w-20 rounded bg-wati-green-soft" />
               </div>
               <div className="ml-auto flex items-center gap-2">
                 <div className="h-4 w-4 rounded bg-slate-200" />
