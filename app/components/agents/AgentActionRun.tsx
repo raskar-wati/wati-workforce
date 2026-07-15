@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { getActionScript } from "../../lib/agent-actions";
 import type { AgentActionRun as AgentActionRunType } from "../../lib/agents";
 import { useAgents } from "../../lib/agents";
+import { CardCtaChip, WorkforceCard } from "../cards/WorkforceCard";
 import { StatusIndicator } from "./StatusIndicator";
 
 const STEP_DURATION_MS = 1400;
@@ -101,63 +102,45 @@ function ActionRunResult({ run }: { run: AgentActionRunType }) {
   const isGated = approval === "gated";
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
-      className="flex flex-col gap-3 rounded-2xl border border-wati-border bg-white px-5 py-4"
-    >
-      <div className="flex items-start gap-3">
-        {isDraft ? (
-          <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700">
-            <PencilLine size={12} strokeWidth={2.5} />
-          </span>
+    <WorkforceCard
+      tone={isDraft ? "draft" : "success"}
+      icon={
+        isDraft ? (
+          <PencilLine size={12} strokeWidth={2.5} />
         ) : (
-          <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-wati-green-soft text-wati-green-text">
-            <Check size={12} strokeWidth={2.5} />
-          </span>
-        )}
-        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <p className="text-[13px] font-medium tracking-[-0.078px] text-[#0a0a0a]">
-            {run.resultLabel}
-          </p>
-          <p className="text-[12px] tracking-[-0.06px] text-black/50">
-            {run.resultDestination}
-          </p>
-          {isDraft && (
-            <p className="text-[12px] tracking-[-0.06px] text-amber-700">
-              Draft — needs your approval to go live
-            </p>
+          <Check size={12} strokeWidth={2.5} />
+        )
+      }
+      title={run.resultLabel}
+      subtitle={run.resultDestination}
+      note={isDraft ? "Draft — needs your approval to go live" : undefined}
+      state={isDraft ? "draft" : undefined}
+      actions={
+        <>
+          <CardCtaChip>
+            {run.resultCtaLabel}
+            <ArrowUpRight size={12} strokeWidth={2} />
+          </CardCtaChip>
+          {isGated ? (
+            <span className="text-[13px] tracking-[-0.078px] text-black/40">
+              Needs your confirmation each run
+            </span>
+          ) : alwaysOn ? (
+            <span className="inline-flex items-center gap-1 text-[13px] tracking-[-0.078px] text-wati-green-text">
+              <Check size={12} strokeWidth={2.5} />
+              Will always do this
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => enableAutoAction(run.agentId, run.action)}
+              className="text-[13px] tracking-[-0.078px] text-black/60 hover:text-[#0a0a0a]"
+            >
+              Always do this
+            </button>
           )}
-        </div>
-      </div>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <span
-          aria-hidden
-          className="inline-flex items-center gap-1.5 rounded-full border border-wati-border bg-white px-3 py-1.5 text-[13px] tracking-[-0.078px] text-[#0a0a0a]"
-        >
-          {run.resultCtaLabel}
-          <ArrowUpRight size={12} strokeWidth={2} />
-        </span>
-        {isGated ? (
-          <span className="text-[13px] tracking-[-0.078px] text-black/40">
-            Needs your confirmation each run
-          </span>
-        ) : alwaysOn ? (
-          <span className="inline-flex items-center gap-1 text-[13px] tracking-[-0.078px] text-wati-green-text">
-            <Check size={12} strokeWidth={2.5} />
-            Will always do this
-          </span>
-        ) : (
-          <button
-            type="button"
-            onClick={() => enableAutoAction(run.agentId, run.action)}
-            className="text-[13px] tracking-[-0.078px] text-black/60 hover:text-[#0a0a0a]"
-          >
-            Always do this
-          </button>
-        )}
-      </div>
-    </motion.div>
+        </>
+      }
+    />
   );
 }

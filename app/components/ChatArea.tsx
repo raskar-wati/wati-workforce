@@ -18,6 +18,7 @@ import {
 } from "../lib/onboarding-script";
 import { getWatcherType } from "../lib/watcher-types";
 import { AgentActionRun } from "./agents/AgentActionRun";
+import MessageMarkdown from "./MessageMarkdown";
 import { AnalyticsMockConversation } from "./analytics/AnalyticsMockConversation";
 import { AgentCreationFlow } from "./agents/AgentCreationFlow";
 import {
@@ -1249,8 +1250,8 @@ export function ChatArea({
                           />
                         )}
                         {m.content && (
-                          <div className="whitespace-pre-wrap text-[14px] leading-[21px] text-black/80">
-                            {m.content}
+                          <div className="relative">
+                            <MessageMarkdown content={m.content} />
                             {m.streaming && (
                               <span
                                 aria-hidden="true"
