@@ -14,6 +14,15 @@ export type WatcherTypeDef = {
   blurb: string;
   keywords: readonly string[];
   buildDraft: () => HandoffDraft;
+  /**
+   * Parked types stay in the codebase but are hidden from every surface
+   * (template shelf, free-text matching, suggestions). The PRD's out-of-box
+   * roster is exactly seven agents (UI Spec sub-page 6: Daily Digest,
+   * Urgency Watcher, Hot Leads, Delivery Issues, WhatsApp Ad Leads,
+   * Top Topics, Response SLA); the rest are future candidates for the
+   * "Suggested for you" shelf.
+   */
+  parked?: boolean;
 };
 
 function uid(): string {
@@ -131,6 +140,7 @@ const TOP_TOPICS: WatcherTypeDef = {
 
 const DEMAND_SPIKE: WatcherTypeDef = {
   id: "demand-spike",
+  parked: true,
   label: "Demand spike",
   defaultName: "Demand Spike Agent",
   blurb: "Get alerts when inbound demand surges.",
@@ -165,6 +175,7 @@ const DEMAND_SPIKE: WatcherTypeDef = {
 
 const PRICE_ALERT: WatcherTypeDef = {
   id: "price-alert",
+  parked: true,
   label: "Price alert",
   defaultName: "Price Alert Agent",
   blurb: "Detect price-sensitive customer chatter.",
@@ -201,6 +212,7 @@ const PRICE_ALERT: WatcherTypeDef = {
 
 const SENTIMENT_MONITOR: WatcherTypeDef = {
   id: "sentiment-monitor",
+  parked: true,
   label: "Sentiment monitor",
   defaultName: "Sentiment Agent",
   blurb: "Track customer sentiment across conversations.",
@@ -234,6 +246,7 @@ const SENTIMENT_MONITOR: WatcherTypeDef = {
 
 const VOLUME_SPIKE: WatcherTypeDef = {
   id: "volume-spike",
+  parked: true,
   label: "Volume spike",
   defaultName: "Volume Agent",
   blurb: "Catch surges in message volume and capacity risk.",
@@ -419,6 +432,7 @@ const PAID_ACQ: WatcherTypeDef = {
 
 const OPS_MISCLASSIFICATION: WatcherTypeDef = {
   id: "ops-misclassification",
+  parked: true,
   label: "Internal / ops messages",
   defaultName: "Ops Filter Agent",
   blurb: "Detect internal or ops messages landing in the customer queue.",
@@ -493,6 +507,10 @@ export const WATCHER_TYPES: readonly WatcherTypeDef[] = [
   CUSTOM,
 ];
 
+/** The offerable roster — the PRD's seven out-of-box agents (+ custom). */
+export const ACTIVE_WATCHER_TYPES: readonly WatcherTypeDef[] =
+  WATCHER_TYPES.filter((w) => !w.parked);
+
 export function getWatcherType(id: WatcherTypeId): WatcherTypeDef {
   const found = WATCHER_TYPES.find((w) => w.id === id);
   if (!found) throw new Error(`Unknown watcher type: ${id}`);
@@ -501,7 +519,7 @@ export function getWatcherType(id: WatcherTypeId): WatcherTypeDef {
 
 export function matchWatcherType(message: string): WatcherTypeId | null {
   const lower = message.toLowerCase();
-  for (const w of WATCHER_TYPES) {
+  for (const w of ACTIVE_WATCHER_TYPES) {
     if (w.id === "custom") continue;
     if (w.keywords.some((k) => lower.includes(k))) return w.id;
   }

@@ -1,5 +1,6 @@
 import type { WatcherTypeId } from "./agents";
 import type { TenantSignalProfile, TenantTheme } from "./tenant-signal-profile";
+import { getWatcherType } from "./watcher-types";
 
 export type AgentSuggestion = {
   id: string;
@@ -239,13 +240,16 @@ export const SUGGESTION_BANK: readonly AgentSuggestion[] = [
 
 /**
  * Rank the suggestion bank against a tenant profile. Returns suggestions with
- * score > 0, sorted descending. Caps at `max` (default 5).
+ * score > 0, sorted descending. Caps at `max` (default 5). Suggestions whose
+ * watcher type is parked (outside the PRD's out-of-box roster) are skipped —
+ * they stay in the bank for when those types come back.
  */
 export function rankSuggestions(
   profile: TenantSignalProfile,
   max: number = 5,
 ): AgentSuggestion[] {
-  return SUGGESTION_BANK.map((s) => ({ s, score: s.score(profile) }))
+  return SUGGESTION_BANK.filter((s) => !getWatcherType(s.watcherTypeId).parked)
+    .map((s) => ({ s, score: s.score(profile) }))
     .filter((entry) => entry.score > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, max)

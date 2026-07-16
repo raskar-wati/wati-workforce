@@ -2,15 +2,17 @@
 
 import { useState, type KeyboardEvent } from "react";
 import type { WatcherTypeId } from "../../lib/agents";
-import { WATCHER_TYPES } from "../../lib/watcher-types";
+import { ACTIVE_WATCHER_TYPES } from "../../lib/watcher-types";
 
+// The PRD's out-of-box roster (UI Spec sub-page 6), in its listing order.
+// Daily Digest is the pinned system agent, so it isn't a creatable template.
 const DISPLAY_ORDER: WatcherTypeId[] = [
-  "top-topics",
-  "demand-spike",
-  "price-alert",
-  "sentiment-monitor",
-  "volume-spike",
+  "urgency",
   "ready-to-buy",
+  "delivery-issue",
+  "paid-acq",
+  "top-topics",
+  "response-gap",
   "custom",
 ];
 
@@ -27,7 +29,7 @@ export function WatcherTypeOptionList({
 
   const items = DISPLAY_ORDER.map(
     (id, i) => ({
-      def: WATCHER_TYPES.find((w) => w.id === id)!,
+      def: ACTIVE_WATCHER_TYPES.find((w) => w.id === id)!,
       index: i + 1,
     }),
   );
