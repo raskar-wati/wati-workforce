@@ -1,8 +1,10 @@
 "use client";
 
 import { ArrowUpRight, Check, Hourglass, PencilLine } from "lucide-react";
+import { useState } from "react";
 import { getActionScript } from "../../lib/agent-actions";
 import { useAgents, type ApprovalQueueItem } from "../../lib/agents";
+import { BroadcastScheduleConfirm } from "../cards/BroadcastScheduleConfirm";
 import { CardCtaChip, WorkforceCard } from "../cards/WorkforceCard";
 
 /**
@@ -93,6 +95,18 @@ function ApprovalCard({
 }) {
   const { run, agent } = item;
   const script = getActionScript(run.action);
+  // Broadcast-family approvals restate count + cost before arming (PRD §3.2).
+  const [restatingEstimate, setRestatingEstimate] = useState(false);
+
+  if (restatingEstimate && script.sendEstimate) {
+    return (
+      <BroadcastScheduleConfirm
+        estimate={script.sendEstimate}
+        onArm={() => onApprove(script.draft?.activeState ?? "armed")}
+        onKeepDraft={() => setRestatingEstimate(false)}
+      />
+    );
+  }
 
   return (
     <WorkforceCard
@@ -106,7 +120,11 @@ function ApprovalCard({
           {script.approveLabel && (
             <CardCtaChip
               primary
-              onClick={() => onApprove(script.draft?.activeState ?? "live")}
+              onClick={() =>
+                script.sendEstimate
+                  ? setRestatingEstimate(true)
+                  : onApprove(script.draft?.activeState ?? "live")
+              }
             >
               {script.approveLabel}
             </CardCtaChip>

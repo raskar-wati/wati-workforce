@@ -6,6 +6,10 @@ import { useEffect, useState } from "react";
 import { getActionScript } from "../../lib/agent-actions";
 import type { AgentActionRun as AgentActionRunType } from "../../lib/agents";
 import { useAgents } from "../../lib/agents";
+import {
+  BroadcastEstimateRows,
+  BroadcastScheduleConfirm,
+} from "../cards/BroadcastScheduleConfirm";
 import { CardCtaChip, EvidenceRow, WorkforceCard } from "../cards/WorkforceCard";
 import { StatusIndicator } from "./StatusIndicator";
 
@@ -47,7 +51,7 @@ export function AgentActionRun({ run }: { run: AgentActionRunType }) {
 /** Class A pre-write draft card: "Will create" + verdicts + dual commit. */
 function ActionRunDraftCard({ run }: { run: AgentActionRunType }) {
   const { commitActionRun, dismissActionRun } = useAgents();
-  const { draft } = getActionScript(run.action);
+  const { draft, sendEstimate } = getActionScript(run.action);
   if (!draft) return null;
 
   return (
@@ -73,6 +77,7 @@ function ActionRunDraftCard({ run }: { run: AgentActionRunType }) {
           {check.text}
         </EvidenceRow>
       ))}
+      {sendEstimate && <BroadcastEstimateRows estimate={sendEstimate} />}
     </WorkforceCard>
   );
 }
@@ -176,6 +181,9 @@ function CompletedStep({ text }: { text: string }) {
  */
 function ActionRunReceipt({ run }: { run: AgentActionRunType }) {
   const { getAgent, enableAutoAction, setRunObjectState } = useAgents();
+  // Broadcast-family approvals restate count + cost before arming (PRD §3.2);
+  // this holds the receipt in that restatement step.
+  const [restatingEstimate, setRestatingEstimate] = useState(false);
   const agent = getAgent(run.agentId);
   const alwaysOn = agent?.autoActions.includes(run.action) ?? false;
 
@@ -187,6 +195,18 @@ function ActionRunReceipt({ run }: { run: AgentActionRunType }) {
     run.objectState ?? (governance === "A" ? "draft" : undefined);
   const isDraftState = objectState === "draft";
   const isPending = objectState === "pending-meta";
+
+  if (restatingEstimate && isDraftState && script.sendEstimate) {
+    return (
+      <BroadcastScheduleConfirm
+        estimate={script.sendEstimate}
+        onArm={() =>
+          setRunObjectState(run.id, script.draft?.activeState ?? "armed")
+        }
+        onKeepDraft={() => setRestatingEstimate(false)}
+      />
+    );
+  }
 
   return (
     <WorkforceCard
@@ -215,7 +235,9 @@ function ActionRunReceipt({ run }: { run: AgentActionRunType }) {
             <CardCtaChip
               primary
               onClick={() =>
-                setRunObjectState(run.id, script.draft?.activeState ?? "live")
+                script.sendEstimate
+                  ? setRestatingEstimate(true)
+                  : setRunObjectState(run.id, script.draft?.activeState ?? "live")
               }
             >
               {script.approveLabel}

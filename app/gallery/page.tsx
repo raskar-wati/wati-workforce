@@ -2,7 +2,6 @@
 
 import {
   ArrowUpRight,
-  CalendarClock,
   Check,
   Hourglass,
   ListChecks,
@@ -10,8 +9,11 @@ import {
   PencilLine,
   ShieldAlert,
   Stethoscope,
+  Zap,
 } from "lucide-react";
+import { getActionScript } from "../lib/agent-actions";
 import MessageMarkdown from "../components/MessageMarkdown";
+import { BroadcastScheduleConfirm } from "../components/cards/BroadcastScheduleConfirm";
 import {
   CardCtaChip,
   EvidenceRow,
@@ -314,17 +316,24 @@ export default function GalleryPage() {
         >
           <WorkforceCard
             tone="info"
-            icon={<CalendarClock size={12} strokeWidth={2.5} />}
-            title="Schedule broadcast “Diwali preview” for Oct 18, 10:00 IST?"
-            subtitle="1,204 recipients · estimated cost ₹1,082 · template festive_promo (approved)"
-            state="armed"
-            stateLabel="Will arm"
+            icon={<Zap size={12} strokeWidth={2.5} />}
+            title="Send a bulk message to the 46 matched hot leads?"
+            subtitle="Sends immediately via WhatsApp — sent messages can't be recalled"
             actions={
               <>
-                <CardCtaChip primary>Confirm &amp; schedule</CardCtaChip>
+                <CardCtaChip primary>Confirm &amp; send</CardCtaChip>
                 <CardCtaChip>Not now</CardCtaChip>
               </>
             }
+          />
+        </Section>
+
+        <Section
+          title="Schedule-confirm card — broadcast arming (new)"
+          hint="PRD §3.2: recipient count + cost estimate restated before the schedule is armed; approving a broadcast draft routes through it in the thread and the queue"
+        >
+          <BroadcastScheduleConfirm
+            estimate={getActionScript("schedule-broadcast").sendEstimate!}
           />
         </Section>
 

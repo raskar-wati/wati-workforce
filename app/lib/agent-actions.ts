@@ -39,6 +39,27 @@ export type DraftSpec = {
   activeState: AgentObjectState;
 };
 
+/**
+ * PRD §3.2 (wati_schedule_broadcast): recipient count + cost estimate,
+ * restated to the human on the draft card and again when arming a schedule.
+ */
+export type SendEstimateSpec = {
+  /** Headline of the arming confirmation, e.g. "Arm the schedule for this broadcast?". */
+  confirmTitle: string;
+  /** Who receives it, e.g. "Audience · segment from this handoff". */
+  audience: string;
+  /** Recipient count metric, e.g. "1,284 recipients". */
+  recipients: string;
+  /** Pricing basis, e.g. "Marketing rate · ₹0.79 per message". */
+  rate: string;
+  /** Total cost metric, e.g. "₹1,014 est.". */
+  cost: string;
+  /** Send window line, e.g. "Sends tomorrow, 10:00 AM IST". */
+  window: string;
+  /** Balance context, e.g. "Credit balance after send: ₹8,406". */
+  balanceNote?: string;
+};
+
 /** Class C pre-execution confirmation: states the immediate effect. */
 export type ConfirmSpec = {
   title: string;
@@ -64,6 +85,12 @@ export type AgentActionScript = {
   governance: GovernanceClass;
   /** Class A only: the pre-write draft card. */
   draft?: DraftSpec;
+  /**
+   * Broadcast-family Class A only: the send estimate. Shown on the draft card
+   * and restated as an arming confirmation before the schedule goes ARMED —
+   * both approval surfaces route through it (PRD §3.2).
+   */
+  sendEstimate?: SendEstimateSpec;
   /** Class C only: the pre-execution confirmation card. */
   confirm?: ConfirmSpec;
   /** Class B only: receipt note, e.g. "Inert until a rule references it". */
@@ -108,10 +135,18 @@ const SEND_CAMPAIGN: AgentActionScript = {
     summary: "Will create: campaign draft · audience from this handoff · template mapping",
     checks: [
       { verdict: "ok", text: "Template approved and variable mapping complete" },
-      { verdict: "info", text: "Recipient count and cost are restated before arming" },
     ],
     activateLabel: "Create and schedule",
     activeState: "armed",
+  },
+  sendEstimate: {
+    confirmTitle: "Arm the schedule for this campaign?",
+    audience: "Audience · matched contacts from this handoff",
+    recipients: "312 recipients",
+    rate: "Marketing rate · ₹0.79 per message",
+    cost: "₹246 est.",
+    window: "Sends tomorrow, 10:00 AM IST",
+    balanceNote: "Credit balance after send: ₹9,174",
   },
   approveLabel: "Confirm & schedule",
   undoLabel: "Disarm",
@@ -220,10 +255,18 @@ const SCHEDULE_BROADCAST: AgentActionScript = {
     summary: "Will create: broadcast draft · audience resolved · send window set",
     checks: [
       { verdict: "ok", text: "Template approved · audience has recipients" },
-      { verdict: "info", text: "Final count and cost are restated before arming" },
     ],
     activateLabel: "Create and schedule",
     activeState: "armed",
+  },
+  sendEstimate: {
+    confirmTitle: "Arm the schedule for this broadcast?",
+    audience: "Audience · segment from this handoff",
+    recipients: "1,284 recipients",
+    rate: "Marketing rate · ₹0.79 per message",
+    cost: "₹1,014 est.",
+    window: "Sends tomorrow, 10:00 AM IST",
+    balanceNote: "Credit balance after send: ₹8,406",
   },
   approveLabel: "Confirm & schedule",
   undoLabel: "Disarm",
