@@ -16,8 +16,16 @@ import {
   type ClosingChip,
   type OfferingChoice,
 } from "../lib/onboarding-script";
-import { getWatcherType } from "../lib/watcher-types";
+import {
+  getWatcherType,
+  rankWatcherMatches,
+  resolveMatchTier,
+  type MatchTier,
+} from "../lib/watcher-types";
+import { recordRoleRequest } from "../lib/role-requests";
+import { generateInstructions } from "../lib/agent-instructions";
 import { AgentActionRun } from "./agents/AgentActionRun";
+import { WatcherMatchCard } from "./agents/WatcherMatchCard";
 import MessageMarkdown from "./MessageMarkdown";
 import { AnalyticsMockConversation } from "./analytics/AnalyticsMockConversation";
 import { AgentCreationFlow } from "./agents/AgentCreationFlow";
@@ -91,6 +99,15 @@ type ChatMessage =
       id: string;
       initialMessage: string;
       watcherTypeId: WatcherTypeId;
+    }
+  | {
+      kind: "watcher-match";
+      id: string;
+      /** The free-typed instructions the ladder scored. */
+      prompt: string;
+      match: MatchTier;
+      /** Set once the user picked a type — locks the card. */
+      resolvedTypeId?: WatcherTypeId;
     }
   | {
       kind: "wati-message";
@@ -530,12 +547,28 @@ export function ChatArea({
     const thinkingId = crypto.randomUUID();
     const nextMessages: ChatMessage[] = [userMsg];
     if (startsAgentFlow) {
-      nextMessages.push({
-        kind: "agent-creation-flow",
-        id: crypto.randomUUID(),
-        initialMessage: trimmed,
-        watcherTypeId: pendingWatcherTypeId ?? "custom",
-      });
+      if (pendingWatcherTypeId) {
+        // Entry point already resolved the type (suggestion chip / shelf) —
+        // the ladder only runs on unresolved free text.
+        nextMessages.push({
+          kind: "agent-creation-flow",
+          id: crypto.randomUUID(),
+          initialMessage: trimmed,
+          watcherTypeId: pendingWatcherTypeId,
+        });
+      } else {
+        // Free-text matching ladder (agent-schema.md §2). A no-match ask is
+        // captured as a role request; nothing is created either way until
+        // the user picks a real type off the card.
+        const match = resolveMatchTier(rankWatcherMatches(trimmed));
+        if (match.tier === "none") recordRoleRequest(trimmed);
+        nextMessages.push({
+          kind: "watcher-match",
+          id: crypto.randomUUID(),
+          prompt: trimmed,
+          match,
+        });
+      }
     } else {
       // Free-form chat: show the streaming indicator until the first
       // chunk arrives, then it gets replaced with the streamed reply.
@@ -557,6 +590,55 @@ export function ChatArea({
       streamAssistantReply(tid, thinkingId, trimmed);
     }
     return tid;
+  };
+
+  /** Ladder card pick: lock the card and start the normal creation flow. */
+  const resolveWatcherMatch = (
+    threadId: string,
+    messageId: string,
+    typeId: WatcherTypeId,
+  ) => {
+    setMessagesByThread((prev) => {
+      const list = prev[threadId] ?? [];
+      const source = list.find(
+        (m) => m.kind === "watcher-match" && m.id === messageId,
+      );
+      if (!source || source.kind !== "watcher-match" || source.resolvedTypeId) {
+        return prev;
+      }
+      return {
+        ...prev,
+        [threadId]: [
+          ...list.map((m) =>
+            m.kind === "watcher-match" && m.id === messageId
+              ? { ...m, resolvedTypeId: typeId }
+              : m,
+          ),
+          {
+            kind: "agent-creation-flow" as const,
+            id: crypto.randomUUID(),
+            initialMessage: source.prompt,
+            watcherTypeId: typeId,
+          },
+        ],
+      };
+    });
+  };
+
+  /** Ambiguous rung's "None of these" → the no-match state + capture. */
+  const demoteWatcherMatch = (threadId: string, messageId: string) => {
+    const source = (messagesByThread[threadId] ?? []).find(
+      (m) => m.kind === "watcher-match" && m.id === messageId,
+    );
+    if (source?.kind === "watcher-match") recordRoleRequest(source.prompt);
+    setMessagesByThread((prev) => ({
+      ...prev,
+      [threadId]: (prev[threadId] ?? []).map((m) =>
+        m.kind === "watcher-match" && m.id === messageId
+          ? { ...m, match: { tier: "none" as const } }
+          : m,
+      ),
+    }));
   };
 
   const streamAssistantReply = useCallback(
@@ -1290,6 +1372,25 @@ export function ChatArea({
                   );
                 }
                 if (!activeThreadId) return null;
+                if (m.kind === "watcher-match") {
+                  return (
+                    <motion.div
+                      key={m.id}
+                      initial={{ opacity: 0, y: -8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+                    >
+                      <WatcherMatchCard
+                        match={m.match}
+                        resolvedTypeId={m.resolvedTypeId ?? null}
+                        onPick={(typeId) =>
+                          resolveWatcherMatch(activeThreadId, m.id, typeId)
+                        }
+                        onNone={() => demoteWatcherMatch(activeThreadId, m.id)}
+                      />
+                    </motion.div>
+                  );
+                }
                 return (
                   <motion.div
                     key={m.id}
@@ -1451,6 +1552,7 @@ export function ChatArea({
             description: digestMeta.description,
             avatarPath: getPixabot(digestMeta.avatarSeed),
             instructions: digestMeta.instructions,
+            focusNote: "",
             schedulePreset: digestMeta.schedulePreset as SchedulePreset,
             scheduleTime: digestMeta.scheduleTime,
             model: digestMeta.model,
@@ -1485,6 +1587,7 @@ export function ChatArea({
             instructions:
               agentForThread.instructions ??
               getDefaultInstructions(agentForThread),
+            focusNote: agentForThread.focusNote ?? "",
             schedulePreset:
               agentForThread.schedule.kind === "recurring"
                 ? (agentForThread.schedule.preset as SchedulePreset)
@@ -1493,12 +1596,33 @@ export function ChatArea({
             model: agentForThread.model ?? "gemini-2.5-flash",
             active: agentForThread.status === "active",
           }}
+          // The brief is printed from the agent's schema slots — the dialog
+          // shows a live preview and stores the regenerated text on save
+          // (agent-schema.md §1, slot 6).
+          generateBrief={(v) =>
+            generateInstructions({
+              agentName: v.name.trim() || agentForThread.name,
+              watcherType: agentForThread.watcherType,
+              customDescription: agentForThread.description,
+              achievements: agentForThread.actions,
+              schedule: { kind: "recurring", preset: v.schedulePreset },
+              focusNote: v.focusNote,
+            })
+          }
           onSave={(next: EditAgentValues) => {
             updateAgent(agentForThread.id, {
               name: next.name,
               description: next.description,
               avatarSeed: next.avatarPath,
-              instructions: next.instructions,
+              instructions: generateInstructions({
+                agentName: next.name.trim() || agentForThread.name,
+                watcherType: agentForThread.watcherType,
+                customDescription: agentForThread.description,
+                achievements: agentForThread.actions,
+                schedule: { kind: "recurring", preset: next.schedulePreset },
+                focusNote: next.focusNote,
+              }),
+              focusNote: next.focusNote,
               schedule: { kind: "recurring", preset: next.schedulePreset },
               model: next.model,
               status: next.active ? "active" : "paused",

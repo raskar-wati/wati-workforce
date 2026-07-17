@@ -23,6 +23,8 @@ export type EditAgentValues = {
   description: string;
   avatarPath: string;
   instructions: string;
+  /** Bounded free-text amendment to a generated brief (agent-schema.md §1). */
+  focusNote: string;
   schedulePreset: SchedulePreset;
   scheduleTime: string;
   model: string;
@@ -38,6 +40,7 @@ export function EditAgentDialog({
   open,
   initial,
   deleteLabel = "Delete agent",
+  generateBrief,
   onSave,
   onDelete,
   onClose,
@@ -45,6 +48,12 @@ export function EditAgentDialog({
   open: boolean;
   initial: EditAgentValues;
   deleteLabel?: string;
+  /**
+   * When set, instructions are a generated artifact: the field renders as a
+   * live read-only printout of the current form values and the only free
+   * text is the focus note (agent-schema.md §1, slot 6).
+   */
+  generateBrief?: (values: EditAgentValues) => string;
   onSave: (next: EditAgentValues) => void;
   onDelete: () => void;
   onClose: () => void;
@@ -136,15 +145,40 @@ export function EditAgentDialog({
             />
           </Field>
 
-          <Field label="Instructions">
-            <textarea
-              value={values.instructions}
-              onChange={(e) => update("instructions", e.target.value)}
-              rows={9}
-              className={`${INPUT_CLASS} font-sans leading-[20px]`}
-              placeholder="What this agent should do on each run"
-            />
-          </Field>
+          {generateBrief ? (
+            <>
+              <Field label="Focus note">
+                <textarea
+                  value={values.focusNote}
+                  onChange={(e) => update("focusNote", e.target.value)}
+                  rows={2}
+                  className={`${INPUT_CLASS} font-sans leading-[20px]`}
+                  placeholder="Anything to emphasize, e.g. “prioritize weekend bookings”"
+                />
+              </Field>
+              <Field label="Instructions — generated from this agent's setup">
+                <div className="max-h-[220px] overflow-y-auto rounded-xl border border-wati-border bg-[#fafafa] px-3 py-2.5">
+                  <pre className="whitespace-pre-wrap font-sans text-[13px] leading-[20px] tracking-[-0.078px] text-black/70">
+                    {generateBrief(values)}
+                  </pre>
+                </div>
+                <span className="text-[11px] tracking-[-0.055px] text-black/45">
+                  Updates as you change the fields above — the focus note is
+                  the only free-text part.
+                </span>
+              </Field>
+            </>
+          ) : (
+            <Field label="Instructions">
+              <textarea
+                value={values.instructions}
+                onChange={(e) => update("instructions", e.target.value)}
+                rows={9}
+                className={`${INPUT_CLASS} font-sans leading-[20px]`}
+                placeholder="What this agent should do on each run"
+              />
+            </Field>
+          )}
 
           <Field label="Schedule">
             <div className="flex flex-wrap gap-2">

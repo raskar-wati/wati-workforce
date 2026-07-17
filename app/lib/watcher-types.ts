@@ -7,12 +7,24 @@ import type {
 
 export type HandoffDraft = Omit<Handoff, "id" | "agentId" | "runNumber">;
 
+/**
+ * Free-text match hints — the Role slot's self-description of what user
+ * language maps to this type (agent-schema.md §2). Strong hints are specific
+ * to the type (weight 2); weak hints are shared vocabulary (weight 1). In
+ * production an LLM classifier reads these same hints + blurbs; the roster
+ * is the classifier prompt.
+ */
+export type MatchHints = {
+  strong: readonly string[];
+  weak: readonly string[];
+};
+
 export type WatcherTypeDef = {
   id: WatcherTypeId;
   label: string;
   defaultName: string;
   blurb: string;
-  keywords: readonly string[];
+  matchHints: MatchHints;
   buildDraft: () => HandoffDraft;
   /**
    * Parked types stay in the codebase but are hidden from every surface
@@ -55,7 +67,10 @@ const READY_TO_BUY: WatcherTypeDef = {
   label: "Ready to buy",
   defaultName: "Ready-to-buy Agent",
   blurb: "Surface contacts showing strong purchase intent.",
-  keywords: ["ready to buy", "ready-to-buy", "buy", "purchase", "lead", "intent", "convert"],
+  matchHints: {
+    strong: ["ready to buy", "ready-to-buy", "buying signal", "purchase intent", "hot lead", "abandoned cart", "ready to purchase"],
+    weak: ["buy", "purchase", "lead", "intent", "convert", "demo", "pricing"],
+  },
   buildDraft: () => ({
     runAt: nowIso(),
     sections: [
@@ -94,7 +109,10 @@ const TOP_TOPICS: WatcherTypeDef = {
   label: "Find top topics",
   defaultName: "Top topics Agent",
   blurb: "See what customers are talking about most.",
-  keywords: ["top topic", "topic", "trending", "popular", "discussion", "theme"],
+  matchHints: {
+    strong: ["top topic", "top topics", "talking about", "most discussed", "common question", "trending topic"],
+    weak: ["topic", "trending", "popular", "discussion", "theme", "themes"],
+  },
   buildDraft: () => ({
     runAt: nowIso(),
     sections: [
@@ -144,7 +162,10 @@ const DEMAND_SPIKE: WatcherTypeDef = {
   label: "Demand spike",
   defaultName: "Demand Spike Agent",
   blurb: "Get alerts when inbound demand surges.",
-  keywords: ["demand", "surge", "spike in demand", "rush", "inbound"],
+  matchHints: {
+    strong: ["demand spike", "spike in demand", "demand surge"],
+    weak: ["demand", "surge", "rush", "inbound"],
+  },
   buildDraft: () => ({
     runAt: nowIso(),
     sections: [
@@ -179,7 +200,10 @@ const PRICE_ALERT: WatcherTypeDef = {
   label: "Price alert",
   defaultName: "Price Alert Agent",
   blurb: "Detect price-sensitive customer chatter.",
-  keywords: ["price", "pricing", "discount", "deal", "cost", "expensive", "cheap"],
+  matchHints: {
+    strong: ["price alert", "price sensitive", "competitor pricing"],
+    weak: ["price", "discount", "deal", "cost", "expensive", "cheap"],
+  },
   buildDraft: () => ({
     runAt: nowIso(),
     sections: [
@@ -216,7 +240,10 @@ const SENTIMENT_MONITOR: WatcherTypeDef = {
   label: "Sentiment monitor",
   defaultName: "Sentiment Agent",
   blurb: "Track customer sentiment across conversations.",
-  keywords: ["sentiment", "mood", "satisfaction", "happy", "angry", "upset", "frustrated"],
+  matchHints: {
+    strong: ["sentiment", "negative sentiment", "customer mood"],
+    weak: ["mood", "satisfaction", "happy", "angry", "upset", "frustrated"],
+  },
   buildDraft: () => ({
     runAt: nowIso(),
     sections: [
@@ -250,7 +277,10 @@ const VOLUME_SPIKE: WatcherTypeDef = {
   label: "Volume spike",
   defaultName: "Volume Agent",
   blurb: "Catch surges in message volume and capacity risk.",
-  keywords: ["volume", "load", "capacity", "spike in volume", "queue", "backlog"],
+  matchHints: {
+    strong: ["volume spike", "spike in volume", "capacity risk"],
+    weak: ["volume", "load", "capacity", "queue", "backlog"],
+  },
   buildDraft: () => ({
     runAt: nowIso(),
     sections: [
@@ -284,7 +314,10 @@ const URGENCY: WatcherTypeDef = {
   label: "Urgent / same-week requests",
   defaultName: "Urgency Agent",
   blurb: "Surface customers with time-sensitive or same-week requests.",
-  keywords: ["urgent", "same-week", "last-minute", "prioritize"],
+  matchHints: {
+    strong: ["urgent", "urgency", "same-week", "same week", "last-minute", "time-sensitive", "by friday", "this weekend"],
+    weak: ["prioritize", "priority", "deadline", "asap"],
+  },
   buildDraft: () => ({
     runAt: nowIso(),
     sections: [
@@ -323,7 +356,10 @@ const RESPONSE_GAP: WatcherTypeDef = {
   label: "Response gap / SLA breach",
   defaultName: "SLA Agent",
   blurb: "Flag conversations where customers are waiting past SLA.",
-  keywords: ["sla", "response gap", "waiting", "no reply", "unanswered"],
+  matchHints: {
+    strong: ["sla", "response gap", "response time", "no reply", "unanswered", "waiting for a reply", "first reply"],
+    weak: ["waiting", "slow", "late reply", "breach"],
+  },
   buildDraft: () => ({
     runAt: nowIso(),
     sections: [
@@ -357,7 +393,10 @@ const DELIVERY_ISSUE: WatcherTypeDef = {
   label: "Delivery complaints",
   defaultName: "Delivery Agent",
   blurb: "Group delivery complaints by route or vendor and surface affected customers.",
-  keywords: ["delivery", "shipping", "dispatch", "courier", "shipment"],
+  matchHints: {
+    strong: ["delivery", "shipping", "courier", "shipment", "not delivered", "late order"],
+    weak: ["dispatch", "complaint", "delayed"],
+  },
   buildDraft: () => ({
     runAt: nowIso(),
     sections: [
@@ -396,7 +435,10 @@ const PAID_ACQ: WatcherTypeDef = {
   label: "Paid acquisition leads",
   defaultName: "Paid Leads Agent",
   blurb: "Track WhatsApp ad leads and surface high-intent ones.",
-  keywords: ["paid acquisition", "whatsapp ad", "ctwa", "ad lead", "click to whatsapp"],
+  matchHints: {
+    strong: ["paid acquisition", "whatsapp ad", "whatsapp ads", "ctwa", "ad lead", "ad leads", "click to whatsapp"],
+    weak: ["ads", "campaign leads", "ad clicks"],
+  },
   buildDraft: () => ({
     runAt: nowIso(),
     sections: [
@@ -436,7 +478,10 @@ const OPS_MISCLASSIFICATION: WatcherTypeDef = {
   label: "Internal / ops messages",
   defaultName: "Ops Filter Agent",
   blurb: "Detect internal or ops messages landing in the customer queue.",
-  keywords: ["internal", "ops", "operations", "misclassified", "staff message"],
+  matchHints: {
+    strong: ["internal message", "ops message", "misclassified", "staff message"],
+    weak: ["internal", "ops", "operations"],
+  },
   buildDraft: () => ({
     runAt: nowIso(),
     sections: [
@@ -465,12 +510,19 @@ const OPS_MISCLASSIFICATION: WatcherTypeDef = {
   }),
 };
 
+/**
+ * Retired (agent-schema.md §2): free text that matched nothing used to become
+ * a hollow custom agent with no real watch logic. The matching ladder's
+ * no-match state replaced this path. The id stays resolvable so persisted
+ * agents keep working, but no surface creates a new one.
+ */
 const CUSTOM: WatcherTypeDef = {
   id: "custom",
+  parked: true,
   label: "Other",
   defaultName: "Custom Agent",
   blurb: "Describe what this agent should watch for.",
-  keywords: [],
+  matchHints: { strong: [], weak: [] },
   buildDraft: () => ({
     runAt: nowIso(),
     sections: [
@@ -507,7 +559,7 @@ export const WATCHER_TYPES: readonly WatcherTypeDef[] = [
   CUSTOM,
 ];
 
-/** The offerable roster — the PRD's seven out-of-box agents (+ custom). */
+/** The offerable roster — the PRD's out-of-box watcher types. */
 export const ACTIVE_WATCHER_TYPES: readonly WatcherTypeDef[] =
   WATCHER_TYPES.filter((w) => !w.parked);
 
@@ -517,11 +569,43 @@ export function getWatcherType(id: WatcherTypeId): WatcherTypeDef {
   return found;
 }
 
-export function matchWatcherType(message: string): WatcherTypeId | null {
+/* ------------------------------------------------ free-text matching ladder
+ * agent-schema.md §2: free-typed instructions are scored against the roster's
+ * match hints and land on one of three rungs. The contract ({typeId, score}[]
+ * → tier) is engine-agnostic: production swaps the keyword scorer for an LLM
+ * classifier that reads the same hints + blurbs.
+ */
+
+export type WatcherMatch = { typeId: WatcherTypeId; score: number };
+
+const STRONG_WEIGHT = 2;
+const WEAK_WEIGHT = 1;
+
+export function rankWatcherMatches(message: string): WatcherMatch[] {
   const lower = message.toLowerCase();
-  for (const w of ACTIVE_WATCHER_TYPES) {
-    if (w.id === "custom") continue;
-    if (w.keywords.some((k) => lower.includes(k))) return w.id;
+  return ACTIVE_WATCHER_TYPES.map((w) => {
+    const strong = w.matchHints.strong.filter((k) => lower.includes(k)).length;
+    const weak = w.matchHints.weak.filter((k) => lower.includes(k)).length;
+    return { typeId: w.id, score: strong * STRONG_WEIGHT + weak * WEAK_WEIGHT };
+  })
+    .filter((m) => m.score > 0)
+    .sort((a, b) => b.score - a.score);
+}
+
+export type MatchTier =
+  | { tier: "confident"; typeId: WatcherTypeId }
+  | { tier: "ambiguous"; typeIds: WatcherTypeId[] }
+  | { tier: "none" };
+
+/**
+ * Confident needs a strong-hint-level score AND a clear margin over the
+ * runner-up; anything scored but unclear disambiguates; silence denies.
+ */
+export function resolveMatchTier(matches: WatcherMatch[]): MatchTier {
+  if (matches.length === 0) return { tier: "none" };
+  const [top, second] = matches;
+  if (top.score >= STRONG_WEIGHT && (!second || top.score >= second.score * 2)) {
+    return { tier: "confident", typeId: top.typeId };
   }
-  return null;
+  return { tier: "ambiguous", typeIds: matches.slice(0, 3).map((m) => m.typeId) };
 }

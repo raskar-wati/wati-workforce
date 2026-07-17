@@ -7,18 +7,32 @@ export type GenerateInstructionsArgs = {
   customDescription?: string;
   achievements: AchievementId[];
   schedule: AgentSchedule;
+  /**
+   * The one bounded free-text slot (agent-schema.md §1, slot 6): a scoped
+   * emphasis appended to the watch section. The rest of the brief is printed
+   * from the schema slots and regenerates when any of them changes.
+   */
+  focusNote?: string;
 };
 
 export function generateInstructions(args: GenerateInstructionsArgs): string {
-  const { agentName, watcherType, customDescription, achievements, schedule } =
-    args;
+  const {
+    agentName,
+    watcherType,
+    customDescription,
+    achievements,
+    schedule,
+    focusNote,
+  } = args;
+  const watch = watchSection(watcherType, customDescription);
+  const note = focusNote?.trim();
   return [
     `You are the ${agentName}. ${watcherJob(watcherType)}`,
     "",
     "---",
     "",
     "## WHAT YOU WATCH",
-    watchSection(watcherType, customDescription),
+    note ? `${watch}\n\nFocus note: ${note}` : watch,
     "",
     "## WHAT YOU DO",
     achievementsSection(achievements),

@@ -63,6 +63,12 @@ export type Agent = {
   autoActions: HandoffCtaAction[];
   avatarSeed: string;
   status: AgentStatus;
+  /**
+   * The single bounded free-text amendment to the generated brief
+   * (agent-schema.md §1, slot 6). Injected into the watch section whenever
+   * instructions regenerate.
+   */
+  focusNote?: string;
   /** Soft-archived agents stay in the store but are hidden from sidebars. */
   archived?: boolean;
   /** Model selection — display label only for now (no backend wired). */

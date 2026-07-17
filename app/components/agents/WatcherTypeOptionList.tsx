@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, type KeyboardEvent } from "react";
 import type { WatcherTypeId } from "../../lib/agents";
 import { ACTIVE_WATCHER_TYPES } from "../../lib/watcher-types";
 
@@ -13,81 +12,49 @@ const DISPLAY_ORDER: WatcherTypeId[] = [
   "paid-acq",
   "top-topics",
   "response-gap",
-  "custom",
 ];
 
+/**
+ * The roster: every creatable agent type, pick-to-start. Rendered inside the
+ * matching ladder's ambiguous and no-match states (agent-schema.md §2) —
+ * there is no free-text "Other" entry; unsupported asks are captured as
+ * role requests instead.
+ */
 export function WatcherTypeOptionList({
-  value,
-  customDescription,
-  onChange,
+  ids,
+  onSelect,
 }: {
-  value: WatcherTypeId | null;
-  customDescription: string;
-  onChange: (id: WatcherTypeId, customDescription?: string) => void;
+  /** Restrict + order the list (e.g. the ambiguous rung's closest matches). */
+  ids?: WatcherTypeId[];
+  onSelect: (id: WatcherTypeId) => void;
 }) {
-  const [draftCustom, setDraftCustom] = useState(customDescription);
-
-  const items = DISPLAY_ORDER.map(
-    (id, i) => ({
-      def: ACTIVE_WATCHER_TYPES.find((w) => w.id === id)!,
-      index: i + 1,
-    }),
-  );
-
-  const handleCustomKey = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      const text = draftCustom.trim();
-      if (text) onChange("custom", text);
-    }
-  };
+  const items = (ids ?? DISPLAY_ORDER).map((id, i) => ({
+    def: ACTIVE_WATCHER_TYPES.find((w) => w.id === id)!,
+    index: i + 1,
+  }));
 
   return (
     <div className="flex flex-col">
-      {items.map(({ def, index }) => {
-        const selected = value === def.id;
-        const isCustom = def.id === "custom";
-        return (
-          <div key={def.id} className="flex flex-col">
-            <button
-              type="button"
-              onClick={() => {
-                if (isCustom) {
-                  onChange("custom", draftCustom.trim() || customDescription);
-                } else {
-                  onChange(def.id);
-                }
-              }}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors ${
-                selected ? "bg-black/[0.04]" : "hover:bg-black/[0.02]"
-              }`}
-            >
-              <span className="w-4 shrink-0 text-[13px] tracking-[-0.078px] text-black/40">
-                {index}
-              </span>
-              <span className="text-[14px] tracking-[-0.084px] text-[#0a0a0a]">
-                {def.label}
-              </span>
-            </button>
-            {isCustom && selected && (
-              <div className="px-3 pb-2 pt-1">
-                <input
-                  type="text"
-                  value={draftCustom}
-                  onChange={(e) => {
-                    setDraftCustom(e.target.value);
-                    onChange("custom", e.target.value);
-                  }}
-                  onKeyDown={handleCustomKey}
-                  placeholder="Describe what to watch for…"
-                  autoFocus
-                  className="w-full rounded-md border border-wati-border bg-white px-3 py-1.5 text-[13px] tracking-[-0.078px] text-[#0a0a0a] placeholder:text-black/40 focus:border-[#0a0a0a] focus:outline-none"
-                />
-              </div>
-            )}
-          </div>
-        );
-      })}
+      {items.map(({ def, index }) => (
+        <button
+          key={def.id}
+          type="button"
+          onClick={() => onSelect(def.id)}
+          className="flex items-start gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-black/[0.03]"
+        >
+          <span className="w-4 shrink-0 pt-px text-[13px] tracking-[-0.078px] text-black/40">
+            {index}
+          </span>
+          <span className="flex min-w-0 flex-col">
+            <span className="text-[13px] font-medium tracking-[-0.078px] text-[#0a0a0a]">
+              {def.label}
+            </span>
+            <span className="text-[12px] tracking-[-0.06px] text-black/50">
+              {def.blurb}
+            </span>
+          </span>
+        </button>
+      ))}
     </div>
   );
 }
