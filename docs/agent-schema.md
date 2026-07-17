@@ -69,8 +69,14 @@ Handoff
 ├─ COVERAGE    exactly one "did" section, two items, rendered as one paragraph.
 │              Mandatory on every run, including day-0 — this is the trust line
 │              ("Analyzed 1,247 conversations from the last 24h…").
-├─ FINDINGS    exactly one "attention" section, 1–5 items.
-│              Every item = label + evidence meta (source · recency · counts).
+├─ FINDINGS    exactly one "attention" section — a TYPED TABLE, 1–5 rows.
+│              Fixed column roles for every agent:
+│                SUBJECT · FINDING · MEASURE · SOURCE · ACTION
+│              Column labels are named per agent type in its blueprint
+│              (Hot Leads: Contact/Signal/Strength/Source; Delivery:
+│              Courier/Issue/Complaints/Zone; …). Narrow surfaces (the
+│              drawer, <512px) collapse the table to a stacked layout —
+│              subject + finding as the line, source · measure right-aligned.
 │              ─ OR ─
 │              ALL CLEAR   an explicit zero-findings state with a note.
 │              Phantom findings ("No actionable matches" as a finding row) are banned.
@@ -84,14 +90,14 @@ Handoff
 Rules:
 
 - **Coverage before findings, always.** An agent that reports findings without coverage is asking for trust it hasn't earned.
-- **Evidence lives in the meta line.** A finding without source/recency/count is an opinion.
+- **Evidence lives in the Measure and Source columns.** A finding that can't fill them is an opinion — the table enforces the evidence rule structurally. Per-row Actions (act on one finding vs. the whole cohort) live in the Action column.
+- **Force-fit is the discipline.** Every agent — current and future — must express findings as rows in the five fixed roles; only the column labels vary. If a proposed agent's output can't fill Subject + Measure, that's a spec smell to resolve before it ships.
 - **The action row can only propose what the badge permits** (`filterHandoffByAchievements`), and every action inherits the A/B/C approval sequence from the governance layer — the handoff never executes anything by itself.
 - The `summary` section kind is **retired** (defined and styled today, produced by nothing; All Clear covers its only job).
 
 **Known deviations, flagged not hidden:**
 
-1. **Daily Digest** renders `DailyDigestData` (hero metrics / top performers / trending topics), not a handoff. Semantically it is the same skeleton — coverage ("summarized yesterday's N conversations"), findings (trending topics with deltas), action row — presented as a dashboard because it is the pinned system agent. Mapping it onto the handoff type is deferred work.
-2. **Inline per-finding CTAs** (`item.cta`) exist in the data model but are not rendered yet. They are the "act on one finding" affordance; documented as designed-not-yet-rendered.
+1. **Daily Digest** renders `DailyDigestData` (hero metrics / top performers / trending topics), not a handoff. Semantically it is the same skeleton — coverage ("summarized yesterday's N conversations"), findings (trending topics with deltas), action row — presented as a dashboard because it is the pinned system agent. Explicitly parked; it gets its own design pass later.
 
 ---
 
@@ -140,4 +146,4 @@ Pitch line: *"You don't program these agents — you hire them into one of seven
 
 - **Prototype contract page:** `/roster` — all seven role cards, the ladder states, and the annotated handoff skeleton.
 - **Code anchors:** `app/lib/watcher-types.ts` (types + match hints + matcher), `app/lib/agent-instructions.ts` (brief printer), `app/lib/agents.tsx` (agent + handoff types, approval queues), `app/lib/agent-actions.ts` (governance classes), `app/lib/role-requests.ts` (captured no-match asks).
-- **Open items:** analogy adoption decision · Daily Digest → handoff mapping · rendering inline per-finding CTAs · re-cite v1 PRD facts.
+- **Open items:** analogy adoption decision · Daily Digest → handoff mapping (parked) · re-cite v1 PRD facts.

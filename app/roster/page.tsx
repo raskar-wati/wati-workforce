@@ -9,7 +9,7 @@ import {
   type WatcherTypeDef,
 } from "../lib/watcher-types";
 import { WatcherMatchCard } from "../components/agents/WatcherMatchCard";
-import { EvidenceRow } from "../components/cards/WorkforceCard";
+import { FindingsTable } from "../components/cards/FindingsTable";
 
 /**
  * The contract page for docs/agent-schema.md: the seven-agent roster, the
@@ -375,15 +375,9 @@ function OutputSkeleton({ def }: { def: WatcherTypeDef }) {
       {attention && (
         <SkeletonSlot
           name="Findings"
-          note="1–5 items, each with evidence meta — or an explicit All Clear"
+          note="a typed table — fixed column roles, headers named per agent type — or an explicit All Clear"
         >
-          <div className="flex flex-col gap-2">
-            {attention.items.map((i) => (
-              <EvidenceRow key={i.id} verdict="warn" metric={i.meta}>
-                {i.label}
-              </EvidenceRow>
-            ))}
-          </div>
+          <FindingsTable items={attention.items} columns={attention.columns} />
         </SkeletonSlot>
       )}
       <SkeletonSlot

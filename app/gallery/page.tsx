@@ -12,8 +12,10 @@ import {
   Zap,
 } from "lucide-react";
 import { getActionScript } from "../lib/agent-actions";
+import { getWatcherType } from "../lib/watcher-types";
 import MessageMarkdown from "../components/MessageMarkdown";
 import { BroadcastScheduleConfirm } from "../components/cards/BroadcastScheduleConfirm";
+import { FindingsTable } from "../components/cards/FindingsTable";
 import {
   CardCtaChip,
   EvidenceRow,
@@ -54,6 +56,11 @@ const MARKDOWN_SAMPLE = `Your **welcome drip** is outperforming the promo track 
 Two things worth doing next:
 1. Retire \`festive_promo\` — bottom quartile for the third week.
 2. Duplicate the welcome template into Hindi (312 Hindi-first contacts).`;
+
+// Hot Leads' blueprint findings — the gallery's demo rows for the table.
+const HOT_LEADS_FINDINGS = getWatcherType("ready-to-buy")
+  .buildDraft()
+  .sections.find((s) => s.kind === "attention")!;
 
 function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
   return (
@@ -335,6 +342,38 @@ export default function GalleryPage() {
           <BroadcastScheduleConfirm
             estimate={getActionScript("schedule-broadcast").sendEstimate!}
           />
+        </Section>
+
+        <Section
+          title="Findings table (new)"
+          hint="The FINDINGS slot as a typed table — fixed column roles, per-type headers; collapses to the stacked layout under 512px; empty = All Clear"
+        >
+          <div className="flex flex-col gap-3">
+            <div className="rounded-2xl border border-wati-border bg-white px-5 py-4">
+              <FindingsTable
+                items={HOT_LEADS_FINDINGS.items}
+                columns={HOT_LEADS_FINDINGS.columns}
+              />
+            </div>
+            <p className="text-[12px] tracking-[-0.06px] text-black/45">
+              Narrow collapse (drawer width):
+            </p>
+            <div className="max-w-[420px] rounded-2xl border border-wati-border bg-white px-5 py-4">
+              <FindingsTable
+                items={HOT_LEADS_FINDINGS.items}
+                columns={HOT_LEADS_FINDINGS.columns}
+              />
+            </div>
+            <p className="text-[12px] tracking-[-0.06px] text-black/45">
+              All Clear (zero findings — phantom findings are banned):
+            </p>
+            <div className="rounded-2xl border border-wati-border bg-white px-5 py-4">
+              <FindingsTable
+                items={[]}
+                emptyNote="All clear — no buying signals crossed the threshold this run."
+              />
+            </div>
+          </div>
         </Section>
 
         <Section

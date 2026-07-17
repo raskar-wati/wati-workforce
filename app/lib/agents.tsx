@@ -111,11 +111,31 @@ export type HandoffCta = {
   payload?: Record<string, unknown>;
 };
 
+/**
+ * Per-type header labels for the findings table (agent-schema.md §3).
+ * The column ROLES are fixed for every agent; only the labels vary.
+ */
+export type FindingColumns = {
+  subject: string;
+  finding: string;
+  measure?: string;
+  source?: string;
+};
+
 export type HandoffItem = {
   id: string;
   label: string;
   meta?: string;
   cta?: HandoffCta;
+  /**
+   * Typed finding row (agent-schema.md §3): who/what · what happened ·
+   * magnitude · channel/recency. `label`/`meta` remain the derived legacy
+   * form — persisted pre-table handoffs render through them unchanged.
+   */
+  subject?: string;
+  finding?: string;
+  measure?: string;
+  source?: string;
 };
 
 export type HandoffSectionKind = "did" | "attention" | "summary";
@@ -125,6 +145,10 @@ export type HandoffSection = {
   kind: HandoffSectionKind;
   title: string;
   items: HandoffItem[];
+  /** Findings-table headers, snapshotted from the type's blueprint. */
+  columns?: FindingColumns;
+  /** All Clear: shown when a findings section has zero items. */
+  emptyNote?: string;
 };
 
 export type Handoff = {

@@ -1,4 +1,5 @@
 import type {
+  FindingColumns,
   Handoff,
   HandoffCta,
   HandoffSection,
@@ -62,6 +63,38 @@ function cta(action: HandoffCta["action"], label: string): HandoffCta {
   return { id: uid(), action, label };
 }
 
+type FindingRowDraft = {
+  subject: string;
+  finding: string;
+  measure?: string;
+  source?: string;
+  cta?: HandoffCta;
+};
+
+/**
+ * A findings section (agent-schema.md §3): typed rows in the fixed column
+ * roles, headers snapshotted from the type's blueprint. `label`/`meta` are
+ * derived so legacy renderers and the achievements filter stay untouched.
+ */
+function findings(
+  title: string,
+  columns: FindingColumns,
+  rows: FindingRowDraft[],
+): HandoffSection {
+  return {
+    id: uid(),
+    kind: "attention",
+    title,
+    columns,
+    items: rows.map((r) => ({
+      id: uid(),
+      label: `${r.subject} — ${r.finding}`,
+      meta: [r.source, r.measure].filter(Boolean).join(" · ") || undefined,
+      ...r,
+    })),
+  };
+}
+
 const READY_TO_BUY: WatcherTypeDef = {
   id: "ready-to-buy",
   label: "Ready to buy",
@@ -78,23 +111,31 @@ const READY_TO_BUY: WatcherTypeDef = {
         { label: "Analyzed 1,247 conversations from the last 24h" },
         { label: "Identified 12 contacts with strong buying signals" },
       ]),
-      section("attention", "Hot leads", [
-        {
-          label: "Sarah J. — asked about pricing 3× this week",
-          meta: "WhatsApp · 2h ago",
-          cta: cta("send-bulk-message", "Send follow-up"),
-        },
-        {
-          label: "Mark P. — added items to cart, did not check out",
-          meta: "Web chat · 4h ago",
-          cta: cta("send-bulk-message", "Send nudge"),
-        },
-        {
-          label: "Priya K. — requested a demo yesterday",
-          meta: "WhatsApp · 1d ago",
-          cta: cta("send-bulk-message", "Send demo link"),
-        },
-      ]),
+      findings(
+        "Hot leads",
+        { subject: "Contact", finding: "Signal", measure: "Strength", source: "Source" },
+        [
+          {
+            subject: "Sarah J.",
+            finding: "asked about pricing",
+            measure: "3× this week",
+            source: "WhatsApp · 2h ago",
+            cta: cta("send-bulk-message", "Send follow-up"),
+          },
+          {
+            subject: "Mark P.",
+            finding: "added items to cart, did not check out",
+            source: "Web chat · 4h ago",
+            cta: cta("send-bulk-message", "Send nudge"),
+          },
+          {
+            subject: "Priya K.",
+            finding: "requested a demo",
+            source: "WhatsApp · 1d ago",
+            cta: cta("send-bulk-message", "Send demo link"),
+          },
+        ],
+      ),
     ],
     ctas: [
       cta("create-segment", "Save as segment"),
@@ -120,33 +161,47 @@ const TOP_TOPICS: WatcherTypeDef = {
         { label: "Reviewed 2,103 conversations from the last 24h" },
         { label: "Clustered messages into 18 topics; surfaced top 5" },
       ]),
-      section("attention", "Top topics", [
-        {
-          label: "Shipping delays",
-          meta: "412 mentions · ↑ 38% vs last week",
-          cta: cta("create-inbox-filter", "Filter inbox"),
-        },
-        {
-          label: "Refund requests",
-          meta: "287 mentions · ↑ 12%",
-          cta: cta("create-inbox-filter", "Filter inbox"),
-        },
-        {
-          label: "Product sizing",
-          meta: "198 mentions · ↓ 4%",
-          cta: cta("create-inbox-filter", "Filter inbox"),
-        },
-        {
-          label: "Discount codes",
-          meta: "164 mentions · ↑ 21%",
-          cta: cta("create-inbox-filter", "Filter inbox"),
-        },
-        {
-          label: "Order tracking",
-          meta: "132 mentions · ↑ 9%",
-          cta: cta("create-inbox-filter", "Filter inbox"),
-        },
-      ]),
+      findings(
+        "Top topics",
+        { subject: "Topic", finding: "Trend", measure: "Mentions", source: "Window" },
+        [
+          {
+            subject: "Shipping delays",
+            finding: "↑ 38% vs last week",
+            measure: "412 mentions",
+            source: "last 24h",
+            cta: cta("create-inbox-filter", "Filter inbox"),
+          },
+          {
+            subject: "Refund requests",
+            finding: "↑ 12% vs last week",
+            measure: "287 mentions",
+            source: "last 24h",
+            cta: cta("create-inbox-filter", "Filter inbox"),
+          },
+          {
+            subject: "Product sizing",
+            finding: "↓ 4% vs last week",
+            measure: "198 mentions",
+            source: "last 24h",
+            cta: cta("create-inbox-filter", "Filter inbox"),
+          },
+          {
+            subject: "Discount codes",
+            finding: "↑ 21% vs last week",
+            measure: "164 mentions",
+            source: "last 24h",
+            cta: cta("create-inbox-filter", "Filter inbox"),
+          },
+          {
+            subject: "Order tracking",
+            finding: "↑ 9% vs last week",
+            measure: "132 mentions",
+            source: "last 24h",
+            cta: cta("create-inbox-filter", "Filter inbox"),
+          },
+        ],
+      ),
     ],
     ctas: [
       cta("create-segment", "Segment by topic"),
@@ -173,18 +228,24 @@ const DEMAND_SPIKE: WatcherTypeDef = {
         { label: "Watched inbound conversation rate vs 30-day baseline" },
         { label: "Detected 2 spike windows in the last 24h" },
       ]),
-      section("attention", "Spike windows", [
-        {
-          label: "10:00–11:30 — +184% vs baseline",
-          meta: "Driven by product launch traffic",
-          cta: cta("send-bulk-message", "Notify waiting customers"),
-        },
-        {
-          label: "18:00–19:00 — +96% vs baseline",
-          meta: "Concentrated on shipping queries",
-          cta: cta("create-inbox-filter", "Route to support"),
-        },
-      ]),
+      findings(
+        "Spike windows",
+        { subject: "Window", finding: "Driver", measure: "vs baseline" },
+        [
+          {
+            subject: "10:00–11:30",
+            finding: "product launch traffic",
+            measure: "+184%",
+            cta: cta("send-bulk-message", "Notify waiting customers"),
+          },
+          {
+            subject: "18:00–19:00",
+            finding: "concentrated on shipping queries",
+            measure: "+96%",
+            cta: cta("create-inbox-filter", "Route to support"),
+          },
+        ],
+      ),
     ],
     ctas: [
       cta("create-segment", "Save spike cohort"),
@@ -211,20 +272,30 @@ const PRICE_ALERT: WatcherTypeDef = {
         { label: "Looked for price, discount, and deal mentions" },
         { label: "Flagged 34 conversations across 5 segments" },
       ]),
-      section("attention", "Price-sensitive contacts", [
-        {
-          label: "8 contacts asked about bulk discounts",
-          cta: cta("create-segment", "Save as segment"),
-        },
-        {
-          label: "11 contacts mentioned competitor pricing",
-          cta: cta("send-bulk-message", "Send counter-offer"),
-        },
-        {
-          label: "15 contacts asked when the next sale is",
-          cta: cta("send-campaign", "Tease upcoming sale"),
-        },
-      ]),
+      findings(
+        "Price-sensitive contacts",
+        { subject: "Cohort", finding: "Ask", measure: "Contacts" },
+        [
+          {
+            subject: "Bulk-discount askers",
+            finding: "asked about bulk discounts",
+            measure: "8 contacts",
+            cta: cta("create-segment", "Save as segment"),
+          },
+          {
+            subject: "Competitor-price mentions",
+            finding: "mentioned competitor pricing",
+            measure: "11 contacts",
+            cta: cta("send-bulk-message", "Send counter-offer"),
+          },
+          {
+            subject: "Sale watchers",
+            finding: "asked when the next sale is",
+            measure: "15 contacts",
+            cta: cta("send-campaign", "Tease upcoming sale"),
+          },
+        ],
+      ),
     ],
     ctas: [
       cta("create-segment", "Save price-sensitive segment"),
@@ -251,17 +322,25 @@ const SENTIMENT_MONITOR: WatcherTypeDef = {
         { label: "Scored 1,876 conversations for sentiment" },
         { label: "Net sentiment: +0.42 (↓ 0.08 vs last week)" },
       ]),
-      section("attention", "Negative sentiment", [
-        {
-          label: "23 contacts with strongly negative sentiment",
-          meta: "Mostly shipping and refund issues",
-          cta: cta("create-inbox-filter", "Route to recovery"),
-        },
-        {
-          label: "7 escalations flagged for human review",
-          cta: cta("send-bulk-message", "Send apology + credit"),
-        },
-      ]),
+      findings(
+        "Negative sentiment",
+        { subject: "Cohort", finding: "Signal", measure: "Contacts", source: "Driver" },
+        [
+          {
+            subject: "Strongly negative",
+            finding: "sentiment slipping",
+            measure: "23 contacts",
+            source: "shipping and refund issues",
+            cta: cta("create-inbox-filter", "Route to recovery"),
+          },
+          {
+            subject: "Escalations",
+            finding: "flagged for human review",
+            measure: "7 contacts",
+            cta: cta("send-bulk-message", "Send apology + credit"),
+          },
+        ],
+      ),
     ],
     ctas: [
       cta("create-segment", "Save at-risk segment"),
@@ -288,18 +367,25 @@ const VOLUME_SPIKE: WatcherTypeDef = {
         { label: "Tracked message volume across all channels" },
         { label: "Compared against rolling 7-day average" },
       ]),
-      section("attention", "Capacity risk", [
-        {
-          label: "Queue depth peaked at 142 — 2.4× normal",
-          meta: "Between 14:00 and 15:30",
-          cta: cta("create-inbox-filter", "Auto-triage by topic"),
-        },
-        {
-          label: "Avg response time slipped to 8m 12s",
-          meta: "SLA target: 3m",
-          cta: cta("send-bulk-message", "Send holding message"),
-        },
-      ]),
+      findings(
+        "Capacity risk",
+        { subject: "Metric", finding: "Event", measure: "Value", source: "Window" },
+        [
+          {
+            subject: "Queue depth",
+            finding: "peaked at 2.4× normal",
+            measure: "142",
+            source: "14:00–15:30",
+            cta: cta("create-inbox-filter", "Auto-triage by topic"),
+          },
+          {
+            subject: "Avg response time",
+            finding: "slipped past the 3m SLA target",
+            measure: "8m 12s",
+            cta: cta("send-bulk-message", "Send holding message"),
+          },
+        ],
+      ),
     ],
     ctas: [
       cta("create-inbox-filter", "Add overflow routing"),
@@ -325,23 +411,32 @@ const URGENCY: WatcherTypeDef = {
         { label: "Reviewed 1,842 conversations from the last 24h" },
         { label: "Flagged 31 contacts with same-week or urgent language" },
       ]),
-      section("attention", "Urgent requests", [
-        {
-          label: "Riya M. — 'need this by Friday, can you confirm?'",
-          meta: "WhatsApp · 1h ago",
-          cta: cta("send-bulk-message", "Send priority reply"),
-        },
-        {
-          label: "Carlos T. — 'booking for this weekend, is it available?'",
-          meta: "WhatsApp · 3h ago",
-          cta: cta("send-bulk-message", "Confirm availability"),
-        },
-        {
-          label: "14 more contacts with same-week intent",
-          meta: "Grouped by urgency score",
-          cta: cta("create-segment", "Save as urgent segment"),
-        },
-      ]),
+      findings(
+        "Urgent requests",
+        { subject: "Contact", finding: "Request", measure: "Due", source: "Source" },
+        [
+          {
+            subject: "Riya M.",
+            finding: "'need this by Friday, can you confirm?'",
+            measure: "by Friday",
+            source: "WhatsApp · 1h ago",
+            cta: cta("send-bulk-message", "Send priority reply"),
+          },
+          {
+            subject: "Carlos T.",
+            finding: "'booking for this weekend, is it available?'",
+            measure: "this weekend",
+            source: "WhatsApp · 3h ago",
+            cta: cta("send-bulk-message", "Confirm availability"),
+          },
+          {
+            subject: "14 more contacts",
+            finding: "same-week intent, grouped by urgency score",
+            measure: "same-week",
+            cta: cta("create-segment", "Save as urgent segment"),
+          },
+        ],
+      ),
     ],
     ctas: [
       cta("create-segment", "Save urgent cohort"),
@@ -367,18 +462,25 @@ const RESPONSE_GAP: WatcherTypeDef = {
         { label: "Checked all open conversations for first-reply time" },
         { label: "Flagged threads with no agent reply past the 3-minute SLA" },
       ]),
-      section("attention", "SLA breaches", [
-        {
-          label: "18 conversations waiting > 10 min with no reply",
-          meta: "Avg wait: 23 min",
-          cta: cta("create-inbox-filter", "Route to available agents"),
-        },
-        {
-          label: "5 conversations waiting > 1 hour",
-          meta: "High escalation risk",
-          cta: cta("send-bulk-message", "Send holding message"),
-        },
-      ]),
+      findings(
+        "SLA breaches",
+        { subject: "Cohort", finding: "Breach", measure: "Wait", source: "Risk" },
+        [
+          {
+            subject: "18 conversations",
+            finding: "waiting > 10 min with no reply",
+            measure: "avg 23 min",
+            cta: cta("create-inbox-filter", "Route to available agents"),
+          },
+          {
+            subject: "5 conversations",
+            finding: "waiting > 1 hour",
+            measure: "> 1 hour",
+            source: "high escalation risk",
+            cta: cta("send-bulk-message", "Send holding message"),
+          },
+        ],
+      ),
     ],
     ctas: [
       cta("create-segment", "Save breached conversations"),
@@ -404,23 +506,32 @@ const DELIVERY_ISSUE: WatcherTypeDef = {
         { label: "Scanned all conversations for delivery-related keywords" },
         { label: "Found 64 delivery complaint threads in the last 24h" },
       ]),
-      section("attention", "Complaints by cluster", [
-        {
-          label: "Blue Dart — 27 complaints, avg 2.3 days late",
-          meta: "Northern zone",
-          cta: cta("send-bulk-message", "Send apology + update"),
-        },
-        {
-          label: "Delhivery — 19 complaints, 'not delivered' reports",
-          meta: "Western zone",
-          cta: cta("create-segment", "Save affected customers"),
-        },
-        {
-          label: "18 unassigned delivery complaints",
-          meta: "No vendor identified",
-          cta: cta("create-inbox-filter", "Route to ops team"),
-        },
-      ]),
+      findings(
+        "Complaints by cluster",
+        { subject: "Courier", finding: "Issue", measure: "Complaints", source: "Zone" },
+        [
+          {
+            subject: "Blue Dart",
+            finding: "avg 2.3 days late",
+            measure: "27 complaints",
+            source: "Northern zone",
+            cta: cta("send-bulk-message", "Send apology + update"),
+          },
+          {
+            subject: "Delhivery",
+            finding: "'not delivered' reports",
+            measure: "19 complaints",
+            source: "Western zone",
+            cta: cta("create-segment", "Save affected customers"),
+          },
+          {
+            subject: "Unassigned",
+            finding: "no vendor identified",
+            measure: "18 complaints",
+            cta: cta("create-inbox-filter", "Route to ops team"),
+          },
+        ],
+      ),
     ],
     ctas: [
       cta("send-campaign", "Proactive delay notification"),
@@ -446,23 +557,30 @@ const PAID_ACQ: WatcherTypeDef = {
         { label: "Identified conversations originating from WhatsApp ad clicks" },
         { label: "Scored each lead on engagement and response speed" },
       ]),
-      section("attention", "High-intent ad leads", [
-        {
-          label: "Neha S. — clicked ad, asked 3 questions, shared budget",
-          meta: "Summer sale campaign · 45 min ago",
-          cta: cta("send-bulk-message", "Send offer link"),
-        },
-        {
-          label: "32 leads from 'Book Now' ad — responded within 1 min",
-          meta: "High intent cohort",
-          cta: cta("create-segment", "Save as hot leads"),
-        },
-        {
-          label: "61 leads went cold after first message",
-          meta: "Need re-engagement",
-          cta: cta("send-campaign", "Re-engage cold leads"),
-        },
-      ]),
+      findings(
+        "High-intent ad leads",
+        { subject: "Lead", finding: "Signal", measure: "Count", source: "Campaign" },
+        [
+          {
+            subject: "Neha S.",
+            finding: "clicked ad, asked 3 questions, shared budget",
+            source: "Summer sale · 45 min ago",
+            cta: cta("send-bulk-message", "Send offer link"),
+          },
+          {
+            subject: "'Book Now' ad leads",
+            finding: "responded within 1 min — high intent",
+            measure: "32 leads",
+            cta: cta("create-segment", "Save as hot leads"),
+          },
+          {
+            subject: "Cold leads",
+            finding: "went cold after first message",
+            measure: "61 leads",
+            cta: cta("send-campaign", "Re-engage cold leads"),
+          },
+        ],
+      ),
     ],
     ctas: [
       cta("create-segment", "Save high-intent ad leads"),
@@ -489,18 +607,26 @@ const OPS_MISCLASSIFICATION: WatcherTypeDef = {
         { label: "Scanned all inbound conversations for internal sender patterns" },
         { label: "Found 12 ops or internal messages routed to the customer queue" },
       ]),
-      section("attention", "Misrouted messages", [
-        {
-          label: "4 messages from internal WhatsApp numbers in customer inbox",
-          meta: "Sent by ops team members",
-          cta: cta("create-inbox-filter", "Exclude internal numbers"),
-        },
-        {
-          label: "8 messages with internal shortcodes or tags",
-          meta: "Likely test or broadcast noise",
-          cta: cta("create-inbox-filter", "Filter by tag"),
-        },
-      ]),
+      findings(
+        "Misrouted messages",
+        { subject: "Cluster", finding: "Issue", measure: "Messages", source: "Origin" },
+        [
+          {
+            subject: "Internal numbers",
+            finding: "landed in customer inbox",
+            measure: "4 messages",
+            source: "ops team members",
+            cta: cta("create-inbox-filter", "Exclude internal numbers"),
+          },
+          {
+            subject: "Internal shortcodes/tags",
+            finding: "likely test or broadcast noise",
+            measure: "8 messages",
+            source: "system-generated",
+            cta: cta("create-inbox-filter", "Filter by tag"),
+          },
+        ],
+      ),
     ],
     ctas: [
       cta("create-inbox-filter", "Block internal senders from customer queue"),

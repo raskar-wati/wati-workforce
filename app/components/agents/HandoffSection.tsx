@@ -4,6 +4,7 @@ import type {
   HandoffSection as HandoffSectionType,
   HandoffSectionKind,
 } from "../../lib/agents";
+import { FindingsTable } from "../cards/FindingsTable";
 import { HandoffItem } from "./HandoffItem";
 
 const SECTION_TONE: Record<HandoffSectionKind, string> = {
@@ -44,6 +45,12 @@ export function HandoffSection({
             {joinScanLines(section.items.map((i) => i.label))}
           </p>
         </div>
+      ) : section.kind === "attention" ? (
+        <FindingsTable
+          items={section.items}
+          columns={section.columns}
+          emptyNote={section.emptyNote}
+        />
       ) : (
         <div className="flex flex-col gap-1.5">
           {section.items.map((i) => (
