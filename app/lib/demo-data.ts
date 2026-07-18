@@ -1,3 +1,4 @@
+import { filterHandoffByAchievements } from "./achievements";
 import type { Agent, Handoff, WatcherTypeId } from "./agents";
 import type { Thread } from "./chat-threads";
 import { getPixabotByIndex } from "./pixabots";
@@ -118,7 +119,8 @@ export function buildReturningUserSeed(now: Date = new Date()): DemoSeed {
 
     const wt = getWatcherType(bp.watcherType);
     const handoffs: Handoff[] = bp.offsetsHours.map((offset, i) => {
-      const draft = wt.buildDraft();
+      // Seeded runs obey the same Permissions gate as live ones.
+      const draft = filterHandoffByAchievements(wt.buildDraft(), agent.actions);
       const runAt = new Date(
         now.getTime() - offset * 60 * 60 * 1000,
       ).toISOString();

@@ -1,41 +1,41 @@
 Agent,Skill,Tool,Governance class,Human's part
 Hot Leads,Contact data,create_segment,B — inert until referenced,Nothing at creation — no effect until a broadcast or rule targets it
-Hot Leads,Messaging,draft_reply,Draft — human sends,Tap Send on each suggested reply
-Hot Leads,Messaging,send_message (bulk),C — immediate effect,Confirm after agent restates recipient count
+Hot Leads,Messaging,draft_reply (deferred in prototype),Draft — human sends,Tap Send on each suggested reply
+Hot Leads,Messaging,send_message (bulk — deferred in prototype),C — immediate effect,Confirm after agent restates recipient count
 Hot Leads,Broadcasts,create_broadcast,A — draft-first,Nothing — draft is inert
 Hot Leads,Broadcasts,schedule_broadcast,A — draft-first + restatement,Confirm after recipient count + cost restated; arming is the human act
 Hot Leads,Messaging,create_quick_reply,B — inert until referenced,Conversational approval; no automated effect
 Urgency Watcher,Contact data,create_segment,B — inert until referenced,Nothing at creation
-Urgency Watcher,Messaging,draft_reply,Draft — human sends,Tap Send on each suggested reply
-Urgency Watcher,Messaging,send_message (bulk),C — immediate effect,Confirm after recipient count restated
+Urgency Watcher,Messaging,draft_reply (deferred in prototype),Draft — human sends,Tap Send on each suggested reply
+Urgency Watcher,Messaging,send_message (bulk — deferred in prototype),C — immediate effect,Confirm after recipient count restated
 Urgency Watcher,Automations,create_inbox_filter,C — immediate effect,Confirm — applies to every operator's inbox view immediately
 Urgency Watcher,Team routing,assign_conversation_team,C — immediate effect,Confirm — reassignment is immediate in Team Inbox
 Response SLA,Contact data,create_segment,B — inert until referenced,Nothing at creation
-Response SLA,Messaging,draft_reply,Draft — human sends,Tap Send on each suggested reply
-Response SLA,Messaging,send_message (bulk),C — immediate effect,Confirm after recipient count restated
+Response SLA,Messaging,draft_reply (deferred in prototype),Draft — human sends,Tap Send on each suggested reply
+Response SLA,Messaging,send_message (bulk — deferred in prototype),C — immediate effect,Confirm after recipient count restated
 Response SLA,Automations,create_inbox_filter,C — immediate effect,Confirm — immediate for all operators
 Response SLA,Messaging,add_conversation_note,Read/autonomous,Nothing — internal note for whoever picks up the thread
 Delivery Issues,Contact data,create_segment,B — inert until referenced,Nothing at creation
-Delivery Issues,Messaging,draft_reply,Draft — human sends,Tap Send on each suggested reply
-Delivery Issues,Messaging,send_message (bulk),C — immediate effect,Confirm after recipient count restated
+Delivery Issues,Messaging,draft_reply (deferred in prototype),Draft — human sends,Tap Send on each suggested reply
+Delivery Issues,Messaging,send_message (bulk — deferred in prototype),C — immediate effect,Confirm after recipient count restated
 Delivery Issues,Broadcasts,create_broadcast,A — draft-first,Nothing — draft is inert
 Delivery Issues,Broadcasts,schedule_broadcast,A — draft-first + restatement,Confirm after count + cost restated; human arms
 Delivery Issues,Templates,create_template,A — draft-first,Create as draft or create-and-submit to Meta
 Delivery Issues,Templates,submit_template (follow-up),C — irreversible submission,Confirm submission to Meta; resolves in ~48h
 Delivery Issues,Automations,create_inbox_filter,C — immediate effect,Confirm — immediate for all operators
 WhatsApp Ad Leads,Contact data,create_segment,B — inert until referenced,Nothing at creation
-WhatsApp Ad Leads,Messaging,draft_reply,Draft — human sends,Tap Send on each suggested reply
-WhatsApp Ad Leads,Messaging,send_message (bulk),C — immediate effect,Confirm after recipient count restated
+WhatsApp Ad Leads,Messaging,draft_reply (deferred in prototype),Draft — human sends,Tap Send on each suggested reply
+WhatsApp Ad Leads,Messaging,send_message (bulk — deferred in prototype),C — immediate effect,Confirm after recipient count restated
 WhatsApp Ad Leads,Broadcasts,create_broadcast,A — draft-first,Nothing — draft is inert
 WhatsApp Ad Leads,Broadcasts,schedule_broadcast,A — draft-first + restatement,Confirm after count + cost restated; human arms
 WhatsApp Ad Leads,Chatbots,create_chatbot,A — unpublished draft,Publish flow — publishing stays human-only
-WhatsApp Ad Leads,Chatbots,test_chatbot (follow-up),Read/autonomous,Nothing — returns a test transcript
+WhatsApp Ad Leads,Chatbots,test_chatbot (follow-up — unwired in prototype),Read/autonomous,Nothing — returns a test transcript
 Top Topics,Contact data,create_segment,B — inert until referenced,Nothing at creation
 Top Topics,Broadcasts,create_broadcast,A — draft-first,Nothing — draft is inert
 Top Topics,Broadcasts,schedule_broadcast,A — draft-first + restatement,Confirm after count + cost restated; human arms
 Top Topics,Automations,create_inbox_filter,C — immediate effect,Confirm — immediate for all operators
 Top Topics,Chatbots,create_chatbot,A — unpublished draft,Publish flow — human-only
-Top Topics,Chatbots,test_chatbot (follow-up),Read/autonomous,Nothing
+Top Topics,Chatbots,test_chatbot (follow-up — unwired in prototype),Read/autonomous,Nothing
 Daily Digest,Reporting,daily digest summary,Read-only report,Nothing — no CTAs; approval-needing items route to Handoff instead
 All 7 agents,Meta,search_help_docs,Read/autonomous,Nothing
 All 6 watchers,Meta,add_to_handoff,Autonomous,Resolving the handoff item is the approval

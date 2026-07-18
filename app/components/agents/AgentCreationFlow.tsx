@@ -2,7 +2,6 @@
 
 import { motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
-import { filterHandoffByAchievements } from "../../lib/achievements";
 import {
   CREATION_STEPS,
   emptyDraft,
@@ -162,11 +161,8 @@ function AgentCreationFlowInner({
     });
     attachAgentToThread(threadId, agent.id);
     if (runImmediately) {
-      const filteredDraft = filterHandoffByAchievements(
-        wt.buildDraft(),
-        draft.actions,
-      );
-      addHandoff(agent.id, filteredDraft);
+      // addHandoff gates the draft by the agent's achievements internally.
+      addHandoff(agent.id, wt.buildDraft());
     }
     setPhase("done");
     onAgentCreated?.(agent.id, { ranImmediately: runImmediately });

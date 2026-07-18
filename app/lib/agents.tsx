@@ -9,7 +9,10 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { AchievementId } from "./achievements";
+import {
+  filterHandoffByAchievements,
+  type AchievementId,
+} from "./achievements";
 import {
   canAutoRun,
   getActionScript,
@@ -429,8 +432,15 @@ export function AgentsProvider({ children }: { children: ReactNode }) {
       let created: Handoff | null = null;
       setState((prev) => {
         const existing = prev.handoffsByAgent[agentId] ?? [];
+        // Every handoff passes the Permissions gate here, regardless of entry
+        // point (scheduled run, "Run now", creation flow) — an agent can only
+        // propose CTAs its achievements enable.
+        const agent = prev.agents.find((a) => a.id === agentId);
+        const gated = agent
+          ? filterHandoffByAchievements(draft, agent.actions)
+          : draft;
         const handoff: Handoff = {
-          ...draft,
+          ...gated,
           id: crypto.randomUUID(),
           agentId,
           runNumber: existing.length + 1,
