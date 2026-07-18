@@ -18,7 +18,7 @@ Every agent is fully described by six slots. The memorable compression: **the te
 |---|------|--------|----------|------------------|
 | 1 | **Role** | Template (fixed) | Type id, label, one-line blurb, the signals it watches, match hints (what free text maps to it), and its report blueprint | `WatcherTypeDef` in `app/lib/watcher-types.ts` |
 | 2 | **Grounding** | System (declared) | Tenant signal profile (top themes, dominant signal types, emergent themes) and inbox stats the agent reads each run | `tenant-signal-profile.tsx`, `inbox-context.tsx` — consumed silently today; the schema makes it a declared slot |
-| 3 | **Permissions** | User | Achievements chosen at creation → the actions the agent may *propose*; auto-actions the user has pre-approved (governance Class A/B only — Class C can never be auto) | `actions`, `autoActions` on `Agent` |
+| 3 | **Permissions** | User | Achievements chosen at creation → the actions the agent may *propose*. Auto-actions are **parked**: agents never fire a CTA on their own; every run starts from an explicit human tap | `actions` on `Agent` (`autoActions` parked) |
 | 4 | **Schedule** | User | Once / daily / weekly / every-other-day / custom description | `AgentSchedule` |
 | 5 | **Identity** | User | Name, avatar, model label (cosmetic) | `name`, `avatarSeed`, `model` |
 | 6 | **Brief** | Generated | The agent's instructions, printed from slots 1–5. Regenerates whenever a slot changes. The only free text is one bounded **focus note** ("emphasize weekend bookings") injected into the watch section | `generateInstructions()` in `agent-instructions.ts` |
@@ -71,7 +71,7 @@ Handoff
 │              ("Analyzed 1,247 conversations from the last 24h…").
 ├─ FINDINGS    exactly one "attention" section — a TYPED TABLE, 1–5 rows.
 │              Fixed column roles for every agent:
-│                SUBJECT · FINDING · MEASURE · SOURCE · ACTION
+│                SUBJECT · FINDING · MEASURE · SOURCE
 │              Column labels are named per agent type in its blueprint
 │              (Hot Leads: Contact/Signal/Strength/Source; Delivery:
 │              Courier/Issue/Complaints/Zone; …). Narrow surfaces (the
@@ -90,8 +90,9 @@ Handoff
 Rules:
 
 - **Coverage before findings, always.** An agent that reports findings without coverage is asking for trust it hasn't earned.
-- **Evidence lives in the Measure and Source columns.** A finding that can't fill them is an opinion — the table enforces the evidence rule structurally. Per-row Actions (act on one finding vs. the whole cohort) live in the Action column.
-- **Force-fit is the discipline.** Every agent — current and future — must express findings as rows in the five fixed roles; only the column labels vary. If a proposed agent's output can't fill Subject + Measure, that's a spec smell to resolve before it ships.
+- **Evidence lives in the Measure and Source columns.** A finding that can't fill them is an opinion — the table enforces the evidence rule structurally.
+- **The action row is the ONLY CTA surface.** Per-row actions (`item.cta`) stay in the data model but are deferred from first launch — one set of CTAs, in the action block.
+- **Force-fit is the discipline.** Every agent — current and future — must express findings as rows in the four fixed roles; only the column labels vary. If a proposed agent's output can't fill Subject + Measure, that's a spec smell to resolve before it ships.
 - **The action row can only propose what the badge permits** (`filterHandoffByAchievements`), and every action inherits the A/B/C approval sequence from the governance layer — the handoff never executes anything by itself.
 - The `summary` section kind is **retired** (defined and styled today, produced by nothing; All Clear covers its only job).
 

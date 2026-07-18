@@ -52,7 +52,7 @@ const INPUT_SLOTS: {
     name: "Permissions",
     author: "User",
     contents:
-      "Achievements → actions the agent may propose; pre-approved auto-actions (Class A/B only)",
+      "Achievements → actions the agent may propose. Auto-actions parked — every run starts from a human tap",
   },
   {
     n: 4,
@@ -175,7 +175,9 @@ export default function RosterPage() {
         <footer className="pb-4 text-[12px] leading-[17px] tracking-[-0.06px] text-black/45">
           Known deviations (flagged in the spec, not silently absorbed): Daily
           Digest renders its report as a dashboard rather than a handoff;
-          per-finding inline actions are modeled but not rendered yet.
+          per-finding inline actions and agent auto-runs are modeled but
+          deferred from first launch — the footer action block is the only
+          CTA surface, and every run starts from a human tap.
         </footer>
       </div>
     </div>

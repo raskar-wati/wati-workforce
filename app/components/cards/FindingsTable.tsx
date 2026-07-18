@@ -1,15 +1,19 @@
 "use client";
 
 import { Check, TriangleAlert } from "lucide-react";
-import type { FindingColumns, HandoffCta, HandoffItem } from "../../lib/agents";
-import { HandoffCtaButton } from "../agents/HandoffCtaButton";
+import type { FindingColumns, HandoffItem } from "../../lib/agents";
 
 /**
  * The FINDINGS slot of the handoff skeleton (agent-schema.md §3): a typed
- * table with fixed column roles (Subject · Finding · Measure · Source ·
- * Action) and per-type header labels. Renders as a grid when the container
- * is wide enough (@lg ≈ 512px), collapsing to the stacked layout on narrow
- * surfaces like the drawer. Zero items = the All Clear state.
+ * table with fixed column roles (Subject · Finding · Measure · Source) and
+ * per-type header labels. Renders as a grid when the container is wide
+ * enough (@lg ≈ 512px), collapsing to the stacked layout on narrow surfaces
+ * like the drawer. Zero items = the All Clear state.
+ *
+ * The handoff's footer action block is the ONLY CTA surface — per-row
+ * actions (`item.cta`) stay in the data model but are deferred from first
+ * launch and never rendered here.
+ *
  * Rows without typed fields (legacy persisted handoffs) always render
  * stacked via their label/meta.
  */
@@ -17,14 +21,10 @@ export function FindingsTable({
   items,
   columns,
   emptyNote,
-  onFireCta,
-  firedCtaIds,
 }: {
   items: HandoffItem[];
   columns?: FindingColumns;
   emptyNote?: string;
-  onFireCta?: (cta: HandoffCta) => void;
-  firedCtaIds?: ReadonlySet<string>;
 }) {
   if (items.length === 0) {
     return (
@@ -40,13 +40,12 @@ export function FindingsTable({
   const typed = columns && items.every((i) => i.subject && i.finding);
   const hasMeasure = typed && items.some((i) => i.measure);
   const hasSource = typed && items.some((i) => i.source);
-  const hasAction = items.some((i) => i.cta);
 
   if (!typed) {
     return (
       <div className="flex flex-col gap-1.5">
         {items.map((i) => (
-          <StackedRow key={i.id} item={i} onFireCta={onFireCta} firedCtaIds={firedCtaIds} />
+          <StackedRow key={i.id} item={i} />
         ))}
       </div>
     );
@@ -57,7 +56,6 @@ export function FindingsTable({
     "minmax(0,1.6fr)", // finding
     hasMeasure ? "auto" : null,
     hasSource ? "auto" : null,
-    hasAction ? "auto" : null,
   ]
     .filter(Boolean)
     .join(" ");
@@ -67,7 +65,7 @@ export function FindingsTable({
       {/* Narrow: stacked collapse — the pre-table layout. */}
       <div className="flex flex-col gap-1.5 @lg:hidden">
         {items.map((i) => (
-          <StackedRow key={i.id} item={i} onFireCta={onFireCta} firedCtaIds={firedCtaIds} />
+          <StackedRow key={i.id} item={i} />
         ))}
       </div>
 
@@ -81,10 +79,12 @@ export function FindingsTable({
           <HeaderCell>{columns.finding}</HeaderCell>
           {hasMeasure && <HeaderCell align="right">{columns.measure ?? "Measure"}</HeaderCell>}
           {hasSource && <HeaderCell>{columns.source ?? "Source"}</HeaderCell>}
-          {hasAction && <HeaderCell align="right">Action</HeaderCell>}
 
           {items.map((i) => (
-            <div key={i.id} className="col-span-full grid grid-cols-subgrid items-center border-t border-black/[0.05] py-2">
+            <div
+              key={i.id}
+              className="col-span-full grid grid-cols-subgrid items-center border-t border-black/[0.05] py-2"
+            >
               <p className="text-[13px] font-medium tracking-[-0.078px] text-[#0a0a0a]">
                 {i.subject}
               </p>
@@ -96,18 +96,6 @@ export function FindingsTable({
               )}
               {hasSource && (
                 <p className="text-[12px] tracking-[-0.06px] text-black/50">{i.source}</p>
-              )}
-              {hasAction && (
-                <div className="flex justify-end">
-                  {i.cta && (
-                    <HandoffCtaButton
-                      cta={i.cta}
-                      variant="inline"
-                      fired={firedCtaIds?.has(i.cta.id) ?? false}
-                      onFire={onFireCta}
-                    />
-                  )}
-                </div>
               )}
             </div>
           ))}
@@ -136,18 +124,8 @@ function HeaderCell({
 }
 
 /** Narrow / legacy rendering: one finding per row, evidence right-aligned. */
-function StackedRow({
-  item,
-  onFireCta,
-  firedCtaIds,
-}: {
-  item: HandoffItem;
-  onFireCta?: (cta: HandoffCta) => void;
-  firedCtaIds?: ReadonlySet<string>;
-}) {
-  const line = item.subject
-    ? `${item.subject} — ${item.finding}`
-    : item.label;
+function StackedRow({ item }: { item: HandoffItem }) {
+  const line = item.subject ? `${item.subject} — ${item.finding}` : item.label;
   const evidence = item.subject
     ? [item.source, item.measure].filter(Boolean).join(" · ")
     : item.meta;
@@ -161,19 +139,9 @@ function StackedRow({
       <p className="min-w-0 flex-1 text-[13px] leading-[19px] tracking-[-0.078px] text-[#0a0a0a]">
         {line}
       </p>
-      <div className="flex shrink-0 flex-col items-end gap-1">
-        {evidence && (
-          <p className="text-[12px] tracking-[-0.06px] text-black/50">{evidence}</p>
-        )}
-        {item.cta && (
-          <HandoffCtaButton
-            cta={item.cta}
-            variant="inline"
-            fired={firedCtaIds?.has(item.cta.id) ?? false}
-            onFire={onFireCta}
-          />
-        )}
-      </div>
+      {evidence && (
+        <p className="shrink-0 text-[12px] tracking-[-0.06px] text-black/50">{evidence}</p>
+      )}
     </div>
   );
 }

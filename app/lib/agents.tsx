@@ -428,7 +428,6 @@ export function AgentsProvider({ children }: { children: ReactNode }) {
     (agentId: string, draft: HandoffDraft): Handoff => {
       let created: Handoff | null = null;
       setState((prev) => {
-        const agent = prev.agents.find((a) => a.id === agentId);
         const existing = prev.handoffsByAgent[agentId] ?? [];
         const handoff: Handoff = {
           ...draft,
@@ -438,45 +437,15 @@ export function AgentsProvider({ children }: { children: ReactNode }) {
         };
         created = handoff;
 
-        // For each auto-action the agent has opted into, find the first
-        // matching footer CTA in this handoff and spawn an action run.
-        const autoRuns: AgentActionRun[] = [];
-        const auto = agent?.autoActions ?? [];
-        for (const action of auto) {
-          if (!canAutoRun(action)) continue;
-          const cta = handoff.ctas.find((c) => c.action === action);
-          if (!cta) continue;
-          const script = getActionScript(action);
-          autoRuns.push({
-            id: crypto.randomUUID(),
-            agentId,
-            handoffId: handoff.id,
-            ctaId: cta.id,
-            action,
-            runTitle: script.runTitle,
-            steps: [...script.steps],
-            resultLabel: script.resultLabel,
-            resultDestination: script.resultDestination,
-            resultCtaLabel: script.resultCtaLabel,
-            status: "running",
-            startedAt: new Date().toISOString(),
-          });
-        }
-
-        const prevRuns = prev.actionRunsByAgent[agentId] ?? [];
+        // Note: no action auto-runs. Agents never fire a CTA on their own —
+        // every run in a thread starts from an explicit human tap. The
+        // `autoActions` field is parked until auto-runs are agreed.
         return {
           ...prev,
           handoffsByAgent: {
             ...prev.handoffsByAgent,
             [agentId]: sortByRunAtDesc([handoff, ...existing]),
           },
-          actionRunsByAgent:
-            autoRuns.length > 0
-              ? {
-                  ...prev.actionRunsByAgent,
-                  [agentId]: [...prevRuns, ...autoRuns],
-                }
-              : prev.actionRunsByAgent,
         };
       });
       // setState batches; created is assigned synchronously inside the updater

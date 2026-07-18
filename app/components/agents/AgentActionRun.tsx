@@ -180,12 +180,10 @@ function CompletedStep({ text }: { text: string }) {
  * + auto-action promotion for classes that allow it.
  */
 function ActionRunReceipt({ run }: { run: AgentActionRunType }) {
-  const { getAgent, enableAutoAction, setRunObjectState } = useAgents();
+  const { setRunObjectState } = useAgents();
   // Broadcast-family approvals restate count + cost before arming (PRD §3.2);
   // this holds the receipt in that restatement step.
   const [restatingEstimate, setRestatingEstimate] = useState(false);
-  const agent = getAgent(run.agentId);
-  const alwaysOn = agent?.autoActions.includes(run.action) ?? false;
 
   const script = getActionScript(run.action);
   const { governance } = script;
@@ -255,23 +253,12 @@ function ActionRunReceipt({ run }: { run: AgentActionRunType }) {
                 {script.undoLabel}
               </button>
             )}
-          {governance === "C" ? (
+          {/* No "Always do this" promotion — auto-runs are parked; every
+              action starts from an explicit human tap. */}
+          {governance === "C" && (
             <span className="text-[13px] tracking-[-0.078px] text-black/40">
               Needs your confirmation each run
             </span>
-          ) : alwaysOn ? (
-            <span className="inline-flex items-center gap-1 text-[13px] tracking-[-0.078px] text-wati-green-text">
-              <Check size={12} strokeWidth={2.5} />
-              Will always do this
-            </span>
-          ) : (
-            <button
-              type="button"
-              onClick={() => enableAutoAction(run.agentId, run.action)}
-              className="text-[13px] tracking-[-0.078px] text-black/60 hover:text-[#0a0a0a]"
-            >
-              Always do this
-            </button>
           )}
         </>
       }

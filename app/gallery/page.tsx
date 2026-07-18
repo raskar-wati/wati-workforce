@@ -152,9 +152,6 @@ export default function GalleryPage() {
                 <CardCtaChip>
                   Review draft <ArrowUpRight size={12} strokeWidth={2} />
                 </CardCtaChip>
-                <span className="text-[13px] tracking-[-0.078px] text-black/60">
-                  Always do this
-                </span>
               </>
             }
           />
