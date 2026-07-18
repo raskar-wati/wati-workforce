@@ -1,34 +1,58 @@
-Skill,Tool,Governance class,Agents (of the 7),Human's part,Source
-Contact data,create_segment,B — inert until referenced,"Hot Leads, Top Topics, Urgency Watcher, Response SLA, Delivery Issues, WhatsApp Ad Leads",Nothing at creation — segment has no effect until a broadcast or rule targets it,v1 PRD + MCP roadmap
-Contact data,update_contact_attribute,C — conversational approval,— (chat only),One-tap approve in chat,v1 PRD
-Contact data,create_contact_attribute,B — inert until referenced,— (chat only),Conversational approval; inert until a rule or segment references it,Skills Expansion §3.5
-Contact data,create_tag,B — inert until referenced,— (chat only),Conversational approval; inert until applied,Skills Expansion §3.5
-Contact data,update_segment,C — immediate effect,— (chat only),Confirm — membership re-evaluates immediately and every broadcast/rule targeting it changes,Skills Expansion §3.5
-Messaging,draft_reply,Draft — human sends,"Hot Leads, Urgency Watcher, Response SLA, Delivery Issues, WhatsApp Ad Leads",Tap Send on each suggested reply,v1 PRD
-Messaging,send_message (bulk),C — immediate effect,"Hot Leads, Urgency Watcher, Response SLA, Delivery Issues, WhatsApp Ad Leads",Explicit confirm after agent restates recipient count; sent messages can't be recalled,v1 PRD
-Messaging,create_quick_reply,B — inert until referenced,Hot Leads,Conversational approval; available to operators with no automated effect,Skills Expansion §3.7
-Messaging,add_conversation_note,Read/autonomous,Response SLA,Nothing — internal note for the human picking up the thread,Skills Expansion §3.7
-Messaging,add_conversation_tag,C (autonomous for Spam Watcher only — not in our 7),— (chat only),Approval per tag; the v1 PRD's one autonomy exception is Spam Watcher which we don't ship,v1 PRD
-Templates,create_template,A — draft-first,Delivery Issues,Approve submission: create as draft or create-and-submit to Meta,Skills Expansion §3.1
-Templates,submit_template,C — irreversible submission,Delivery Issues (follow-up),Confirm submission to Meta; approval resolves in ~48h (pill self-updates),Skills Expansion §3.1
-Broadcasts,create_broadcast,A — draft-first,"Hot Leads, Top Topics, Delivery Issues, WhatsApp Ad Leads",Nothing at draft creation — broadcast is inert until armed,Skills Expansion §3.2
-Broadcasts,schedule_broadcast,A — draft-first + restatement,"Hot Leads, Top Topics, Delivery Issues, WhatsApp Ad Leads",Confirm after recipient count + cost estimate are restated; arming is the human act,Skills Expansion §3.2
-Broadcasts,cancel_scheduled_broadcast,C — conversational approval,— (chat only),Conversational approval to stop or reschedule,Skills Expansion §3.2
-Automations,create_keyword_action,A — created disabled,— (chat only),Enable action (created disabled; takes priority over catch-all reply),Skills Expansion §3.3
-Automations,create_automation_rule,A — created disabled,— (chat only),Enable rule (created disabled),Skills Expansion §3.3
-Automations,set_automation_status,A activation / C disable,— (chat only),Human confirms enable; disable is conversational,Skills Expansion §3.3
-Automations,set_default_reply,C — immediate effect,— (chat only),Confirm — every unmatched inbound message gets this reply immediately,Skills Expansion §3.3
-Automations,list_automations,Read/autonomous,— (chat only),Nothing,Skills Expansion §3.3
-Automations,create_inbox_filter,C — immediate effect,"Top Topics, Urgency Watcher, Response SLA, Delivery Issues",Confirm — applies to every operator's inbox view immediately,v1 PRD (Handoff item types) + prototype
-Chatbots,create_chatbot,A — unpublished draft,"Top Topics, WhatsApp Ad Leads",Publish flow (creation is unpublished; publishing stays human-only),Skills Expansion §3.4
-Chatbots,test_chatbot,Read/autonomous,"Top Topics, WhatsApp Ad Leads (follow-up)",Nothing — returns a test transcript,Skills Expansion §3.4
-Chatbots,update_chatbot,C — conversational approval,— (chat only),Conversational approval to modify nodes/copy,Skills Expansion §3.4
-Chatbots,list_chatbots,Read/autonomous,— (chat only),Nothing,Skills Expansion §3.4
-Team routing,assign_conversation_team,C — immediate effect,Urgency Watcher,Confirm — reassignment takes effect immediately in Team Inbox,Skills Expansion §3.6
-Team routing,create_team,C — human confirms,— (chat only),Explicit confirm,Skills Expansion §3.6
-Team routing,list_operators,Read/autonomous,— (chat only),Nothing,Skills Expansion §3.6
-Team routing,list_teams,Read/autonomous,— (chat only),Nothing,Skills Expansion §3.6
-Meta,search_help_docs,Read/autonomous,All 7 (chat capability),Nothing,v1 PRD
-Meta,add_to_handoff,Autonomous,All 6 watchers,Nothing at filing — the handoff item itself is the approval request; resolving it is the human act,v1 PRD
-Meta,save_as_rule,Human-triggered,All 6 watchers (deferred in prototype),Human taps "Save as rule" on a recurring decision card,v1 PRD
-Reporting,daily digest summary,Read-only report,Daily Digest,Nothing — informational only; no CTAs; approval-needing items route to Handoff instead,v1 PRD
+Agent,Skill,Tool,Governance class,Human's part
+Hot Leads,Contact data,create_segment,B — inert until referenced,Nothing at creation — no effect until a broadcast or rule targets it
+Hot Leads,Messaging,draft_reply,Draft — human sends,Tap Send on each suggested reply
+Hot Leads,Messaging,send_message (bulk),C — immediate effect,Confirm after agent restates recipient count
+Hot Leads,Broadcasts,create_broadcast,A — draft-first,Nothing — draft is inert
+Hot Leads,Broadcasts,schedule_broadcast,A — draft-first + restatement,Confirm after recipient count + cost restated; arming is the human act
+Hot Leads,Messaging,create_quick_reply,B — inert until referenced,Conversational approval; no automated effect
+Urgency Watcher,Contact data,create_segment,B — inert until referenced,Nothing at creation
+Urgency Watcher,Messaging,draft_reply,Draft — human sends,Tap Send on each suggested reply
+Urgency Watcher,Messaging,send_message (bulk),C — immediate effect,Confirm after recipient count restated
+Urgency Watcher,Automations,create_inbox_filter,C — immediate effect,Confirm — applies to every operator's inbox view immediately
+Urgency Watcher,Team routing,assign_conversation_team,C — immediate effect,Confirm — reassignment is immediate in Team Inbox
+Response SLA,Contact data,create_segment,B — inert until referenced,Nothing at creation
+Response SLA,Messaging,draft_reply,Draft — human sends,Tap Send on each suggested reply
+Response SLA,Messaging,send_message (bulk),C — immediate effect,Confirm after recipient count restated
+Response SLA,Automations,create_inbox_filter,C — immediate effect,Confirm — immediate for all operators
+Response SLA,Messaging,add_conversation_note,Read/autonomous,Nothing — internal note for whoever picks up the thread
+Delivery Issues,Contact data,create_segment,B — inert until referenced,Nothing at creation
+Delivery Issues,Messaging,draft_reply,Draft — human sends,Tap Send on each suggested reply
+Delivery Issues,Messaging,send_message (bulk),C — immediate effect,Confirm after recipient count restated
+Delivery Issues,Broadcasts,create_broadcast,A — draft-first,Nothing — draft is inert
+Delivery Issues,Broadcasts,schedule_broadcast,A — draft-first + restatement,Confirm after count + cost restated; human arms
+Delivery Issues,Templates,create_template,A — draft-first,Create as draft or create-and-submit to Meta
+Delivery Issues,Templates,submit_template (follow-up),C — irreversible submission,Confirm submission to Meta; resolves in ~48h
+Delivery Issues,Automations,create_inbox_filter,C — immediate effect,Confirm — immediate for all operators
+WhatsApp Ad Leads,Contact data,create_segment,B — inert until referenced,Nothing at creation
+WhatsApp Ad Leads,Messaging,draft_reply,Draft — human sends,Tap Send on each suggested reply
+WhatsApp Ad Leads,Messaging,send_message (bulk),C — immediate effect,Confirm after recipient count restated
+WhatsApp Ad Leads,Broadcasts,create_broadcast,A — draft-first,Nothing — draft is inert
+WhatsApp Ad Leads,Broadcasts,schedule_broadcast,A — draft-first + restatement,Confirm after count + cost restated; human arms
+WhatsApp Ad Leads,Chatbots,create_chatbot,A — unpublished draft,Publish flow — publishing stays human-only
+WhatsApp Ad Leads,Chatbots,test_chatbot (follow-up),Read/autonomous,Nothing — returns a test transcript
+Top Topics,Contact data,create_segment,B — inert until referenced,Nothing at creation
+Top Topics,Broadcasts,create_broadcast,A — draft-first,Nothing — draft is inert
+Top Topics,Broadcasts,schedule_broadcast,A — draft-first + restatement,Confirm after count + cost restated; human arms
+Top Topics,Automations,create_inbox_filter,C — immediate effect,Confirm — immediate for all operators
+Top Topics,Chatbots,create_chatbot,A — unpublished draft,Publish flow — human-only
+Top Topics,Chatbots,test_chatbot (follow-up),Read/autonomous,Nothing
+Daily Digest,Reporting,daily digest summary,Read-only report,Nothing — no CTAs; approval-needing items route to Handoff instead
+All 7 agents,Meta,search_help_docs,Read/autonomous,Nothing
+All 6 watchers,Meta,add_to_handoff,Autonomous,Resolving the handoff item is the approval
+All 6 watchers,Meta,save_as_rule (deferred in prototype),Human-triggered,Tap "Save as rule" on a recurring decision card
+Chat only (Ask Wati),Contact data,update_contact_attribute,C — conversational approval,One-tap approve in chat
+Chat only (Ask Wati),Contact data,create_contact_attribute,B — inert until referenced,Conversational approval
+Chat only (Ask Wati),Contact data,create_tag,B — inert until referenced,Conversational approval
+Chat only (Ask Wati),Contact data,update_segment,C — immediate effect,Confirm — membership re-evaluates immediately
+Chat only (Ask Wati),Messaging,add_conversation_tag,C — conversational approval,Approve per tag (autonomous only for Spam Watcher — not in our 7)
+Chat only (Ask Wati),Broadcasts,cancel_scheduled_broadcast,C — conversational approval,Conversational approval to stop or reschedule
+Chat only (Ask Wati),Automations,create_keyword_action,A — created disabled,Enable action
+Chat only (Ask Wati),Automations,create_automation_rule,A — created disabled,Enable rule
+Chat only (Ask Wati),Automations,set_automation_status,A enable / C disable,Confirm enable; disable conversational
+Chat only (Ask Wati),Automations,set_default_reply,C — immediate effect,Confirm — applies to all unmatched inbound immediately
+Chat only (Ask Wati),Automations,list_automations,Read/autonomous,Nothing
+Chat only (Ask Wati),Chatbots,update_chatbot,C — conversational approval,Conversational approval
+Chat only (Ask Wati),Chatbots,list_chatbots,Read/autonomous,Nothing
+Chat only (Ask Wati),Team routing,create_team,C — human confirms,Explicit confirm
+Chat only (Ask Wati),Team routing,list_operators,Read/autonomous,Nothing
+Chat only (Ask Wati),Team routing,list_teams,Read/autonomous,Nothing
