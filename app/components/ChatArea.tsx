@@ -26,7 +26,7 @@ import { recordRoleRequest } from "../lib/role-requests";
 import { generateInstructions } from "../lib/agent-instructions";
 import { AgentActionRun } from "./agents/AgentActionRun";
 import { WatcherMatchCard } from "./agents/WatcherMatchCard";
-import MessageMarkdown from "./MessageMarkdown";
+import { InsightMessageBody } from "./cards/InsightBlocks";
 import { AnalyticsMockConversation } from "./analytics/AnalyticsMockConversation";
 import { AgentCreationFlow } from "./agents/AgentCreationFlow";
 import {
@@ -1341,7 +1341,10 @@ export function ChatArea({
                         )}
                         {m.content && (
                           <div className="relative">
-                            <MessageMarkdown content={m.content} />
+                            <InsightMessageBody
+                              content={m.content}
+                              streaming={m.streaming}
+                            />
                             {m.streaming && (
                               <span
                                 aria-hidden="true"
