@@ -1,6 +1,6 @@
 "use client";
 
-import { PanelLeftClose, PanelLeftOpen, Plus } from "lucide-react";
+import { PanelLeft, Plus } from "lucide-react";
 import { useAgents } from "../lib/agents";
 import { useChatMode } from "../lib/chat-mode";
 import { useChatThreads } from "../lib/chat-threads";
@@ -40,11 +40,16 @@ export function MainContent({
               title={panelCollapsed ? "Open navigation" : "Close navigation"}
               className="flex h-7 w-7 items-center justify-center rounded text-[var(--wati-icon-default)] hover:bg-[var(--wati-surface-subtle)]"
             >
-              {panelCollapsed ? (
-                <PanelLeftOpen size={16} strokeWidth={1.75} />
-              ) : (
-                <PanelLeftClose size={16} strokeWidth={1.75} />
-              )}
+              {/* One arrow-free panel glyph. The divider sits on the same
+                  side as the real panel when it's open, and mirrors when
+                  it's tucked away — the flip carries the state. */}
+              <PanelLeft
+                size={16}
+                strokeWidth={1.75}
+                className={`transition-transform duration-200 ${
+                  panelCollapsed ? "-scale-x-100" : ""
+                }`}
+              />
             </button>
           )}
           <p className="text-sm font-semibold text-[var(--wati-text-body)]">
