@@ -11,8 +11,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Workforce — Wati",
-  description: "Wati Workforce home",
+  title: "Copilot — Wati",
+  description: "Wati Copilot home",
 };
 
 export default function RootLayout({

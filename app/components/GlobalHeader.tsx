@@ -19,7 +19,7 @@ export function GlobalHeader() {
           onClick={toggle}
           className="inline-flex items-center rounded-full bg-wati-green px-3 py-1 text-xs font-semibold text-white transition-colors hover:bg-wati-green-hover"
         >
-          Ask Wati
+          Copilot
         </button>
 
         <div className="flex h-full items-center pl-1">

@@ -105,7 +105,7 @@ type TenantIntroCopy = {
 
 const TRAVEL_HOUSE_COPY: TenantIntroCopy = {
   intro:
-    "Hey — I'm Wati, your AI workforce inside the Wati platform. I act on Wati directly: I read your Travel House conversations, draft and send replies, update contacts, and run on my own when you're not here.\n\nI can do that as agents that watch for things and act (like spotting customers ready to book), automations that fire on their own (coming soon), or insights you can ask about on demand (coming soon). Where would you like to start?",
+    "Hey — I'm Wati, your AI copilot inside the Wati platform. I act on Wati directly: I read your Travel House conversations, draft and send replies, update contacts, and run on my own when you're not here.\n\nI can do that as agents that watch for things and act (like spotting customers ready to book), automations that fire on their own (coming soon), or insights you can ask about on demand (coming soon). Where would you like to start?",
   agentsHeader:
     "Here's what I can watch for in your Travel House inbox. Pick one and I'll run it once so you can see what it looks like:",
   closingChips: [
@@ -123,7 +123,7 @@ const TRAVEL_HOUSE_COPY: TenantIntroCopy = {
 
 const BIGHAAT_COPY: TenantIntroCopy = {
   intro:
-    "Hey — I'm Wati, your AI workforce inside the Wati platform. I act on Wati directly: I read your BigHaat customer queue, cluster what's coming in, reply where I can, and run on my own when you're not here.\n\nI can do that as agents that watch for things and act (like surfacing delivery complaints early), automations that fire on their own (coming soon), or insights you can ask about on demand (coming soon). Where would you like to start?",
+    "Hey — I'm Wati, your AI copilot inside the Wati platform. I act on Wati directly: I read your BigHaat customer queue, cluster what's coming in, reply where I can, and run on my own when you're not here.\n\nI can do that as agents that watch for things and act (like surfacing delivery complaints early), automations that fire on their own (coming soon), or insights you can ask about on demand (coming soon). Where would you like to start?",
   agentsHeader:
     "Here's what I can watch for in your BigHaat queue. Pick one and I'll run it once so you can see what it looks like:",
   closingChips: [

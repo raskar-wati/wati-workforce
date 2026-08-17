@@ -321,7 +321,7 @@ export function WorkforcePanel({
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-center gap-1 px-1">
           <p className="flex-1 text-sm font-semibold text-[var(--wati-text-body)]">
-            WorkForce
+            Copilot
           </p>
           <button
             type="button"
@@ -524,7 +524,7 @@ function DrawerTabs({
   onChange: (tab: "chats" | "agents") => void;
 }) {
   const TABS: { id: "chats" | "agents"; label: string }[] = [
-    { id: "chats", label: "Chats" },
+    { id: "chats", label: "Ask" },
     { id: "agents", label: "Agents" },
   ];
   return (

@@ -53,7 +53,7 @@ export function MainContent({
             </button>
           )}
           <p className="text-sm font-semibold text-[var(--wati-text-body)]">
-            WorkForce
+            Copilot
           </p>
         </div>
       )}
