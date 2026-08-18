@@ -4,6 +4,7 @@ import { Bell, Rocket, User } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useAskWatiDrawer } from "../lib/ask-wati-drawer";
 import { useNotifications } from "../lib/notifications";
+import { CopilotIcon } from "./icons/CopilotIcon";
 import { WatiLogo } from "./WatiLogo";
 
 export function GlobalHeader() {
@@ -17,8 +18,9 @@ export function GlobalHeader() {
         <button
           type="button"
           onClick={toggle}
-          className="inline-flex items-center rounded-full bg-wati-green px-3 py-1 text-xs font-semibold text-white transition-colors hover:bg-wati-green-hover"
+          className="inline-flex items-center gap-1 rounded-full border border-wati-green bg-wati-green-soft px-3 py-1 text-xs font-semibold text-wati-green-text transition-colors hover:bg-wati-green-soft-hover"
         >
+          <CopilotIcon size={14} />
           Copilot
         </button>
 

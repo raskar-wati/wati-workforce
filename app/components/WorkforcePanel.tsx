@@ -20,6 +20,7 @@ import { DAILY_DIGEST_THREAD_TITLE } from "../lib/daily-digest-data";
 import { useDailyDigestMeta } from "../lib/daily-digest-meta";
 import { getPixabot } from "../lib/pixabots";
 import { DemoStateToggleChip } from "./DemoStateToggleChip";
+import { CopilotIcon } from "./icons/CopilotIcon";
 import { TenantToggleChip } from "./TenantToggleChip";
 
 type PanelStyle = "expandable" | "popover" | "drawer";
@@ -320,7 +321,8 @@ export function WorkforcePanel({
       {/* Header + agent list */}
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-center gap-1 px-1">
-          <p className="flex-1 text-sm font-semibold text-[var(--wati-text-body)]">
+          <p className="flex flex-1 items-center gap-1.5 text-sm font-semibold text-[var(--wati-text-body)]">
+            <CopilotIcon size={16} />
             Copilot
           </p>
           <button

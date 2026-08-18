@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { AnimatePresence, motion } from "motion/react"
+import { CopilotIcon } from "./icons/CopilotIcon"
 
 type EmotionalState = "focused" | "curious" | "working" | "playful" | "patient"
 
@@ -193,48 +194,7 @@ export function ThinkingIndicator({
     )
   }
 
-  return (
-    <div className="flex flex-col items-center gap-3">
-      {/* Orb containing the animated eyes */}
-      <div className="relative flex items-center justify-center" style={{ width: 110, height: 90 }}>
-        {/* Outer soft glow */}
-        <motion.div
-          className="absolute inset-0 rounded-full"
-          style={{
-            background:
-              "radial-gradient(ellipse at 50% 50%, rgba(186,220,255,0.55) 0%, rgba(200,228,255,0.25) 55%, transparent 100%)",
-            filter: "blur(10px)",
-          }}
-          animate={{ scale: [1, 1.06, 1], opacity: [0.85, 1, 0.85] }}
-          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-        />
-        {/* Inner brighter core */}
-        <motion.div
-          className="absolute rounded-full"
-          style={{
-            width: 64,
-            height: 52,
-            background:
-              "radial-gradient(ellipse at 50% 40%, rgba(210,235,255,0.9) 0%, rgba(186,220,255,0.5) 60%, transparent 100%)",
-            filter: "blur(6px)",
-          }}
-          animate={{ scale: [1, 1.04, 1] }}
-          transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut", delay: 0.4 }}
-        />
-        {/* Eyes — sit on top of the orb */}
-        <motion.span
-          className="relative flex items-center gap-1.5"
-          animate={{ y: [0, -1.5, 0] }}
-          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-          aria-hidden="true"
-        >
-          <Eye delay={0} />
-          <Eye delay={0.06} />
-        </motion.span>
-      </div>
-
-    </div>
-  )
+  return <CopilotIcon variant="solid" size={40} />
 }
 
 function Eye({ delay = 0, size = 4 }: { delay?: number; size?: number }) {
