@@ -50,7 +50,13 @@ import {
   DAILY_DIGEST_ENTRIES,
   DAILY_DIGEST_THREAD_TITLE,
 } from "../lib/daily-digest-data";
+import {
+  intakeFiles,
+  releaseAttachments,
+  type Attachment,
+} from "../lib/attachments";
 import { getPixabot, pixabotGifFromPath } from "../lib/pixabots";
+import { MessageAttachments } from "./attachments/MessageAttachments";
 import { Composer, COMPOSER_TRANSITION } from "./Composer";
 import { DailyDigest } from "./digest/DailyDigest";
 import { InboxAskWatiSuggestions } from "./agents/InboxAskWatiSuggestions";
@@ -92,6 +98,21 @@ type WatiAction =
   | { kind: "open-handoffs"; label: string }
   | { kind: "open-digest"; label: string }
   | { kind: "fill-composer"; label: string; prompt: string };
+
+/** Thread title for a message that arrived as attachments with no caption. */
+function titleForAttachments(list: Attachment[]): string {
+  if (list.length === 0) return "New chat";
+  return list.length === 1 ? list[0].name : `${list.length} attachments`;
+}
+
+/** Plain-text stand-in so an attachment-only turn isn't sent empty. */
+function describeAttachments(list: Attachment[]): string {
+  if (list.length === 0) return "";
+  const names = list.map((a) => a.name).join(", ");
+  return list.length === 1
+    ? `Sent an attachment: ${names}`
+    : `Sent ${list.length} attachments: ${names}`;
+}
 
 type ChatMessage =
   | { kind: "user-text"; id: string; content: string }
@@ -160,6 +181,65 @@ export function ChatArea({
   const [input, setInput] = useState("");
   const [pendingWatcherTypeId, setPendingWatcherTypeId] =
     useState<WatcherTypeId | null>(null);
+
+  /**
+   * Attachments are session-only and deliberately kept OUT of
+   * `messagesByThread`, which is serialised to localStorage — object URLs
+   * would be dead on reload and inlined bytes would blow the quota. Staged
+   * files move into `attachmentsByMessage` under the sent message's id.
+   */
+  const [stagedAttachments, setStagedAttachments] = useState<Attachment[]>([]);
+  const [attachmentsByMessage, setAttachmentsByMessage] = useState<
+    Record<string, Attachment[]>
+  >({});
+  const [attachmentNotice, setAttachmentNotice] = useState<string | null>(null);
+
+  /**
+   * Intake runs outside the state updater on purpose: it mints object URLs
+   * and sets the notice, and StrictMode double-invokes updaters in dev —
+   * doing this inside one leaks a URL per rejected pass and re-enters
+   * setState mid-update.
+   */
+  const attachFiles = useCallback(
+    (files: File[]) => {
+      const { accepted, rejected } = intakeFiles(files, stagedAttachments);
+      setAttachmentNotice(rejected.length > 0 ? rejected.join(" · ") : null);
+      if (accepted.length > 0) {
+        setStagedAttachments((prev) => [...prev, ...accepted]);
+      }
+    },
+    [stagedAttachments],
+  );
+
+  const removeStagedAttachment = useCallback(
+    (id: string) => {
+      const hit = stagedAttachments.find((a) => a.id === id);
+      if (hit) releaseAttachments([hit]);
+      setStagedAttachments((prev) => prev.filter((a) => a.id !== id));
+      setAttachmentNotice(null);
+    },
+    [stagedAttachments],
+  );
+
+  // Clear a stale rejection notice once the user edits the draft.
+  useEffect(() => {
+    if (attachmentNotice) setAttachmentNotice(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [input]);
+
+  // Mirror of every live attachment, so the unmount cleanup below revokes
+  // what exists at that moment rather than the empty mount-time value.
+  const liveAttachmentsRef = useRef<Attachment[]>([]);
+  useEffect(() => {
+    liveAttachmentsRef.current = [
+      ...stagedAttachments,
+      ...Object.values(attachmentsByMessage).flat(),
+    ];
+  }, [stagedAttachments, attachmentsByMessage]);
+
+  // Release every object URL still held when the chat surface goes away
+  // (the drawer unmounts its whole tree on close).
+  useEffect(() => () => releaseAttachments(liveAttachmentsRef.current), []);
   const { mode, setMode, view, setView } = useChatMode();
   const { pendingAction, clearAction } = useAskWatiDrawer();
 
@@ -542,16 +622,27 @@ export function ChatArea({
 
   const sendPrompt = (text: string) => {
     const trimmed = text.trim();
-    if (!trimmed) return;
+    // Attachments alone are a valid message — a photo with no caption still
+    // says something. Only an entirely empty composer is a no-op.
+    const outgoing = stagedAttachments;
+    if (!trimmed && outgoing.length === 0) return;
     let threadId = activeThreadId;
     if (!threadId) {
-      threadId = createThread(trimmed);
+      // An attachment-only opener has no text to name the thread after.
+      threadId = createThread(trimmed || titleForAttachments(outgoing));
     }
     const userMsg: ChatMessage = {
       kind: "user-text",
       id: crypto.randomUUID(),
       content: trimmed,
     };
+    if (outgoing.length > 0) {
+      // Hand the staged files to this message and clear the composer. The
+      // object URLs stay alive — ownership moves, it is not a copy.
+      setAttachmentsByMessage((prev) => ({ ...prev, [userMsg.id]: outgoing }));
+      setStagedAttachments([]);
+      setAttachmentNotice(null);
+    }
     const startsAgentFlow = mode === "agent" && !agentForThread;
     const thinkingId = crypto.randomUUID();
     const nextMessages: ChatMessage[] = [userMsg];
@@ -596,7 +687,13 @@ export function ChatArea({
     setInput("");
     if (startsAgentFlow) setMode(null);
     if (!startsAgentFlow) {
-      streamAssistantReply(tid, thinkingId, trimmed);
+      // An attachment-only send still needs non-empty text upstream, so
+      // describe what was attached rather than posting an empty turn.
+      streamAssistantReply(
+        tid,
+        thinkingId,
+        trimmed || describeAttachments(outgoing),
+      );
     }
     return tid;
   };
@@ -815,7 +912,8 @@ export function ChatArea({
 
   const submit = () => {
     const text = input.trim();
-    if (!text) return;
+    // Attachments with no caption are still a message worth sending.
+    if (!text && stagedAttachments.length === 0) return;
     const tid = sendPrompt(text);
     if (!tid) return;
 
@@ -1285,17 +1383,22 @@ export function ChatArea({
                   add no value here — the agent's context lives in Edit Agent. */}
               {(agentForThread ? [] : messages).map((m) => {
                 if (m.kind === "user-text") {
+                  const sent = attachmentsByMessage[m.id] ?? [];
                   return (
                     <motion.div
                       key={m.id}
                       initial={{ opacity: 0, y: -8 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
-                      className="flex justify-end"
+                      className="flex flex-col items-end"
                     >
-                      <div className="max-w-[80%] rounded-2xl bg-black/[0.04] px-4 py-2.5 text-[14px] leading-[20px] text-black/80">
-                        {m.content}
-                      </div>
+                      {/* An attachment-only message has no bubble to draw. */}
+                      {m.content && (
+                        <div className="max-w-[80%] rounded-2xl bg-black/[0.04] px-4 py-2.5 text-[14px] leading-[20px] text-black/80">
+                          {m.content}
+                        </div>
+                      )}
+                      <MessageAttachments attachments={sent} />
                     </motion.div>
                   );
                 }
@@ -1490,6 +1593,10 @@ export function ChatArea({
           mode={mode}
           onModeChange={setMode}
           chrome={chrome}
+          attachments={stagedAttachments}
+          onAttachFiles={attachFiles}
+          onRemoveAttachment={removeStagedAttachment}
+          attachmentNotice={attachmentNotice}
           mentionables={agents.map((a) => ({
             id: a.id,
             name: a.name,

@@ -1,10 +1,18 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowUp, Check, ChevronDown, Plus, X } from "lucide-react";
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { ArrowUp, Check, ChevronDown, Paperclip, Plus, X } from "lucide-react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type DragEvent,
+  type KeyboardEvent,
+} from "react";
 import type { ChatMode } from "../lib/chat-mode";
+import { ATTACHMENT_ACCEPT, type Attachment } from "../lib/attachments";
 import { LLM_OPTIONS, type LLMOption } from "../lib/llm-models";
+import { AttachmentStagingRow } from "./attachments/AttachmentStagingRow";
 
 export type ModeOption = {
   id: ChatMode;
@@ -72,6 +80,10 @@ export function Composer({
   contextChips,
   chrome,
   mentionables,
+  attachments,
+  onAttachFiles,
+  onRemoveAttachment,
+  attachmentNotice,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -81,6 +93,13 @@ export function Composer({
   onModeChange: (mode: ChatMode | null) => void;
   /** Optional scope chips rendered alongside the mode chip (e.g. "@inbox"). */
   contextChips?: ComposerContextChip[];
+  /** Files staged for the next message. Validation and ownership live with
+   *  the caller; the composer only picks files and renders what's staged. */
+  attachments?: Attachment[];
+  onAttachFiles?: (files: File[]) => void;
+  onRemoveAttachment?: (id: string) => void;
+  /** Why the last pick/drop was partly turned away, if it was. */
+  attachmentNotice?: string | null;
   /** "drawer" restyles the model selector minimally (no pill background)
    *  and right-aligns the bottom row (model + send only). */
   chrome?: "drawer";
@@ -97,6 +116,48 @@ export function Composer({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const plusMenuRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  /** Depth counter, not a boolean: dragenter/dragleave also fire when the
+   *  pointer crosses child elements, which makes a boolean flicker. */
+  const dragDepth = useRef(0);
+  const [dragActive, setDragActive] = useState(false);
+
+  const staged = attachments ?? [];
+  const canAttach = Boolean(onAttachFiles);
+
+  const takeFiles = (files: FileList | null) => {
+    if (!files || files.length === 0 || !onAttachFiles) return;
+    onAttachFiles(Array.from(files));
+  };
+
+  const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {
+    if (!canAttach || !e.dataTransfer.types.includes("Files")) return;
+    e.preventDefault();
+    dragDepth.current += 1;
+    setDragActive(true);
+  };
+
+  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+    if (!canAttach || !e.dataTransfer.types.includes("Files")) return;
+    // Required, or the browser treats the drop as a navigation.
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+  };
+
+  const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
+    if (!canAttach) return;
+    e.preventDefault();
+    dragDepth.current = Math.max(0, dragDepth.current - 1);
+    if (dragDepth.current === 0) setDragActive(false);
+  };
+
+  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+    if (!canAttach) return;
+    e.preventDefault();
+    dragDepth.current = 0;
+    setDragActive(false);
+    takeFiles(e.dataTransfer.files);
+  };
 
   // Auto-grow the textarea up to its max-height. Resets to single line when
   // empty so the composer collapses back to its compact size.
@@ -274,7 +335,51 @@ export function Composer({
             </div>
           </div>
         ))}
-    <div className="relative flex w-full flex-col rounded-3xl border border-[var(--wati-border-default)] bg-white pt-4 shadow-[0_8px_16px_rgba(0,0,0,0.06),0_2px_4px_rgba(0,0,0,0.04)]">
+    <div
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className={`relative flex w-full flex-col rounded-3xl border bg-white pt-4 shadow-[0_8px_16px_rgba(0,0,0,0.06),0_2px_4px_rgba(0,0,0,0.04)] transition-colors ${
+        dragActive
+          ? "border-wati-green bg-wati-green-soft/40"
+          : "border-[var(--wati-border-default)]"
+      }`}
+    >
+      {canAttach && (
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept={ATTACHMENT_ACCEPT}
+          className="hidden"
+          onChange={(e) => {
+            takeFiles(e.target.files);
+            // Reset so picking the same file twice still fires onChange.
+            e.target.value = "";
+          }}
+        />
+      )}
+
+      {/* Drop affordance. pointer-events-none so it never swallows the
+          drop event from the card underneath it. */}
+      <AnimatePresence>
+        {dragActive && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.12 }}
+            className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-3xl border-2 border-dashed border-wati-green bg-wati-green-soft/70"
+          >
+            <span className="flex items-center gap-2 text-[13px] font-medium tracking-[-0.078px] text-wati-green-text">
+              <Paperclip size={14} strokeWidth={2} />
+              Drop to attach
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence>
         {mentionOpen && filteredMentions.length > 0 && (
           <motion.div
@@ -378,6 +483,16 @@ export function Composer({
         )}
       </AnimatePresence>
 
+      <AttachmentStagingRow
+        attachments={staged}
+        onRemove={(id) => onRemoveAttachment?.(id)}
+      />
+      {attachmentNotice && (
+        <p className="px-4 pb-2 text-[11px] tracking-[-0.055px] text-[var(--wati-state-danger-text)]">
+          {attachmentNotice}
+        </p>
+      )}
+
       <div className="flex items-start gap-2 px-4">
         <div className="relative flex-1">
           {/* Highlight overlay — mirrors textarea value, paints `@Mention`
@@ -417,7 +532,9 @@ export function Composer({
       <div className="flex w-full items-center justify-between px-3 pb-3 pt-2">
         {/* Left cluster: drawer mode shows a [+] mode picker (Agent /
             Automation / Insights). Default chrome puts the model dropdown
-            here instead. */}
+            here instead. The paperclip sits alongside either one — modes
+            and attachments are separate concerns. */}
+        <div className="flex items-center gap-1.5">
         {chrome === "drawer" ? (
           <div ref={plusMenuRef} className="relative">
             <button
@@ -473,6 +590,19 @@ export function Composer({
             chrome={chrome}
           />
         )}
+
+        {canAttach && (
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            aria-label="Attach files or photos"
+            title="Attach files or photos"
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-wati-border/80 text-[#0a0a0a] hover:bg-black/[0.04]"
+          >
+            <Paperclip size={15} strokeWidth={2} />
+          </button>
+        )}
+        </div>
 
         {/* Right cluster: in drawer mode the model dropdown moves here
             next to the send button (matches the Gemini reference). */}
