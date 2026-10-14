@@ -241,7 +241,8 @@ export function ChatArea({
   // (the drawer unmounts its whole tree on close).
   useEffect(() => () => releaseAttachments(liveAttachmentsRef.current), []);
   const { mode, setMode, view, setView } = useChatMode();
-  const { pendingAction, clearAction } = useAskWatiDrawer();
+  const { pendingAction, clearAction, pendingPrompt, clearPrompt } =
+    useAskWatiDrawer();
 
   // Drawer 3-dot menu → "Select an agent" opens the existing agent flow.
   // "View older chats" has no history surface yet — consume and no-op.
@@ -697,6 +698,22 @@ export function ChatArea({
     }
     return tid;
   };
+
+  // A prompt asked from the header Wati AI bar lands here once the drawer
+  // has mounted and its threads and messages have loaded from storage —
+  // sending earlier gets overwritten by that load. The ref guards
+  // StrictMode's effect replay.
+  const handledPromptId = useRef<string | null>(null);
+  const storageReady = threadsHydrated && messagesHydratedForMode === demoMode;
+  useEffect(() => {
+    if (!pendingPrompt || chrome !== "drawer" || !storageReady) return;
+    if (handledPromptId.current === pendingPrompt.id) return;
+    handledPromptId.current = pendingPrompt.id;
+    clearPrompt();
+    sendPrompt(pendingPrompt.text);
+    // sendPrompt is re-created every render; only a new prompt should fire.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingPrompt, chrome, storageReady, clearPrompt]);
 
   /** Ladder card pick: lock the card and start the normal creation flow. */
   const resolveWatcherMatch = (

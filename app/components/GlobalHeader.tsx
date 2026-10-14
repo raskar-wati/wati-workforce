@@ -2,28 +2,20 @@
 
 import { Bell, Rocket, User } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { useAskWatiDrawer } from "../lib/ask-wati-drawer";
 import { useNotifications } from "../lib/notifications";
-import { AskWatiIcon } from "./icons/AskWatiIcon";
+import { AskWatiBar } from "./AskWatiBar";
 import { WatiLogo } from "./WatiLogo";
 
 export function GlobalHeader() {
-  const { toggle } = useAskWatiDrawer();
-
   return (
-    <header className="flex h-11 w-full items-center justify-between bg-[var(--wati-surface-subtle)]">
-      <WatiLogo />
+    <header className="relative z-40 flex h-11 w-full items-center justify-between gap-4 bg-[var(--wati-surface-subtle)]">
+      <WatiLogo className="shrink-0" />
 
-      <div className="flex h-full items-center gap-2 pr-3">
-        <button
-          type="button"
-          onClick={toggle}
-          className="inline-flex items-center gap-1 rounded-full border border-wati-green bg-wati-green-soft px-3 py-1 text-xs font-semibold text-wati-green-text transition-colors hover:bg-wati-green-soft-hover"
-        >
-          <AskWatiIcon size={14} />
-          Ask Wati
-        </button>
+      <div className="flex min-w-0 flex-1 justify-center">
+        <AskWatiBar />
+      </div>
 
+      <div className="flex h-full shrink-0 items-center gap-2 pr-3">
         <div className="flex h-full items-center pl-1">
           <NotificationBell />
         </div>

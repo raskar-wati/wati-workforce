@@ -25,6 +25,14 @@ type AskWatiDrawerCtx = {
   pendingAction: AskWatiAction | null;
   requestAction: (action: AskWatiAction) => void;
   clearAction: () => void;
+  /**
+   * A prompt handed in from outside the drawer (the header Wati AI bar).
+   * The drawer's chat consumes it once — keyed by id so a StrictMode
+   * effect replay can't send it twice.
+   */
+  pendingPrompt: { id: string; text: string } | null;
+  askPrompt: (text: string) => void;
+  clearPrompt: () => void;
 };
 
 const Ctx = createContext<AskWatiDrawerCtx | null>(null);
@@ -32,6 +40,7 @@ const Ctx = createContext<AskWatiDrawerCtx | null>(null);
 export function AskWatiDrawerProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<AskWatiAction | null>(null);
+  const [pendingPrompt, setPendingPrompt] = useState<AskWatiDrawerCtx["pendingPrompt"]>(null);
 
   const openDrawer = useCallback(() => setOpen(true), []);
   const closeDrawer = useCallback(() => setOpen(false), []);
@@ -40,6 +49,11 @@ export function AskWatiDrawerProvider({ children }: { children: ReactNode }) {
     setPendingAction(action);
   }, []);
   const clearAction = useCallback(() => setPendingAction(null), []);
+  const askPrompt = useCallback((text: string) => {
+    setPendingPrompt({ id: crypto.randomUUID(), text });
+    setOpen(true);
+  }, []);
+  const clearPrompt = useCallback(() => setPendingPrompt(null), []);
 
   const value = useMemo<AskWatiDrawerCtx>(
     () => ({
@@ -50,8 +64,22 @@ export function AskWatiDrawerProvider({ children }: { children: ReactNode }) {
       pendingAction,
       requestAction,
       clearAction,
+      pendingPrompt,
+      askPrompt,
+      clearPrompt,
     }),
-    [open, openDrawer, closeDrawer, toggle, pendingAction, requestAction, clearAction],
+    [
+      open,
+      openDrawer,
+      closeDrawer,
+      toggle,
+      pendingAction,
+      requestAction,
+      clearAction,
+      pendingPrompt,
+      askPrompt,
+      clearPrompt,
+    ],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
