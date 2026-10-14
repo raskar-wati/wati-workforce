@@ -18,6 +18,13 @@
   --wati-tree-border: #ececf2;
   --wati-chip-bg: #f1f0f1;
 
+  /* Primary-nav tokens (Wati IA reference) */
+  --wati-surface-emphasis: #e7e9e8;
+  --wati-text-title: #1b1d1c;
+  --wati-icons-dark: #353735;
+  --wati-icons-light: #505451;
+  --wati-tooltip-bg: #1b1d1c;
+
   /* Brand green scale — the only green in the app */
   --wati-green: #23a455;
   --wati-green-hover: #1f9349;

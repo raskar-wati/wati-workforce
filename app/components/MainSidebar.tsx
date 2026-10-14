@@ -1,209 +1,327 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  ChevronsLeft,
-  ChevronsRight,
-  Inbox,
-  Megaphone,
-  MousePointer2,
-  PieChart,
-  Plug,
-  Settings,
-  ShoppingCart,
-  Users,
-  Workflow,
-} from "lucide-react";
+import { useAskWatiDrawer } from "../lib/ask-wati-drawer";
+import { navIconMask, type NavIconName } from "./icons/nav-icons";
+
+/**
+ * Primary navigation, borrowed from the Wati IA reference (preset A, "One
+ * Wati AI"). Expanded it's a 210px labelled list whose groups open and close
+ * in place; collapsed it's a 44px icon rail where leaves show a tooltip and
+ * groups show a flyout of their sub-items on hover/focus.
+ */
+
+type NavChild = { id: string; label: string; href?: string; action?: "ask-wati" };
 
 type NavItem = {
+  id: string;
   label: string;
-  icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
+  icon: NavIconName;
   href?: string;
-  children?: { label: string }[];
+  children?: NavChild[];
 };
 
-const nav: NavItem[] = [
-  { label: "Campaigns", icon: Megaphone },
-  { label: "Inbox", icon: Inbox, href: "/preview" },
-  { label: "Contacts", icon: Users, href: "/preview/contacts" },
-  { label: "Automations", icon: Workflow },
-  { label: "Commerce", icon: ShoppingCart, href: "/preview/shopify" },
-  { label: "Ads", icon: MousePointer2 },
-  { label: "Analytics", icon: PieChart, href: "/preview/analytics" },
+const NAV: NavItem[] = [
+  { id: "campaigns", label: "Campaigns", icon: "campaigns" },
+  { id: "inbox", label: "Inbox", icon: "inbox", href: "/preview" },
+  { id: "contacts", label: "Contacts", icon: "contacts", href: "/preview/contacts" },
+  { id: "automations", label: "Automations", icon: "automations" },
+  { id: "commerce", label: "Commerce", icon: "commerce", href: "/preview/shopify" },
+  { id: "ads", label: "Ads", icon: "ads" },
+  { id: "analytics", label: "Analytics", icon: "analytics", href: "/preview/analytics" },
   {
+    id: "channels",
+    label: "Channels",
+    icon: "channels",
+    children: [
+      { id: "channels-manage", label: "Overview" },
+      { id: "growth-widget", label: "Growth Widget" },
+    ],
+  },
+  {
+    id: "wati-ai",
+    label: "Wati AI",
+    icon: "sparkle",
+    children: [
+      { id: "ask-wati", label: "Ask Wati", action: "ask-wati" },
+      { id: "talk-to-wati", label: "On WhatsApp" },
+      { id: "mcp", label: "In AI tools (MCP)" },
+    ],
+  },
+  {
+    id: "connectors",
     label: "Connectors",
-    icon: Plug,
+    icon: "connectors",
     children: [
-      { label: "Integrations" },
-      { label: "API Docs" },
-      { label: "Webhooks" },
+      { id: "integrations", label: "Integrations" },
+      { id: "api", label: "API" },
+      { id: "webhooks", label: "Webhooks" },
     ],
   },
-  {
-    label: "Settings",
-    icon: Settings,
-    children: [
-      { label: "Channels" },
-      { label: "User Management" },
-      { label: "Account Details" },
-    ],
-  },
+  { id: "settings", label: "Settings", icon: "settings" },
 ];
 
 const COLLAPSED_KEY = "wati.sidebar.collapsed";
+/** Below --wati-bp-md the rail is forced collapsed; the user's choice returns when it widens. */
+const NARROW_QUERY = "(max-width: 959px)";
+const FLYOUT_HIDE_DELAY = 140;
+
+type Flyout =
+  | { kind: "tip"; label: string; top: number; left: number }
+  | { kind: "menu"; item: NavItem; top: number; left: number };
 
 export function MainSidebar() {
-  // Lazy initializer reads the persisted value synchronously on mount so the
-  // sidebar doesn't flash from collapsed→expanded on every page navigation
-  // (it remounts inside each page route).
-  const [collapsed, setCollapsed] = useState(true);
-  const [hydrated, setHydrated] = useState(false);
   const pathname = usePathname();
+  const askWati = useAskWatiDrawer();
+  const [userCollapsed, setUserCollapsed] = useState(false);
+  const [narrow, setNarrow] = useState(false);
+  // Width animates only after the persisted state is applied, so a remount on
+  // route change doesn't replay the 210→44 slide.
+  const [ready, setReady] = useState(false);
+  const [open, setOpen] = useState<Record<string, boolean>>({ channels: true });
+  const [flyout, setFlyout] = useState<Flyout | null>(null);
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
+  const collapsed = narrow || userCollapsed;
+
+  useLayoutEffect(() => {
     try {
-      const raw = window.localStorage.getItem(COLLAPSED_KEY);
-      if (raw === "false") setCollapsed(false);
+      setUserCollapsed(window.localStorage.getItem(COLLAPSED_KEY) === "true");
     } catch {}
-    setHydrated(true);
+    const mq = window.matchMedia(NARROW_QUERY);
+    setNarrow(mq.matches);
+    const onChange = () => setNarrow(mq.matches);
+    mq.addEventListener("change", onChange);
+    setReady(true);
+    return () => mq.removeEventListener("change", onChange);
   }, []);
 
   useEffect(() => {
-    if (!hydrated) return;
+    if (!collapsed) setFlyout(null);
+  }, [collapsed]);
+
+  useEffect(() => () => {
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+  }, []);
+
+  const toggleCollapsed = () => {
+    const next = !collapsed;
+    setUserCollapsed(next);
     try {
-      window.localStorage.setItem(COLLAPSED_KEY, String(collapsed));
+      window.localStorage.setItem(COLLAPSED_KEY, String(next));
     } catch {}
-  }, [collapsed, hydrated]);
+  };
+
+  const cancelHide = () => {
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+  };
+  const scheduleHide = () => {
+    cancelHide();
+    hideTimer.current = setTimeout(() => setFlyout(null), FLYOUT_HIDE_DELAY);
+  };
+  const showFlyout = (el: HTMLElement, item: NavItem | { label: string }) => {
+    if (!collapsed) return;
+    cancelHide();
+    const r = el.getBoundingClientRect();
+    const left = r.right + 8;
+    setFlyout(
+      "children" in item && item.children
+        ? { kind: "menu", item, top: r.top, left }
+        : { kind: "tip", label: item.label, top: r.top + r.height / 2, left },
+    );
+  };
+
+  const isActive = (item: NavItem) => !!item.href && pathname === item.href;
+  const isChildActive = (child: NavChild) =>
+    child.action === "ask-wati" ? askWati.open : !!child.href && pathname === child.href;
+  const runChild = (child: NavChild) => {
+    if (child.action === "ask-wati") askWati.openDrawer();
+    setFlyout(null);
+  };
 
   return (
     <aside
       data-collapsed={collapsed}
-      className={`flex h-[calc(100vh-44px)] shrink-0 flex-col gap-px overflow-hidden bg-[var(--wati-surface-subtle)] py-2 transition-[width] duration-200 ease-out ${
-        collapsed ? "w-[60px] px-1" : "w-[210px] px-1"
-      }`}
+      aria-label="Primary"
+      onClick={(e) => {
+        // Empty rail space toggles, as in the reference shell.
+        if (!(e.target as HTMLElement).closest("a, button")) toggleCollapsed();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") setFlyout(null);
+      }}
+      className={`flex h-[calc(100vh-44px)] shrink-0 cursor-pointer flex-col overflow-hidden bg-[var(--wati-surface-subtle)] px-1 pb-3 pt-1 ${
+        ready ? "transition-[width] duration-[160ms] ease-[ease]" : ""
+      } ${collapsed ? "w-[44px]" : "w-[210px]"}`}
     >
-      <div className="flex flex-1 flex-col overflow-y-auto overflow-x-hidden pt-1">
-        <div
-          className={`flex w-full flex-col ${collapsed ? "items-center" : "items-stretch"}`}
-        >
-          {nav.map((item) =>
-            item.children ? (
-              <ExpandableRow
-                key={item.label}
-                item={item}
-                collapsed={collapsed}
-              />
-            ) : (
+      <nav className="flex flex-1 flex-col overflow-y-auto overflow-x-hidden">
+        {NAV.map((item) => {
+          const hasKids = !!item.children?.length;
+          const isOpen = hasKids && !!open[item.id];
+          return (
+            <div key={item.id} className="flex shrink-0 flex-col">
               <NavRow
-                key={item.label}
                 icon={item.icon}
                 label={item.label}
                 href={item.href}
-                active={item.href ? pathname === item.href : false}
+                active={isActive(item)}
                 collapsed={collapsed}
+                expanded={hasKids ? isOpen : undefined}
+                onClick={
+                  hasKids
+                    ? () => {
+                        if (collapsed) return;
+                        setOpen((o) => ({ ...o, [item.id]: !isOpen }));
+                      }
+                    : undefined
+                }
+                onShowFlyout={(el) => showFlyout(el, item)}
+                onHideFlyout={scheduleHide}
               />
-            ),
-          )}
-        </div>
-      </div>
+              {hasKids && isOpen && !collapsed &&
+                item.children!.map((child) => (
+                  <div
+                    key={child.id}
+                    className="ml-[15px] shrink-0 border-l-2 border-[var(--wati-border-default)]"
+                  >
+                    <SubRow
+                      label={child.label}
+                      href={child.href}
+                      active={isChildActive(child)}
+                      onClick={() => runChild(child)}
+                    />
+                  </div>
+                ))}
+            </div>
+          );
+        })}
+      </nav>
 
-      {/* Collapse toggle pinned at the bottom */}
-      <div className="pt-1.5">
-        <button
-          type="button"
-          onClick={() => setCollapsed((c) => !c)}
-          className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium text-[var(--wati-text-body)] hover:bg-[var(--wati-hover-bg)]"
-          aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
-          aria-expanded={!collapsed}
-        >
-          <span className="flex h-5 w-5 shrink-0 items-center justify-center text-[var(--wati-icon-default)]">
-            {collapsed ? (
-              <ChevronsRight size={18} strokeWidth={1.75} />
-            ) : (
-              <ChevronsLeft size={18} strokeWidth={1.75} />
-            )}
-          </span>
-          {!collapsed && <span>Collapse</span>}
-        </button>
-      </div>
+      <NavRow
+        icon="collapse"
+        label="Collapse"
+        collapsed={collapsed}
+        mirrored={collapsed}
+        ariaLabel={collapsed ? "Expand navigation" : "Collapse navigation"}
+        ariaPressed={collapsed}
+        onClick={toggleCollapsed}
+        onShowFlyout={(el) => showFlyout(el, { label: "Expand" })}
+        onHideFlyout={scheduleHide}
+      />
+
+      {flyout && collapsed && (
+        <NavFlyout
+          flyout={flyout}
+          isChildActive={isChildActive}
+          onPick={runChild}
+          onEnter={cancelHide}
+          onLeave={scheduleHide}
+        />
+      )}
     </aside>
   );
 }
 
-function ExpandableRow({
-  item,
-  collapsed,
+function Glyph({
+  icon,
+  tone,
+  size = 20,
+  className = "",
 }: {
-  item: NavItem;
-  collapsed: boolean;
+  icon: NavIconName;
+  tone: "dark" | "light";
+  size?: number;
+  className?: string;
 }) {
-  const [open, setOpen] = useState(true);
+  const mask = navIconMask(icon);
   return (
-    <div>
-      <NavRow
-        icon={item.icon}
-        label={item.label}
-        collapsed={collapsed}
-        onClick={() => setOpen((v) => !v)}
-      />
-      {!collapsed && open && item.children && (
-        <div className="ml-[22px] border-l border-[var(--wati-tree-border)] py-0.5 pl-1.5">
-          {item.children.map((child) => (
-            <button
-              key={child.label}
-              type="button"
-              className="block w-full rounded-md px-4 py-1 text-left text-sm font-medium text-[var(--wati-text-subtitle)] hover:bg-[var(--wati-hover-bg)]"
-            >
-              {child.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+    <span
+      aria-hidden="true"
+      className={`shrink-0 ${className}`}
+      style={{
+        width: size,
+        height: size,
+        background: tone === "dark" ? "var(--wati-icons-dark)" : "var(--wati-icons-light)",
+        mask,
+        WebkitMask: mask,
+      }}
+    />
   );
 }
 
 function NavRow({
-  icon: Icon,
+  icon,
   label,
-  active,
   href,
+  active,
   collapsed,
+  expanded,
+  mirrored,
+  ariaLabel,
+  ariaPressed,
   onClick,
+  onShowFlyout,
+  onHideFlyout,
 }: {
-  icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
+  icon: NavIconName;
   label: string;
-  active?: boolean;
   href?: string;
+  active?: boolean;
   collapsed: boolean;
+  /** Set for group rows: drives the chevron and aria-expanded. */
+  expanded?: boolean;
+  mirrored?: boolean;
+  ariaLabel?: string;
+  ariaPressed?: boolean;
   onClick?: () => void;
+  onShowFlyout: (el: HTMLElement) => void;
+  onHideFlyout: () => void;
 }) {
-  const className = `flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium hover:bg-[var(--wati-hover-bg)] ${
-    active
-      ? "bg-[var(--wati-active-bg)] text-[var(--wati-text-primary)]"
-      : "text-[var(--wati-text-body)]"
-  } ${collapsed ? "justify-center" : ""}`;
+  const className = `mt-2 flex h-10 w-full shrink-0 items-center gap-[11px] whitespace-nowrap rounded-lg px-[9px] text-left text-sm text-[var(--wati-text-body)] hover:bg-[var(--wati-surface-emphasis)] hover:text-[var(--wati-text-title)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--wati-green)] ${
+    active ? "bg-[var(--wati-surface-emphasis)] font-semibold" : "font-medium"
+  } ${collapsed ? "justify-center px-0" : ""}`;
+
+  const flyoutHandlers = {
+    onMouseEnter: (e: React.MouseEvent<HTMLElement>) => onShowFlyout(e.currentTarget),
+    onMouseLeave: onHideFlyout,
+    onFocus: (e: React.FocusEvent<HTMLElement>) => onShowFlyout(e.currentTarget),
+    onBlur: onHideFlyout,
+  };
 
   const body = (
     <>
-      <span
-        className={`flex h-5 w-5 shrink-0 items-center justify-center ${
-          active
-            ? "text-[var(--wati-text-primary)]"
-            : "text-[var(--wati-icon-default)]"
-        }`}
-      >
-        <Icon size={18} strokeWidth={1.75} />
-      </span>
-      {!collapsed && <span className="truncate">{label}</span>}
+      <Glyph icon={icon} tone="dark" className={mirrored ? "-scale-x-100" : ""} />
+      {!collapsed && (
+        <>
+          <span className="min-w-0 flex-1 truncate">{label}</span>
+          {expanded !== undefined && (
+            <Glyph
+              icon="chevronDown"
+              tone="light"
+              size={16}
+              className={`mr-[3px] transition-transform duration-150 ease-[ease] ${
+                expanded ? "rotate-180" : ""
+              }`}
+            />
+          )}
+        </>
+      )}
     </>
   );
 
+  const accessibleName = ariaLabel ?? (collapsed ? label : undefined);
+
   if (href) {
     return (
-      <Link href={href} title={collapsed ? label : undefined} className={className}>
+      <Link
+        href={href}
+        aria-current={active ? "page" : undefined}
+        aria-label={accessibleName}
+        className={className}
+        {...flyoutHandlers}
+      >
         {body}
       </Link>
     );
@@ -213,10 +331,100 @@ function NavRow({
     <button
       type="button"
       onClick={onClick}
-      title={collapsed ? label : undefined}
+      aria-current={active ? "page" : undefined}
+      aria-expanded={collapsed ? undefined : expanded}
+      aria-pressed={ariaPressed}
+      aria-label={accessibleName}
+      className={className}
+      {...flyoutHandlers}
+    >
+      {body}
+    </button>
+  );
+}
+
+function SubRow({
+  label,
+  href,
+  active,
+  onClick,
+}: {
+  label: string;
+  href?: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  const className = `ml-0.5 flex h-10 w-[calc(100%-2px)] items-center whitespace-nowrap rounded-lg pl-6 pr-2.5 text-left text-sm text-[var(--wati-text-body)] hover:bg-[var(--wati-surface-emphasis)] ${
+    active ? "bg-[var(--wati-surface-emphasis)] font-semibold" : "font-medium"
+  }`;
+  const body = <span className="min-w-0 flex-1 truncate">{label}</span>;
+  return href ? (
+    <Link href={href} aria-current={active ? "page" : undefined} className={className}>
+      {body}
+    </Link>
+  ) : (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-current={active ? "page" : undefined}
       className={className}
     >
       {body}
     </button>
+  );
+}
+
+/** Collapsed-rail hover surface: a tooltip for leaves, a sub-item menu for groups. */
+function NavFlyout({
+  flyout,
+  isChildActive,
+  onPick,
+  onEnter,
+  onLeave,
+}: {
+  flyout: Flyout;
+  isChildActive: (child: NavChild) => boolean;
+  onPick: (child: NavChild) => void;
+  onEnter: () => void;
+  onLeave: () => void;
+}) {
+  if (flyout.kind === "tip") {
+    return (
+      <div
+        role="tooltip"
+        className="pointer-events-none fixed z-[200] -translate-y-1/2 whitespace-nowrap rounded-md bg-[var(--wati-tooltip-bg)] px-2.5 py-[7px] text-[13px] font-medium leading-none text-white shadow-md"
+        style={{ top: flyout.top, left: flyout.left }}
+      >
+        {flyout.label}
+      </div>
+    );
+  }
+  return (
+    <div
+      role="menu"
+      aria-label={flyout.item.label}
+      onClick={(e) => e.stopPropagation()}
+      onMouseEnter={onEnter}
+      onMouseLeave={onLeave}
+      className="fixed z-[200] min-w-[184px] cursor-default rounded-lg border border-[var(--wati-border-default)] bg-white p-1.5 shadow-lg"
+      style={{ top: flyout.top, left: flyout.left }}
+    >
+      <div className="px-2 py-1.5 text-xs font-bold uppercase tracking-[1px] text-[var(--wati-text-caption)]">
+        {flyout.item.label}
+      </div>
+      {flyout.item.children!.map((child) => (
+        <button
+          key={child.id}
+          type="button"
+          role="menuitem"
+          onClick={() => onPick(child)}
+          className={`flex h-8 w-full items-center rounded px-2 text-left text-[13px] text-[var(--wati-text-subtitle)] hover:bg-[var(--wati-surface-emphasis)] ${
+            isChildActive(child) ? "font-semibold text-[var(--wati-text-title)]" : ""
+          }`}
+        >
+          {child.label}
+        </button>
+      ))}
+    </div>
   );
 }
