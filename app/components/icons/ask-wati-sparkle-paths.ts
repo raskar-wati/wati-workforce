@@ -1,7 +1,7 @@
 /**
- * Copilot sparkle geometry, on a 16×16 viewBox — shared by the static mark
- * (CopilotIcon, variant="solid") and the animated splash
- * (CopilotSparkleBloom) so the two never drift apart.
+ * Ask Wati sparkle geometry, on a 16×16 viewBox — shared by the static mark
+ * (AskWatiIcon, variant="solid") and the animated splash
+ * (AskWatiSparkleBloom) so the two never drift apart.
  *
  * The mark is two sparkles: a large four-point star, and a small one at the
  * upper right that sits on an off-white underlay so it reads against the

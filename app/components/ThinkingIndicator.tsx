@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { AnimatePresence, motion } from "motion/react"
-import { CopilotIcon } from "./icons/CopilotIcon"
+import { AskWatiIcon } from "./icons/AskWatiIcon"
 
 type EmotionalState = "focused" | "curious" | "working" | "playful" | "patient"
 
@@ -194,7 +194,7 @@ export function ThinkingIndicator({
     )
   }
 
-  return <CopilotIcon variant="solid" size={40} />
+  return <AskWatiIcon variant="solid" size={40} />
 }
 
 function Eye({ delay = 0, size = 4 }: { delay?: number; size?: number }) {

@@ -78,14 +78,14 @@ a:focus-visible {
   border-radius: 6px;
 }
 
-/* ─── Copilot sparkle bloom ───────────────────────────────────────────
-   One-shot splash played when the Copilot drawer is opened. Every
+/* ─── Ask Wati sparkle bloom ───────────────────────────────────────────
+   One-shot splash played when the Ask Wati drawer is opened. Every
    animation uses fill-mode `both` and no iteration count, so mounting
    plays it exactly once and it holds its resting frame afterwards —
    the sparkle settles into the static mark rather than fading out.
    Timings are the design source (bloom-sparkle.html) unchanged. */
 
-.copilot-bloom {
+.ask-wati-bloom {
   position: relative;
   display: grid;
   place-items: center;
@@ -93,14 +93,14 @@ a:focus-visible {
 
 /* Effect layers are decorative and sized relative to the sparkle, so
    they can overflow their box without pushing layout or catching clicks. */
-.copilot-bloom__glow,
-.copilot-bloom__ring {
+.ask-wati-bloom__glow,
+.ask-wati-bloom__ring {
   position: absolute;
   border-radius: 50%;
   pointer-events: none;
 }
 
-.copilot-bloom__glow {
+.ask-wati-bloom__glow {
   width: 130%;
   height: 130%;
   background: radial-gradient(
@@ -108,34 +108,34 @@ a:focus-visible {
     rgba(34, 163, 84, 0.5),
     rgba(34, 163, 84, 0) 68%
   );
-  animation: copilot-bloom-glow 1100ms ease-out both;
+  animation: ask-wati-bloom-glow 1100ms ease-out both;
 }
 
-.copilot-bloom__ring {
+.ask-wati-bloom__ring {
   width: 117%;
   height: 117%;
   border: 1px solid rgba(0, 232, 135, 0.55);
-  animation: copilot-bloom-ring 1200ms 120ms ease-out both;
+  animation: ask-wati-bloom-ring 1200ms 120ms ease-out both;
 }
 
-.copilot-bloom__mark {
+.ask-wati-bloom__mark {
   position: relative;
   overflow: visible;
 }
 
-.copilot-bloom__big {
+.ask-wati-bloom__big {
   transform-box: view-box;
   transform-origin: 6.4px 8px;
-  animation: copilot-bloom-big 880ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
+  animation: ask-wati-bloom-big 880ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
 }
 
-.copilot-bloom__small {
+.ask-wati-bloom__small {
   transform-box: view-box;
   transform-origin: 11.8px 8px;
-  animation: copilot-bloom-small 880ms 200ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
+  animation: ask-wati-bloom-small 880ms 200ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
 }
 
-@keyframes copilot-bloom-big {
+@keyframes ask-wati-bloom-big {
   0% {
     opacity: 0;
     transform: scale(0.15) rotate(-120deg);
@@ -150,7 +150,7 @@ a:focus-visible {
   }
 }
 
-@keyframes copilot-bloom-small {
+@keyframes ask-wati-bloom-small {
   0%,
   22% {
     opacity: 0;
@@ -166,7 +166,7 @@ a:focus-visible {
   }
 }
 
-@keyframes copilot-bloom-glow {
+@keyframes ask-wati-bloom-glow {
   0% {
     opacity: 0;
     transform: scale(0.25);
@@ -180,7 +180,7 @@ a:focus-visible {
   }
 }
 
-@keyframes copilot-bloom-ring {
+@keyframes ask-wati-bloom-ring {
   0% {
     opacity: 0;
     transform: scale(0.3);
@@ -195,12 +195,12 @@ a:focus-visible {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .copilot-bloom__glow,
-  .copilot-bloom__ring {
+  .ask-wati-bloom__glow,
+  .ask-wati-bloom__ring {
     display: none;
   }
-  .copilot-bloom__big,
-  .copilot-bloom__small {
+  .ask-wati-bloom__big,
+  .ask-wati-bloom__small {
     animation: none;
   }
 }

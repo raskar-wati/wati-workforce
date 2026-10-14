@@ -6,14 +6,14 @@ import {
   SPARKLE_SMALL_PATH,
   SPARKLE_SMALL_UNDERLAY_PATH,
   SPARKLE_UNDERLAY_FILL,
-} from "./copilot-sparkle-paths";
+} from "./ask-wati-sparkle-paths";
 
-type CopilotIconProps = {
+type AskWatiIconProps = {
   size?: number;
   className?: string;
   /**
    * "gradient" (default) — the brand-mark treatment, used wherever the
-   * "Copilot" wordmark is labeled (headers, panel titles).
+   * "Ask Wati" wordmark is labeled (headers, panel titles).
    * "solid" — flat green + off-white accent, from the standalone mark
    * asset (Co-pilot.svg). Use for small/isolated placements, e.g. in
    * place of a loading spinner.
@@ -22,14 +22,14 @@ type CopilotIconProps = {
 };
 
 /**
- * The Copilot sparkle mark — from the design team's button/mark assets
- * (Copilot.svg, Co-pilot.svg). Use this wherever "Copilot" is signified.
+ * The Ask Wati sparkle mark — from the design team's button/mark assets
+ * (Copilot.svg, Co-pilot.svg). Use this wherever "Ask Wati" is signified.
  */
-export function CopilotIcon({ size = 16, className, variant = "gradient" }: CopilotIconProps) {
+export function AskWatiIcon({ size = 16, className, variant = "gradient" }: AskWatiIconProps) {
   const uid = useId();
-  const gradA = `copilot-icon-a-${uid}`;
-  const gradB = `copilot-icon-b-${uid}`;
-  const gradC = `copilot-icon-c-${uid}`;
+  const gradA = `ask-wati-icon-a-${uid}`;
+  const gradB = `ask-wati-icon-b-${uid}`;
+  const gradC = `ask-wati-icon-c-${uid}`;
 
   if (variant === "solid") {
     return (

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useState } from "react";
-import { CopilotIcon } from "./icons/CopilotIcon";
+import { AskWatiIcon } from "./icons/AskWatiIcon";
 import {
   SPARKLE_BIG_PATH,
   SPARKLE_GRADIENT_FROM,
@@ -9,19 +9,19 @@ import {
   SPARKLE_SMALL_PATH,
   SPARKLE_SMALL_UNDERLAY_PATH,
   SPARKLE_UNDERLAY_FILL,
-} from "./icons/copilot-sparkle-paths";
+} from "./icons/ask-wati-sparkle-paths";
 
 /**
- * The Copilot sparkle as a one-shot splash: the large star swings in and
+ * The Ask Wati sparkle as a one-shot splash: the large star swings in and
  * overshoots, the small one pops after it, and a glow + ring wash outward
- * and dissipate. Animation classes live in globals.css (`.copilot-bloom*`)
+ * and dissipate. Animation classes live in globals.css (`.ask-wati-bloom*`)
  * with fill-mode `both`, so this plays once on mount and holds the resting
  * sparkle — there is no loop and nothing to clean up.
  *
  * Pass `play={false}` to render the plain resting mark instead, for repeat
  * visits within a session where the splash has already been spent.
  */
-export function CopilotSparkleBloom({
+export function AskWatiSparkleBloom({
   size = 40,
   play = true,
   onPlayed,
@@ -33,7 +33,7 @@ export function CopilotSparkleBloom({
   onPlayed?: () => void;
 }) {
   const uid = useId();
-  const gradientId = `copilot-bloom-grad-${uid}`;
+  const gradientId = `ask-wati-bloom-grad-${uid}`;
   // Captured at mount so a re-render mid-flight (a keystroke in the
   // composer, say) can't swap the animating mark out from under itself.
   const [animate] = useState(play);
@@ -44,14 +44,14 @@ export function CopilotSparkleBloom({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [animate]);
 
-  if (!animate) return <CopilotIcon variant="solid" size={size} />;
+  if (!animate) return <AskWatiIcon variant="solid" size={size} />;
 
   return (
-    <span className="copilot-bloom" style={{ width: size, height: size }}>
-      <span className="copilot-bloom__glow" aria-hidden />
-      <span className="copilot-bloom__ring" aria-hidden />
+    <span className="ask-wati-bloom" style={{ width: size, height: size }}>
+      <span className="ask-wati-bloom__glow" aria-hidden />
+      <span className="ask-wati-bloom__ring" aria-hidden />
       <svg
-        className="copilot-bloom__mark"
+        className="ask-wati-bloom__mark"
         width={size}
         height={size}
         viewBox="0 0 16 16"
@@ -73,11 +73,11 @@ export function CopilotSparkleBloom({
           </linearGradient>
         </defs>
         <path
-          className="copilot-bloom__big"
+          className="ask-wati-bloom__big"
           d={SPARKLE_BIG_PATH}
           fill={`url(#${gradientId})`}
         />
-        <g className="copilot-bloom__small">
+        <g className="ask-wati-bloom__small">
           <path d={SPARKLE_SMALL_UNDERLAY_PATH} fill={SPARKLE_UNDERLAY_FILL} />
           <path d={SPARKLE_SMALL_PATH} fill={`url(#${gradientId})`} />
         </g>

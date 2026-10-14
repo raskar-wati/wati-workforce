@@ -62,7 +62,7 @@ import { useAskWatiDrawer } from "../lib/ask-wati-drawer";
 import { ApprovalQueue } from "./handoffs/ApprovalQueue";
 import { HandoffInbox } from "./handoffs/HandoffInbox";
 import { ModePillRow } from "./ModePillRow";
-import { CopilotSparkleBloom } from "./CopilotSparkleBloom";
+import { AskWatiSparkleBloom } from "./AskWatiSparkleBloom";
 import { ThinkingIndicator } from "./ThinkingIndicator";
 import { ReasoningTrace } from "./ReasoningTrace";
 import { WatiWelcome } from "./WatiWelcome";
@@ -306,12 +306,12 @@ export function ChatArea({
     isAnalyticsThread;
 
   /**
-   * The Copilot splash is spent once per drawer open. The drawer unmounts
+   * The Ask Wati splash is spent once per drawer open. The drawer unmounts
    * this whole tree when it closes, so a plain ref resets on the next
    * open — while returning to the hero mid-session renders the resting
    * mark instead of blooming again.
    */
-  const copilotSplashSpent = useRef(false);
+  const askWatiSplashSpent = useRef(false);
 
   const fireCta = (handoffId: string, cta: HandoffCta) => {
     if (!agentForThread) return;
@@ -1132,10 +1132,10 @@ export function ChatArea({
               />
             ) : chrome === "drawer" ? (
               <div className="flex flex-col items-start gap-4 px-1">
-                <CopilotSparkleBloom
-                  play={!copilotSplashSpent.current}
+                <AskWatiSparkleBloom
+                  play={!askWatiSplashSpent.current}
                   onPlayed={() => {
-                    copilotSplashSpent.current = true;
+                    askWatiSplashSpent.current = true;
                   }}
                 />
                 <h2 className="text-[20px] font-semibold tracking-[-0.4px] text-[#0a0a0a]">
