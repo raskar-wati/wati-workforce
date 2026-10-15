@@ -29,10 +29,26 @@ import { IslandNoticeRow } from "./island/IslandNotice";
 /** The bar offers at most this many of the page's starter asks. */
 const SUGGESTION_LIMIT = 3;
 
+/** Astra (Instagram DM automation) — offered on every page after the page's asks. */
+const ASTRA_CHIP = {
+  label: "Automate Instagram DMs with Astra",
+  icon: "/astra-mark.svg" as string | null,
+};
+
 
 const BAR_HEIGHT = 34;
 
-const GROW: Transition = { type: "spring", stiffness: 420, damping: 38, mass: 0.8 };
+/**
+ * Dynamic-island motion: opening, the card outgrows the bar's slot a touch
+ * to the left, right and down (never up — the top edge stays pinned) with a slight springy overshoot; closing, it settles back
+ * into the pill without one. Inner padding stays the same, so the content
+ * moves with the edge rather than leaving a gap.
+ */
+const OPEN: Transition = { type: "spring", stiffness: 380, damping: 28, mass: 0.9 };
+const CLOSE: Transition = { type: "spring", stiffness: 480, damping: 40, mass: 0.8 };
+const OUTGROW_X = 8;
+const RADIUS_REST = 17;
+const RADIUS_OPEN = 20;
 
 /** Rows listed before folding the rest behind "N more". */
 const NOTICE_LIMIT = 3;
@@ -160,8 +176,15 @@ export function AskWatiBar() {
     <div ref={rootRef} className="relative w-full" style={{ height: BAR_HEIGHT }}>
       <motion.div
         initial={false}
-        animate={{ height: expanded ? "auto" : BAR_HEIGHT }}
-        transition={GROW}
+        animate={{
+          height: expanded ? "auto" : BAR_HEIGHT,
+          left: expanded ? -OUTGROW_X : 0,
+          right: expanded ? -OUTGROW_X : 0,
+          top: 0,
+          borderRadius: expanded ? RADIUS_OPEN : RADIUS_REST,
+        }}
+        style={{ borderRadius: RADIUS_REST }}
+        transition={expanded ? OPEN : CLOSE}
         onKeyDown={(e) => {
           if (e.key === "Escape") collapse();
         }}
@@ -169,7 +192,7 @@ export function AskWatiBar() {
         onClick={(e) => {
           if (!(e.target as HTMLElement).closest("button")) inputRef.current?.focus();
         }}
-        className={`absolute inset-x-0 top-0 z-50 cursor-text overflow-hidden rounded-[17px] bg-white transition-shadow duration-300 ${
+        className={`absolute z-50 cursor-text overflow-hidden bg-white transition-shadow duration-300 ${
           expanded
             ? "shadow-[0_12px_32px_rgba(27,29,28,0.12),0_2px_6px_rgba(27,29,28,0.06)]"
             : "shadow-[0_1px_2px_rgba(27,29,28,0.04)]"
@@ -279,9 +302,6 @@ export function AskWatiBar() {
 
         {!inlineHost && listedNotices.length > 0 && (
           <div className="relative flex flex-col px-1.5 pt-1">
-            <span className="px-2.5 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--wati-text-body)] opacity-70">
-              Needs you
-            </span>
             {visibleNotices.map((n) => (
               <IslandNoticeRow key={n.id} notice={n} onAct={collapse} />
             ))}
@@ -307,7 +327,10 @@ export function AskWatiBar() {
           }}
           className="relative flex flex-wrap gap-2 px-3 pb-3 pt-1.5"
         >
-          {suggestions.map((s) => (
+          {[
+            ...suggestions.map((label) => ({ label, icon: null as string | null })),
+            ASTRA_CHIP,
+          ].map(({ label: s, icon }) => (
             <motion.button
               key={s}
               type="button"
@@ -318,8 +341,18 @@ export function AskWatiBar() {
                 closed: { opacity: 0, y: -4, filter: "blur(2px)" },
               }}
               transition={{ duration: 0.22, ease: [0.3, 0, 0, 1] }}
-              className="h-8 rounded-full border border-[var(--wati-border-default)] bg-white px-4 text-[13px] font-medium text-[var(--wati-text-body)] transition-colors hover:border-[var(--wati-border-strong)] hover:bg-[var(--wati-surface-subtle)]"
+              className={`flex h-8 items-center gap-1.5 rounded-full border px-4 text-[13px] font-medium text-[var(--wati-text-body)] transition-[colors,box-shadow] ${
+                icon
+                  ? // Astra: a gradient border in the brand blues (white fill on
+                    // the padding box, gradient on the border box) and a soft glow.
+                    "border-transparent shadow-[0_0_0_3px_rgba(54,107,255,0.08)] [background:linear-gradient(white,white)_padding-box,linear-gradient(120deg,#5BAEF7,#366BFF_50%,#0034C5)_border-box] hover:shadow-[0_0_0_3px_rgba(54,107,255,0.16)]"
+                  : "border-[var(--wati-border-default)] bg-white hover:border-[var(--wati-border-strong)] hover:bg-[var(--wati-surface-subtle)]"
+              }`}
             >
+              {icon && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={icon} alt="" aria-hidden="true" className="h-4 w-4 shrink-0" />
+              )}
               {s}
             </motion.button>
           ))}

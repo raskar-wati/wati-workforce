@@ -11,9 +11,9 @@ import { CardCtaChip, WorkforceCard, type ObjectState } from "../cards/Workforce
 /**
  * One island notice, in the two places it can show: a compact row in the
  * open island, and a card in the Ask Wati page's chat. Both share the same
- * actions — inline Approve/Reject for blocking notices, Review/Dismiss for
- * info ones — and, once a blocking notice is decided anywhere, the outcome
- * in place of the buttons.
+ * actions — one CTA (approve for blocking notices, Review for info ones)
+ * plus a × to dismiss — and, once a blocking notice is decided anywhere, the
+ * outcome in place of the buttons.
  */
 
 const OUTCOME_LABEL: Record<NoticeOutcome, string> = {
@@ -54,9 +54,8 @@ export function IslandNoticeRow({
         </span>
         <span className="truncate text-[12px] text-[var(--wati-text-body)] opacity-80">
           {notice.body}
-          {notice.priority === "blocking" && !notice.resolved && (
-            <> · waiting {formatAge(notice.at)}</>
-          )}
+          {notice.body && " · "}
+          {formatStamp(notice.at)}
         </span>
       </button>
       <NoticeActions notice={notice} onAct={onAct} />
@@ -106,11 +105,7 @@ export function IslandNoticeCard({
         )
       }
       title={notice.title}
-      subtitle={
-        blocking && !notice.resolved
-          ? `${notice.body ?? ""} · waiting ${formatAge(notice.at)}`
-          : notice.body
-      }
+      subtitle={[notice.body, formatStamp(notice.at)].filter(Boolean).join(" · ")}
       state={notice.resolved ? OUTCOME_STATE[notice.resolved] : blocking ? "draft" : undefined}
       stateLabel={notice.resolved ? OUTCOME_LABEL[notice.resolved] : undefined}
       actions={<NoticeActions notice={notice} onDismiss={onClose} showOutcome={false} />}
@@ -150,34 +145,22 @@ function NoticeActions({
     );
   }
 
-  if (notice.priority === "blocking") {
-    return (
-      <div className="flex shrink-0 items-center gap-2">
-        {notice.reviewToDecide ? (
-          <CardCtaChip primary onClick={review}>
-            Review
-          </CardCtaChip>
-        ) : (
-          <>
-            <button
-              type="button"
-              onClick={() => decideNotice(notice.id, "reject")}
-              className="px-1 text-[13px] tracking-[-0.078px] text-black/60 hover:text-[#0a0a0a]"
-            >
-              Reject
-            </button>
-            <CardCtaChip primary onClick={() => decideNotice(notice.id, "approve")}>
-              {notice.approveLabel ?? "Approve"}
-            </CardCtaChip>
-          </>
-        )}
-      </div>
+  // One CTA per notice: the approval itself for blocking ones (or Review
+  // when it needs a cost check first), Review for updates — plus a × to
+  // hide it. Hiding an approval doesn't reject the draft; it stays in the
+  // agent thread and the approvals queue, where Reject lives.
+  const primaryAction =
+    notice.priority === "blocking" && !notice.reviewToDecide ? (
+      <CardCtaChip onClick={() => decideNotice(notice.id, "approve")}>
+        {notice.approveLabel ?? "Approve"}
+      </CardCtaChip>
+    ) : (
+      <CardCtaChip onClick={review}>Review</CardCtaChip>
     );
-  }
 
   return (
     <div className="flex shrink-0 items-center gap-1">
-      <CardCtaChip onClick={review}>Review</CardCtaChip>
+      {primaryAction}
       <DismissButton
         onClick={() => {
           dismiss(notice.id);
@@ -201,11 +184,13 @@ function DismissButton({ onClick }: { onClick: () => void }) {
   );
 }
 
-function formatAge(iso: string): string {
-  const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60_000);
-  if (mins < 1) return "<1m";
-  if (mins < 60) return `${mins}m`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h`;
-  return `${Math.floor(hours / 24)}d`;
+/** When the notice arrived: "10:42 AM" today, "Yesterday, 10:42 AM", else "Oct 14, 10:42 AM". */
+function formatStamp(iso: string): string {
+  const d = new Date(iso);
+  const time = d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  const startOfDay = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const days = Math.round((startOfDay(new Date()) - startOfDay(d)) / 86_400_000);
+  if (days === 0) return time;
+  if (days === 1) return `Yesterday, ${time}`;
+  return `${d.toLocaleDateString(undefined, { month: "short", day: "numeric" })}, ${time}`;
 }

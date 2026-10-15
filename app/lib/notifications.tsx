@@ -18,8 +18,9 @@ import {
  *
  * Every notification lands in the bell's history. Ones pushed with
  * `island: true` also surface on the island until they're done with:
- * - "blocking" notices (someone must decide) stay until resolved — seeing or
- *   dismissing them doesn't clear them.
+ * - "blocking" notices (someone must decide) stay until resolved or
+ *   dismissed — seeing them doesn't clear them, and dismissing only hides the
+ *   notice, it doesn't decide anything.
  * - "info" notices stay until seen (read) or dismissed.
  *
  * The island never knows which module a notice came from. A module registers
@@ -91,8 +92,9 @@ const STORAGE_KEY = "wati-notifications";
 /** Is this notice still asking for the island's attention? */
 export function isNoticeLive(n: AppNotification): boolean {
   if (!n.island || n.resolved) return false;
+  if (n.dismissed) return false;
   if (n.priority === "blocking") return true;
-  return !n.read && !n.dismissed;
+  return !n.read;
 }
 
 export function NotificationsProvider({ children }: { children: ReactNode }) {
