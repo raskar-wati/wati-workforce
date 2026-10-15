@@ -3,7 +3,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useAskWatiDrawer } from "../lib/ask-wati-drawer";
+import { useShellLayout } from "../lib/shell-layout";
+import { ASK_WATI_PAGE } from "./AskWatiDrawer";
 import { navIconMask, type NavIconName } from "./icons/nav-icons";
 
 /**
@@ -13,7 +14,7 @@ import { navIconMask, type NavIconName } from "./icons/nav-icons";
  * groups show a flyout of their sub-items on hover/focus.
  */
 
-type NavChild = { id: string; label: string; href?: string; action?: "ask-wati" };
+type NavChild = { id: string; label: string; href?: string };
 
 type NavItem = {
   id: string;
@@ -45,7 +46,7 @@ const NAV: NavItem[] = [
     label: "Wati AI",
     icon: "sparkle",
     children: [
-      { id: "ask-wati", label: "Ask Wati", action: "ask-wati" },
+      { id: "ask-wati", label: "Ask Wati", href: ASK_WATI_PAGE },
       { id: "talk-to-wati", label: "On WhatsApp" },
       { id: "mcp", label: "In AI tools (MCP)" },
     ],
@@ -67,6 +68,9 @@ const COLLAPSED_KEY = "wati.sidebar.collapsed";
 /** Below --wati-bp-md the rail is forced collapsed; the user's choice returns when it widens. */
 const NARROW_QUERY = "(max-width: 959px)";
 const FLYOUT_HIDE_DELAY = 140;
+/** Keep in step with the aside's w-[210px] / w-[44px] (Tailwind needs literal classes). */
+const NAV_WIDTH = 210;
+const RAIL_WIDTH = 44;
 
 type Flyout =
   | { kind: "tip"; label: string; top: number; left: number }
@@ -74,13 +78,20 @@ type Flyout =
 
 export function MainSidebar() {
   const pathname = usePathname();
-  const askWati = useAskWatiDrawer();
   const [userCollapsed, setUserCollapsed] = useState(false);
   const [narrow, setNarrow] = useState(false);
   // Width animates only after the persisted state is applied, so a remount on
   // route change doesn't replay the 210→44 slide.
   const [ready, setReady] = useState(false);
-  const [open, setOpen] = useState<Record<string, boolean>>({ channels: true });
+  // Channels starts open (as in the reference); so does whichever group
+  // holds the current page.
+  const [open, setOpen] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = { channels: true };
+    for (const item of NAV) {
+      if (item.children?.some((c) => c.href === pathname)) initial[item.id] = true;
+    }
+    return initial;
+  });
   const [flyout, setFlyout] = useState<Flyout | null>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -97,6 +108,13 @@ export function MainSidebar() {
     setReady(true);
     return () => mq.removeEventListener("change", onChange);
   }, []);
+
+  // Report the rail's width so the header can place the Wati AI bar over
+  // the content area.
+  const { setNavWidth } = useShellLayout();
+  useLayoutEffect(() => {
+    setNavWidth(collapsed ? RAIL_WIDTH : NAV_WIDTH);
+  }, [collapsed, setNavWidth]);
 
   useEffect(() => {
     if (!collapsed) setFlyout(null);
@@ -134,12 +152,7 @@ export function MainSidebar() {
   };
 
   const isActive = (item: NavItem) => !!item.href && pathname === item.href;
-  const isChildActive = (child: NavChild) =>
-    child.action === "ask-wati" ? askWati.open : !!child.href && pathname === child.href;
-  const runChild = (child: NavChild) => {
-    if (child.action === "ask-wati") askWati.openDrawer();
-    setFlyout(null);
-  };
+  const isChildActive = (child: NavChild) => !!child.href && pathname === child.href;
 
   return (
     <aside
@@ -190,7 +203,6 @@ export function MainSidebar() {
                       label={child.label}
                       href={child.href}
                       active={isChildActive(child)}
-                      onClick={() => runChild(child)}
                     />
                   </div>
                 ))}
@@ -215,7 +227,7 @@ export function MainSidebar() {
         <NavFlyout
           flyout={flyout}
           isChildActive={isChildActive}
-          onPick={runChild}
+          onPick={() => setFlyout(null)}
           onEnter={cancelHide}
           onLeave={scheduleHide}
         />
@@ -347,12 +359,10 @@ function SubRow({
   label,
   href,
   active,
-  onClick,
 }: {
   label: string;
   href?: string;
   active: boolean;
-  onClick: () => void;
 }) {
   const className = `ml-0.5 flex h-10 w-[calc(100%-2px)] items-center whitespace-nowrap rounded-lg pl-6 pr-2.5 text-left text-sm text-[var(--wati-text-body)] hover:bg-[var(--wati-surface-emphasis)] ${
     active ? "bg-[var(--wati-surface-emphasis)] font-semibold" : "font-medium"
@@ -363,12 +373,7 @@ function SubRow({
       {body}
     </Link>
   ) : (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-current={active ? "page" : undefined}
-      className={className}
-    >
+    <button type="button" className={className}>
       {body}
     </button>
   );
@@ -384,7 +389,7 @@ function NavFlyout({
 }: {
   flyout: Flyout;
   isChildActive: (child: NavChild) => boolean;
-  onPick: (child: NavChild) => void;
+  onPick: () => void;
   onEnter: () => void;
   onLeave: () => void;
 }) {
@@ -412,19 +417,27 @@ function NavFlyout({
       <div className="px-2 py-1.5 text-xs font-bold uppercase tracking-[1px] text-[var(--wati-text-caption)]">
         {flyout.item.label}
       </div>
-      {flyout.item.children!.map((child) => (
-        <button
-          key={child.id}
-          type="button"
-          role="menuitem"
-          onClick={() => onPick(child)}
-          className={`flex h-8 w-full items-center rounded px-2 text-left text-[13px] text-[var(--wati-text-subtitle)] hover:bg-[var(--wati-surface-emphasis)] ${
-            isChildActive(child) ? "font-semibold text-[var(--wati-text-title)]" : ""
-          }`}
-        >
-          {child.label}
-        </button>
-      ))}
+      {flyout.item.children!.map((child) => {
+        const className = `flex h-8 w-full items-center rounded px-2 text-left text-[13px] text-[var(--wati-text-subtitle)] hover:bg-[var(--wati-surface-emphasis)] ${
+          isChildActive(child) ? "font-semibold text-[var(--wati-text-title)]" : ""
+        }`;
+        return child.href ? (
+          <Link
+            key={child.id}
+            href={child.href}
+            role="menuitem"
+            aria-current={isChildActive(child) ? "page" : undefined}
+            onClick={onPick}
+            className={className}
+          >
+            {child.label}
+          </Link>
+        ) : (
+          <button key={child.id} type="button" role="menuitem" onClick={onPick} className={className}>
+            {child.label}
+          </button>
+        );
+      })}
     </div>
   );
 }

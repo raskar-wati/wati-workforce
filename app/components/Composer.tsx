@@ -1,17 +1,17 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowUp, Check, ChevronDown, Paperclip, Plus, X } from "lucide-react";
+import { ArrowUp, Check, ChevronDown, CircleAlert, Paperclip, Plus, X } from "lucide-react";
 import {
   useEffect,
   useRef,
   useState,
-  type DragEvent,
   type KeyboardEvent,
 } from "react";
 import type { ChatMode } from "../lib/chat-mode";
 import { ATTACHMENT_ACCEPT, type Attachment } from "../lib/attachments";
 import { LLM_OPTIONS, type LLMOption } from "../lib/llm-models";
+import { useBarAnchorRef } from "../lib/shell-layout";
 import { AttachmentStagingRow } from "./attachments/AttachmentStagingRow";
 
 export type ModeOption = {
@@ -19,6 +19,8 @@ export type ModeOption = {
   chipLabel: string;
   title: string;
   description: string;
+  /** Kept for chats already in this mode, but not offered in the pickers. */
+  hidden?: boolean;
 };
 
 export const MODE_OPTIONS: ModeOption[] = [
@@ -33,6 +35,7 @@ export const MODE_OPTIONS: ModeOption[] = [
     chipLabel: "Automation",
     title: "Build an automation",
     description: "Run actions on triggers or a schedule.",
+    hidden: true,
   },
   {
     id: "insights",
@@ -41,6 +44,9 @@ export const MODE_OPTIONS: ModeOption[] = [
     description: "Surface trends and answers from your data.",
   },
 ];
+
+/** The modes offered in the + menu and the / menu. */
+const PICKABLE_MODES = MODE_OPTIONS.filter((o) => !o.hidden);
 
 const HERO_PLACEHOLDERS = [
   "Create an agent",
@@ -84,6 +90,7 @@ export function Composer({
   onAttachFiles,
   onRemoveAttachment,
   attachmentNotice,
+  onDismissAttachmentNotice,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -100,6 +107,7 @@ export function Composer({
   onRemoveAttachment?: (id: string) => void;
   /** Why the last pick/drop was partly turned away, if it was. */
   attachmentNotice?: string | null;
+  onDismissAttachmentNotice?: () => void;
   /** "drawer" restyles the model selector minimally (no pill background)
    *  and right-aligns the bottom row (model + send only). */
   chrome?: "drawer";
@@ -108,6 +116,8 @@ export function Composer({
   mentionables?: ComposerMentionable[];
 }) {
   const [selectedModel, setSelectedModel] = useState<LLMOption>(LLM_OPTIONS[0]);
+  // On the full Ask Wati page the header bar lines up with this card.
+  const barAnchorRef = useBarAnchorRef();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const [slashIndex, setSlashIndex] = useState(0);
@@ -117,10 +127,6 @@ export function Composer({
   const plusMenuRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  /** Depth counter, not a boolean: dragenter/dragleave also fire when the
-   *  pointer crosses child elements, which makes a boolean flicker. */
-  const dragDepth = useRef(0);
-  const [dragActive, setDragActive] = useState(false);
 
   const staged = attachments ?? [];
   const canAttach = Boolean(onAttachFiles);
@@ -128,35 +134,6 @@ export function Composer({
   const takeFiles = (files: FileList | null) => {
     if (!files || files.length === 0 || !onAttachFiles) return;
     onAttachFiles(Array.from(files));
-  };
-
-  const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {
-    if (!canAttach || !e.dataTransfer.types.includes("Files")) return;
-    e.preventDefault();
-    dragDepth.current += 1;
-    setDragActive(true);
-  };
-
-  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
-    if (!canAttach || !e.dataTransfer.types.includes("Files")) return;
-    // Required, or the browser treats the drop as a navigation.
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "copy";
-  };
-
-  const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
-    if (!canAttach) return;
-    e.preventDefault();
-    dragDepth.current = Math.max(0, dragDepth.current - 1);
-    if (dragDepth.current === 0) setDragActive(false);
-  };
-
-  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
-    if (!canAttach) return;
-    e.preventDefault();
-    dragDepth.current = 0;
-    setDragActive(false);
-    takeFiles(e.dataTransfer.files);
   };
 
   // Auto-grow the textarea up to its max-height. Resets to single line when
@@ -186,7 +163,7 @@ export function Composer({
   const slashOpen = !mode && value.startsWith("/");
   const slashQuery = slashOpen ? value.slice(1).trim().toLowerCase() : "";
   const filteredModes = slashOpen
-    ? MODE_OPTIONS.filter(
+    ? PICKABLE_MODES.filter(
         (o) =>
           !slashQuery ||
           o.id.includes(slashQuery) ||
@@ -336,15 +313,8 @@ export function Composer({
           </div>
         ))}
     <div
-      onDragEnter={handleDragEnter}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-      className={`relative flex w-full flex-col rounded-3xl border bg-white pt-4 shadow-[0_8px_16px_rgba(0,0,0,0.06),0_2px_4px_rgba(0,0,0,0.04)] transition-colors ${
-        dragActive
-          ? "border-wati-green bg-wati-green-soft/40"
-          : "border-[var(--wati-border-default)]"
-      }`}
+      ref={barAnchorRef}
+      className="relative flex w-full flex-col rounded-3xl border border-[var(--wati-border-default)] bg-white pt-4 shadow-[0_8px_16px_rgba(0,0,0,0.06),0_2px_4px_rgba(0,0,0,0.04)]"
     >
       {canAttach && (
         <input
@@ -361,24 +331,6 @@ export function Composer({
         />
       )}
 
-      {/* Drop affordance. pointer-events-none so it never swallows the
-          drop event from the card underneath it. */}
-      <AnimatePresence>
-        {dragActive && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.12 }}
-            className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-3xl border-2 border-dashed border-wati-green bg-wati-green-soft/70"
-          >
-            <span className="flex items-center gap-2 text-[13px] font-medium tracking-[-0.078px] text-wati-green-text">
-              <Paperclip size={14} strokeWidth={2} />
-              Drop to attach
-            </span>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       <AnimatePresence>
         {mentionOpen && filteredMentions.length > 0 && (
@@ -488,9 +440,23 @@ export function Composer({
         onRemove={(id) => onRemoveAttachment?.(id)}
       />
       {attachmentNotice && (
-        <p className="px-4 pb-2 text-[11px] tracking-[-0.055px] text-[var(--wati-state-danger-text)]">
-          {attachmentNotice}
-        </p>
+        <div
+          role="alert"
+          className="mx-3 mb-2 flex items-start gap-2 rounded-xl bg-[var(--wati-state-danger-bg)] py-2 pl-3 pr-2 text-[12px] leading-[17px] tracking-[-0.06px] text-[var(--wati-state-danger-text)]"
+        >
+          <CircleAlert size={14} strokeWidth={2} className="mt-px shrink-0" />
+          <p className="min-w-0 flex-1">{attachmentNotice}</p>
+          {onDismissAttachmentNotice && (
+            <button
+              type="button"
+              onClick={onDismissAttachmentNotice}
+              aria-label="Dismiss"
+              className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full hover:bg-black/5"
+            >
+              <X size={11} strokeWidth={2} />
+            </button>
+          )}
+        </div>
       )}
 
       <div className="flex items-start gap-2 px-4">
@@ -530,17 +496,16 @@ export function Composer({
       </div>
 
       <div className="flex w-full items-center justify-between px-3 pb-3 pt-2">
-        {/* Left cluster: drawer mode shows a [+] mode picker (Agent /
-            Automation / Insights). Default chrome puts the model dropdown
-            here instead. The paperclip sits alongside either one — modes
-            and attachments are separate concerns. */}
+        {/* Left cluster: drawer mode shows a [+] menu — attach files, then
+            the modes (Agent / Insights). Default chrome puts the model
+            dropdown here instead, with a standalone paperclip beside it. */}
         <div className="flex items-center gap-1.5">
         {chrome === "drawer" ? (
           <div ref={plusMenuRef} className="relative">
             <button
               type="button"
               onClick={() => setPlusMenuOpen((o) => !o)}
-              aria-label="Pick a mode"
+              aria-label={canAttach ? "Add files or pick a mode" : "Pick a mode"}
               aria-haspopup="menu"
               aria-expanded={plusMenuOpen}
               className="flex h-8 w-8 items-center justify-center rounded-full border border-wati-border/80 text-[#0a0a0a] hover:bg-black/[0.04]"
@@ -555,9 +520,33 @@ export function Composer({
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 6, scale: 0.97 }}
                   transition={{ duration: 0.15, ease: [0.32, 0.72, 0, 1] }}
-                  className="absolute bottom-full left-0 mb-2 w-56 overflow-hidden rounded-2xl border border-wati-border bg-white shadow-[0_8px_24px_rgba(0,0,0,0.1)]"
+                  className="absolute bottom-full left-0 mb-2 w-64 overflow-hidden rounded-2xl border border-wati-border bg-white py-1 shadow-[0_8px_24px_rgba(0,0,0,0.1)]"
                 >
-                  {MODE_OPTIONS.map((o) => (
+                  {canAttach && (
+                    <>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setPlusMenuOpen(false);
+                          fileInputRef.current?.click();
+                        }}
+                        className="flex w-full items-start gap-2.5 px-3 py-2 text-left hover:bg-black/[0.03]"
+                      >
+                        <Paperclip size={15} strokeWidth={2} className="mt-0.5 shrink-0 text-[#0a0a0a]" />
+                        <span className="flex flex-col gap-0.5">
+                          <span className="text-[13px] font-medium tracking-[-0.078px] text-[#0a0a0a]">
+                            Add files or photos
+                          </span>
+                          <span className="text-[11px] tracking-[-0.055px] text-black/50">
+                            PDF, Word, Excel, CSV, PNG, JPG.
+                          </span>
+                        </span>
+                      </button>
+                      <div role="separator" className="my-1 h-px bg-[var(--wati-border-default)]" />
+                    </>
+                  )}
+                  {PICKABLE_MODES.map((o) => (
                     <button
                       key={o.id}
                       type="button"
@@ -566,7 +555,7 @@ export function Composer({
                         setPlusMenuOpen(false);
                         selectMode(o.id);
                       }}
-                      className="flex w-full flex-col gap-0.5 px-3 py-2 text-left hover:bg-black/[0.03]"
+                      className={`flex w-full flex-col gap-0.5 ${canAttach ? "pl-[37px]" : "pl-3"} pr-3 py-2 text-left hover:bg-black/[0.03]`}
                     >
                       <span className="text-[13px] font-medium tracking-[-0.078px] text-[#0a0a0a]">
                         {o.title}
@@ -591,7 +580,7 @@ export function Composer({
           />
         )}
 
-        {canAttach && (
+        {canAttach && chrome !== "drawer" && (
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}

@@ -26,21 +26,35 @@ export type Attachment = {
 export const MAX_ATTACHMENTS = 10;
 export const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024; // 25 MB
 
-/** What the picker offers: photos plus the document types a support team sends. */
-export const ATTACHMENT_ACCEPT = [
-  "image/*",
-  ".pdf",
-  ".csv",
-  ".txt",
-  ".doc",
-  ".docx",
-  ".xls",
-  ".xlsx",
-  ".ppt",
-  ".pptx",
-  ".json",
-  ".zip",
-].join(",");
+/**
+ * The only file types Ask Wati takes, by extension: documents, spreadsheets
+ * and PNG/JPEG images. Everything else — video, audio, archives,
+ * executables, PPTX, WEBP, GIF — is turned away.
+ */
+const ALLOWED_EXTENSIONS = [
+  "pdf", "doc", "docx", "txt", // documents
+  "xls", "xlsx", "csv", // spreadsheets
+  "png", "jpg", "jpeg", // images
+] as const;
+
+/** Handed to the picker so it only offers allowed types. Drops and an
+ *  "All files" pick still go through `intakeFiles`. */
+export const ATTACHMENT_ACCEPT = ALLOWED_EXTENSIONS.map((e) => `.${e}`).join(",");
+
+/** For copy: "PDF, DOC, DOCX, TXT, XLS, XLSX, CSV, PNG or JPG". */
+export const ALLOWED_TYPES_LABEL = (() => {
+  const labels = ALLOWED_EXTENSIONS.filter((e) => e !== "jpeg").map((e) => e.toUpperCase());
+  return `${labels.slice(0, -1).join(", ")} or ${labels[labels.length - 1]}`;
+})();
+
+function extensionOf(name: string): string {
+  const dot = name.lastIndexOf(".");
+  return dot > 0 ? name.slice(dot + 1).toLowerCase() : "";
+}
+
+export function isAllowedFile(file: File): boolean {
+  return (ALLOWED_EXTENSIONS as readonly string[]).includes(extensionOf(file.name));
+}
 
 export function isImageFile(file: File): boolean {
   return file.type.startsWith("image/");
@@ -83,9 +97,14 @@ export function intakeFiles(
 ): AttachmentIntake {
   const accepted: Attachment[] = [];
   const rejected: string[] = [];
+  const unsupported: string[] = [];
   let slots = MAX_ATTACHMENTS - staged.length;
 
   for (const file of incoming) {
+    if (!isAllowedFile(file)) {
+      unsupported.push(file.name);
+      continue;
+    }
     if (slots <= 0) {
       rejected.push(`${file.name} — limit is ${MAX_ATTACHMENTS} attachments`);
       continue;
@@ -112,6 +131,14 @@ export function intakeFiles(
     }
     accepted.push(createAttachment(file));
     slots -= 1;
+  }
+
+  // One line for every wrong-type file, so a mixed drop reads cleanly.
+  if (unsupported.length > 0) {
+    const what = unsupported.length === 1 ? "isn't a supported file type" : "aren't supported file types";
+    rejected.unshift(
+      `${unsupported.join(", ")} ${what}. You can attach ${ALLOWED_TYPES_LABEL} files.`,
+    );
   }
 
   return { accepted, rejected };

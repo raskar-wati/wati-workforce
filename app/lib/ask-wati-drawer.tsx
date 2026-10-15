@@ -33,6 +33,12 @@ type AskWatiDrawerCtx = {
   pendingPrompt: { id: string; text: string } | null;
   askPrompt: (text: string) => void;
   clearPrompt: () => void;
+  /**
+   * True while the full-page Ask Wati view is mounted. That page hosts the
+   * chat itself, so asks land there instead of opening the drawer over it.
+   */
+  inlineHost: boolean;
+  setInlineHost: (v: boolean) => void;
 };
 
 const Ctx = createContext<AskWatiDrawerCtx | null>(null);
@@ -41,6 +47,7 @@ export function AskWatiDrawerProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<AskWatiAction | null>(null);
   const [pendingPrompt, setPendingPrompt] = useState<AskWatiDrawerCtx["pendingPrompt"]>(null);
+  const [inlineHost, setInlineHost] = useState(false);
 
   const openDrawer = useCallback(() => setOpen(true), []);
   const closeDrawer = useCallback(() => setOpen(false), []);
@@ -51,8 +58,8 @@ export function AskWatiDrawerProvider({ children }: { children: ReactNode }) {
   const clearAction = useCallback(() => setPendingAction(null), []);
   const askPrompt = useCallback((text: string) => {
     setPendingPrompt({ id: crypto.randomUUID(), text });
-    setOpen(true);
-  }, []);
+    if (!inlineHost) setOpen(true);
+  }, [inlineHost]);
   const clearPrompt = useCallback(() => setPendingPrompt(null), []);
 
   const value = useMemo<AskWatiDrawerCtx>(
@@ -67,6 +74,8 @@ export function AskWatiDrawerProvider({ children }: { children: ReactNode }) {
       pendingPrompt,
       askPrompt,
       clearPrompt,
+      inlineHost,
+      setInlineHost,
     }),
     [
       open,
@@ -79,6 +88,7 @@ export function AskWatiDrawerProvider({ children }: { children: ReactNode }) {
       pendingPrompt,
       askPrompt,
       clearPrompt,
+      inlineHost,
     ],
   );
 

@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { AskWatiDrawerProvider } from "./lib/ask-wati-drawer";
 import { NotificationsProvider } from "./lib/notifications";
+import { ShellLayoutProvider } from "./lib/shell-layout";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -24,7 +25,9 @@ export default function RootLayout({
     <html lang="en" className={`${inter.variable} h-full antialiased`}>
       <body className="min-h-full">
         <NotificationsProvider>
-          <AskWatiDrawerProvider>{children}</AskWatiDrawerProvider>
+          <AskWatiDrawerProvider>
+            <ShellLayoutProvider>{children}</ShellLayoutProvider>
+          </AskWatiDrawerProvider>
         </NotificationsProvider>
       </body>
     </html>

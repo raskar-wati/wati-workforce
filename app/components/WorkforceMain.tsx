@@ -7,6 +7,7 @@ import { DailyDigestMetaProvider } from "../lib/daily-digest-meta";
 import { DemoStateProvider } from "../lib/demo-state";
 import { TenantProfileProvider } from "../lib/tenant-signal-profile";
 import { MainContent } from "./MainContent";
+import { FileDropZone } from "./attachments/FileDropZone";
 import { WorkforcePanel } from "./WorkforcePanel";
 
 export function WorkforceMain({
@@ -43,27 +44,29 @@ export function WorkforceMain({
           <ChatThreadsProvider>
             <AgentsProvider>
               <DailyDigestMetaProvider>
-                <WorkforcePanel
-                hideHandoffs={hideHandoffs}
-                defaultCollapsed={panelDefaultCollapsed}
-                hideDevTools={hideDevTools}
-                panelStyle={panelStyle}
-                collapsed={panelCollapsed}
-                onCollapsedChange={onPanelCollapsedChange}
-              />
-              <MainContent
-                hideDailyDigest={hideDailyDigest}
-                chrome={chrome}
-                expanded={expanded}
-                panelCollapsed={
-                  chrome === "drawer" ? panelCollapsed : undefined
-                }
-                onTogglePanel={
-                  chrome === "drawer" && !expanded
-                    ? () => onPanelCollapsedChange?.(!panelCollapsed)
-                    : undefined
-                }
-              />
+                <FileDropZone className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
+                  <WorkforcePanel
+                    hideHandoffs={hideHandoffs}
+                    defaultCollapsed={panelDefaultCollapsed}
+                    hideDevTools={hideDevTools}
+                    panelStyle={panelStyle}
+                    collapsed={panelCollapsed}
+                    onCollapsedChange={onPanelCollapsedChange}
+                  />
+                  <MainContent
+                    hideDailyDigest={hideDailyDigest}
+                    chrome={chrome}
+                    expanded={expanded}
+                    panelCollapsed={
+                      chrome === "drawer" ? panelCollapsed : undefined
+                    }
+                    onTogglePanel={
+                      chrome === "drawer" && !expanded
+                        ? () => onPanelCollapsedChange?.(!panelCollapsed)
+                        : undefined
+                    }
+                  />
+                </FileDropZone>
               </DailyDigestMetaProvider>
             </AgentsProvider>
           </ChatThreadsProvider>

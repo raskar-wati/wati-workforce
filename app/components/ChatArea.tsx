@@ -56,6 +56,7 @@ import {
   type Attachment,
 } from "../lib/attachments";
 import { getPixabot, pixabotGifFromPath } from "../lib/pixabots";
+import { useFileDropHandler } from "./attachments/FileDropZone";
 import { MessageAttachments } from "./attachments/MessageAttachments";
 import { Composer, COMPOSER_TRANSITION } from "./Composer";
 import { DailyDigest } from "./digest/DailyDigest";
@@ -210,6 +211,8 @@ export function ChatArea({
     },
     [stagedAttachments],
   );
+  // Files dropped anywhere on the surrounding Ask Wati surface stage here.
+  useFileDropHandler(attachFiles);
 
   const removeStagedAttachment = useCallback(
     (id: string) => {
@@ -1614,6 +1617,7 @@ export function ChatArea({
           onAttachFiles={attachFiles}
           onRemoveAttachment={removeStagedAttachment}
           attachmentNotice={attachmentNotice}
+          onDismissAttachmentNotice={() => setAttachmentNotice(null)}
           mentionables={agents.map((a) => ({
             id: a.id,
             name: a.name,

@@ -1,7 +1,6 @@
 "use client";
 
 import { AskWatiDrawer } from "../../components/AskWatiDrawer";
-import { GlobalHeader } from "../../components/GlobalHeader";
 import { MainSidebar } from "../../components/MainSidebar";
 import {
   AnalyticsContextProvider,
@@ -18,15 +17,12 @@ const MOCK_ANALYTICS_STATS: AnalyticsStats = {
 export default function AnalyticsPage() {
   return (
     <AnalyticsContextProvider stats={MOCK_ANALYTICS_STATS}>
-      <div className="flex h-screen flex-col bg-[var(--wati-surface-subtle)]">
-        <GlobalHeader />
-        <div className="relative flex flex-1 overflow-hidden">
-          <MainSidebar />
-          <main className="m-0 flex min-w-0 flex-1 overflow-hidden rounded-tl-xl rounded-tr-xl border border-[var(--wati-border-default)] bg-white">
-            <AnalyticsSkeleton />
-          </main>
-          <AskWatiDrawer />
-        </div>
+      <div className="relative flex min-h-0 flex-1 overflow-hidden">
+        <MainSidebar />
+        <main className="m-0 flex min-w-0 flex-1 overflow-hidden rounded-tl-xl rounded-tr-xl border border-[var(--wati-border-default)] bg-white">
+          <AnalyticsSkeleton />
+        </main>
+        <AskWatiDrawer />
       </div>
     </AnalyticsContextProvider>
   );
