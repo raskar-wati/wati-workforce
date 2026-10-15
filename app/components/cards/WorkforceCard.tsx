@@ -14,7 +14,14 @@ import type { ReactNode } from "react";
 
 /* ---------------------------------------------------------------- StatePill */
 
-export type ObjectState = "draft" | "live" | "pending-meta" | "armed" | "failed";
+export type ObjectState =
+  | "draft"
+  | "live"
+  | "pending-meta"
+  | "armed"
+  | "failed"
+  | "rejected"
+  | "expired";
 
 const STATE_STYLES: Record<ObjectState, { label: string; className: string }> = {
   draft: {
@@ -36,6 +43,14 @@ const STATE_STYLES: Record<ObjectState, { label: string; className: string }> = 
   failed: {
     label: "Failed",
     className: "bg-wati-state-danger-bg text-wati-state-danger-text",
+  },
+  rejected: {
+    label: "Rejected",
+    className: "bg-wati-state-danger-bg text-wati-state-danger-text",
+  },
+  expired: {
+    label: "Expired",
+    className: "bg-black/[0.05] text-black/55",
   },
 };
 

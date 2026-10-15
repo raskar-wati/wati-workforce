@@ -138,7 +138,7 @@ export function GlobalHeader() {
  * of recent notifications; opening the dropdown marks everything read.
  */
 function NotificationBell() {
-  const { notifications, unreadCount, markAllRead } = useNotifications();
+  const { notifications, unreadCount, markAllRead, openNotice } = useNotifications();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
@@ -182,7 +182,20 @@ function NotificationBell() {
           ) : (
             <div className="flex max-h-[320px] flex-col gap-0.5 overflow-y-auto">
               {notifications.slice(0, 20).map((n) => (
-                <div key={n.id} className="rounded-lg px-3 py-2 hover:bg-black/[0.03]">
+                <div
+                  key={n.id}
+                  role={n.source ? "button" : undefined}
+                  tabIndex={n.source ? 0 : undefined}
+                  onClick={
+                    n.source
+                      ? () => {
+                          openNotice(n.id);
+                          setOpen(false);
+                        }
+                      : undefined
+                  }
+                  className={`rounded-lg px-3 py-2 hover:bg-black/[0.03] ${n.source ? "cursor-pointer" : ""}`}
+                >
                   <div className="flex items-baseline justify-between gap-2">
                     <p className="text-[13px] font-medium tracking-[-0.078px] text-[#0a0a0a]">
                       {n.title}

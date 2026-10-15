@@ -1,10 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { AnimatePresence, motion, type Transition } from "motion/react";
 import { PanelRight } from "lucide-react";
 import { useAskWatiDrawer } from "../lib/ask-wati-drawer";
+import { useNotifications, type AppNotification } from "../lib/notifications";
+import { getStarterPrompts, pageForPath } from "../lib/starter-prompts";
+import { armChime, playChime } from "../lib/chime";
 import { AskWatiIcon } from "./icons/AskWatiIcon";
+import { IslandNoticeRow } from "./island/IslandNotice";
 
 /**
  * Header entry point for Ask Wati. One surface that grows in place: at rest
@@ -13,27 +18,98 @@ import { AskWatiIcon } from "./icons/AskWatiIcon";
  * its edge. The Wati AI mark and the panel button open the side drawer.
  * Whatever is asked opens the drawer with that prompt already sent — or, on
  * the full Ask Wati page, is sent there.
+ *
+ * It's also the island: the shared place important notices surface. At rest
+ * the top live notice stands in for the placeholder, with a count of the
+ * rest, and the light makes one pass when a new one arrives. Opened, they
+ * list above the suggestions — except on the Ask Wati page, where they're
+ * posted into the chat instead of covering it.
  */
 
-const SUGGESTIONS = [
-  "List potential spam messages",
-  "Summarize today's conversations",
-  "Draft replies for waiting chats",
-  "Re-engage with expired chats",
-];
+/** The bar offers at most this many of the page's starter asks. */
+const SUGGESTION_LIMIT = 3;
 
-const PLACEHOLDER = "Draft replies for waiting chats";
 
 const BAR_HEIGHT = 34;
 
 const GROW: Transition = { type: "spring", stiffness: 420, damping: 38, mass: 0.8 };
 
+/** Rows listed before folding the rest behind "N more". */
+const NOTICE_LIMIT = 3;
+
+const PULSE_MS = 1800;
+
 export function AskWatiBar() {
-  const { open: drawerOpen, toggle, openDrawer, askPrompt, inlineHost } = useAskWatiDrawer();
+  const { open: drawerOpen, toggle, openDrawer, askPrompt, inlineHost, postNotices } =
+    useAskWatiDrawer();
+  const { notifications, islandNotices, markSeen } = useNotifications();
   const [expanded, setExpanded] = useState(false);
   const [text, setText] = useState("");
+  // Same asks the drawer's hero offers on this page.
+  const suggestions = getStarterPrompts(pageForPath(usePathname())).slice(
+    0,
+    SUGGESTION_LIMIT,
+  );
   const rootRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+
+  // Notices listed while open. Pinned when the island opens (new arrivals
+  // join at the top) so a row that's just been decided stays put, showing
+  // its outcome, instead of vanishing under the cursor.
+  const [openIds, setOpenIds] = useState<string[]>([]);
+  const [showAllNotices, setShowAllNotices] = useState(false);
+  const liveIds = islandNotices.map((n) => n.id);
+  const liveKey = liveIds.join("|");
+
+  useEffect(() => {
+    if (!expanded) return;
+    const ids = liveKey ? liveKey.split("|") : [];
+    if (inlineHost) {
+      // Ask Wati page: post into the chat, which counts as seeing them.
+      postNotices(ids);
+      markSeen(ids);
+      return;
+    }
+    setOpenIds((prev) => {
+      const fresh = ids.filter((id) => !prev.includes(id));
+      return fresh.length ? [...fresh, ...prev] : prev;
+    });
+  }, [expanded, liveKey, inlineHost, postNotices, markSeen]);
+
+  const listedNotices = openIds
+    .map((id) => notifications.find((n) => n.id === id))
+    .filter((n): n is AppNotification => n !== undefined && !n.dismissed);
+  const visibleNotices = showAllNotices
+    ? listedNotices
+    : listedNotices.slice(0, NOTICE_LIMIT);
+  const hiddenCount = listedNotices.length - visibleNotices.length;
+
+  // One pass of the light when a notice arrives while the island is at rest,
+  // and a chime when the new one needs a decision.
+  const [pulse, setPulse] = useState(false);
+  const seenLiveIds = useRef<Set<string> | null>(null);
+  const blockingKey = islandNotices
+    .filter((n) => n.priority === "blocking")
+    .map((n) => n.id)
+    .join("|");
+  useEffect(() => armChime(), []);
+  useEffect(() => {
+    const ids = liveKey ? liveKey.split("|") : [];
+    const known = seenLiveIds.current;
+    seenLiveIds.current = new Set(ids);
+    // First read (hydration) establishes the baseline without a pulse.
+    if (!known) return;
+    const fresh = ids.filter((id) => !known.has(id));
+    if (fresh.length === 0) return;
+    if (blockingKey.split("|").some((id) => fresh.includes(id))) playChime();
+    setPulse(true);
+    const t = window.setTimeout(() => setPulse(false), PULSE_MS);
+    return () => window.clearTimeout(t);
+  }, [liveKey, blockingKey]);
+
+  const topNotice = islandNotices[0];
+  const blockingCount = islandNotices.filter((n) => n.priority === "blocking").length;
+  const showTeaser = !expanded && !text && topNotice !== undefined;
 
   useEffect(() => {
     if (!expanded) return;
@@ -51,6 +127,15 @@ export function AskWatiBar() {
     setExpanded(false);
     inputRef.current?.blur();
   };
+
+  // Closing the island counts its listed notices as seen. Blocking ones
+  // ignore that — they stay until decided.
+  useEffect(() => {
+    if (expanded || openIds.length === 0) return;
+    markSeen(openIds);
+    setOpenIds([]);
+    setShowAllNotices(false);
+  }, [expanded, openIds, markSeen]);
 
   const ask = (prompt: string) => {
     const trimmed = prompt.trim();
@@ -102,7 +187,7 @@ export function AskWatiBar() {
           }`}
         />
         <AnimatePresence>
-          {expanded && (
+          {(expanded || pulse) && (
             <motion.span
               aria-hidden="true"
               initial={{ opacity: 0 }}
@@ -132,16 +217,50 @@ export function AskWatiBar() {
             Wati AI
           </button>
           <span aria-hidden="true" className="h-4 w-px shrink-0 bg-[var(--wati-border-default)]" />
-          <input
-            ref={inputRef}
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onFocus={() => setExpanded(true)}
-            placeholder={PLACEHOLDER}
-            aria-label="Ask Wati AI"
-            aria-expanded={expanded}
-            className="min-w-0 flex-1 cursor-text bg-transparent text-sm text-[var(--wati-text-title)] outline-none placeholder:text-[#b7b9b7]"
-          />
+          <div className="relative flex min-w-0 flex-1 items-center">
+            <input
+              ref={inputRef}
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onFocus={() => setExpanded(true)}
+              placeholder={showTeaser ? "" : suggestions[0]}
+              aria-label="Ask Wati AI"
+              aria-expanded={expanded}
+              className="min-w-0 flex-1 cursor-text bg-transparent text-sm text-[var(--wati-text-title)] outline-none placeholder:text-[#b7b9b7]"
+            />
+            {/* The teaser stands in for the placeholder; clicks fall through
+                to the input, which opens the island. */}
+            {showTeaser && (
+              <span
+                aria-live="polite"
+                className="pointer-events-none absolute inset-0 flex items-center gap-2 text-sm"
+              >
+                {/* Counter: red while anything is waiting on a decision,
+                    grey when it's only updates. Pops on every change. */}
+                <motion.span
+                  key={islandNotices.length}
+                  initial={{ scale: 0.6 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 600, damping: 18 }}
+                  aria-label={
+                    blockingCount > 0
+                      ? `${islandNotices.length} notifications, ${blockingCount} need your approval`
+                      : `${islandNotices.length} new notifications`
+                  }
+                  className={`flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full px-1 text-[11px] font-semibold tabular-nums ${
+                    blockingCount > 0
+                      ? "bg-[var(--wati-state-danger-text)] text-white"
+                      : "bg-[var(--wati-text-body)] text-white"
+                  }`}
+                >
+                  {islandNotices.length > 99 ? "99+" : islandNotices.length}
+                </motion.span>
+                <span className="truncate font-medium text-[var(--wati-text-title)]">
+                  {topNotice.title}
+                </span>
+              </span>
+            )}
+          </div>
           {!inlineHost && (
             <button
               type="button"
@@ -158,6 +277,27 @@ export function AskWatiBar() {
           )}
         </form>
 
+        {!inlineHost && listedNotices.length > 0 && (
+          <div className="relative flex flex-col px-1.5 pt-1">
+            <span className="px-2.5 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--wati-text-body)] opacity-70">
+              Needs you
+            </span>
+            {visibleNotices.map((n) => (
+              <IslandNoticeRow key={n.id} notice={n} onAct={collapse} />
+            ))}
+            {(hiddenCount > 0 || showAllNotices) && (
+              <button
+                type="button"
+                onClick={() => setShowAllNotices((v) => !v)}
+                className="mx-2.5 mb-1 mt-0.5 self-start text-[12px] font-medium text-[var(--wati-green)] hover:underline"
+              >
+                {showAllNotices ? "Show fewer" : `${hiddenCount} more`}
+              </button>
+            )}
+            <span aria-hidden="true" className="mx-2.5 mt-1 h-px bg-[var(--wati-border-default)]" />
+          </div>
+        )}
+
         <motion.div
           initial={false}
           animate={expanded ? "open" : "closed"}
@@ -167,7 +307,7 @@ export function AskWatiBar() {
           }}
           className="relative flex flex-wrap gap-2 px-3 pb-3 pt-1.5"
         >
-          {SUGGESTIONS.map((s) => (
+          {suggestions.map((s) => (
             <motion.button
               key={s}
               type="button"

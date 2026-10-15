@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
-import { ArrowUpRight, Check, Hourglass, PencilLine, Zap } from "lucide-react";
+import { ArrowUpRight, Check, Clock, Hourglass, PencilLine, X, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getActionScript } from "../../lib/agent-actions";
 import type { AgentActionRun as AgentActionRunType } from "../../lib/agents";
@@ -180,7 +180,7 @@ function CompletedStep({ text }: { text: string }) {
  * + auto-action promotion for classes that allow it.
  */
 function ActionRunReceipt({ run }: { run: AgentActionRunType }) {
-  const { setRunObjectState } = useAgents();
+  const { setRunObjectState, rejectActionRun } = useAgents();
   // Broadcast-family approvals restate count + cost before arming (PRD §3.2);
   // this holds the receipt in that restatement step.
   const [restatingEstimate, setRestatingEstimate] = useState(false);
@@ -193,6 +193,8 @@ function ActionRunReceipt({ run }: { run: AgentActionRunType }) {
     run.objectState ?? (governance === "A" ? "draft" : undefined);
   const isDraftState = objectState === "draft";
   const isPending = objectState === "pending-meta";
+  // Terminal outcomes of a draft: the card stays, showing what happened.
+  const isClosed = objectState === "rejected" || objectState === "expired";
 
   if (restatingEstimate && isDraftState && script.sendEstimate) {
     return (
@@ -208,10 +210,24 @@ function ActionRunReceipt({ run }: { run: AgentActionRunType }) {
 
   return (
     <WorkforceCard
-      tone={isDraftState ? "draft" : isPending ? "info" : "success"}
+      tone={
+        isDraftState
+          ? "draft"
+          : isPending
+            ? "info"
+            : objectState === "rejected"
+              ? "danger"
+              : objectState === "expired"
+                ? "neutral"
+                : "success"
+      }
       icon={
         isDraftState ? (
           <PencilLine size={12} strokeWidth={2.5} />
+        ) : objectState === "rejected" ? (
+          <X size={12} strokeWidth={2.5} />
+        ) : objectState === "expired" ? (
+          <Clock size={12} strokeWidth={2.5} />
         ) : isPending ? (
           <Hourglass size={12} strokeWidth={2.5} />
         ) : (
@@ -241,7 +257,17 @@ function ActionRunReceipt({ run }: { run: AgentActionRunType }) {
               {script.approveLabel}
             </CardCtaChip>
           )}
+          {governance === "A" && isDraftState && (
+            <button
+              type="button"
+              onClick={() => rejectActionRun(run.id)}
+              className="text-[13px] tracking-[-0.078px] text-black/60 hover:text-[#0a0a0a]"
+            >
+              Reject
+            </button>
+          )}
           {!isDraftState &&
+            !isClosed &&
             objectState &&
             objectState !== "pending-meta" &&
             script.undoLabel && (

@@ -69,6 +69,11 @@ export function Handoff({
         </motion.span>
         <span className="flex-1 truncate text-[13px] font-medium tracking-[-0.078px] text-[#0a0a0a]">
           Handoff #{handoff.runNumber}
+          {handoff.failure && (
+            <span className="ml-2 text-[12px] font-medium text-wati-state-danger-text">
+              Failed
+            </span>
+          )}
         </span>
         <span className="shrink-0 text-[12px] tracking-[-0.06px] text-black/45 transition-colors group-hover:text-black/70">
           {formatRunAt(handoff.runAt)}
@@ -86,6 +91,11 @@ export function Handoff({
           >
             {/* Faint left rail anchors children to the chevron column. */}
             <div className="ml-[8.5px] flex flex-col gap-4 border-l border-black/[0.08] pb-4 pt-1 pl-4">
+              {handoff.failure && (
+                <p className="text-[13px] tracking-[-0.078px] text-black/60">
+                  This run stopped before it finished: {handoff.failure.reason}
+                </p>
+              )}
               {handoff.sections.map((s) => (
                 <HandoffSection key={s.id} section={s} />
               ))}

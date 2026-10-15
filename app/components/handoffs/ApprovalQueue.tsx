@@ -2,7 +2,7 @@
 
 import { ArrowUpRight, Check, Hourglass, PencilLine } from "lucide-react";
 import { useState } from "react";
-import { getActionScript } from "../../lib/agent-actions";
+import { getActionScript, type AgentObjectState } from "../../lib/agent-actions";
 import { useAgents, type ApprovalQueueItem } from "../../lib/agents";
 import { BroadcastScheduleConfirm } from "../cards/BroadcastScheduleConfirm";
 import { CardCtaChip, WorkforceCard } from "../cards/WorkforceCard";
@@ -14,7 +14,7 @@ import { CardCtaChip, WorkforceCard } from "../cards/WorkforceCard";
  * Waiting items (pending Meta) self-resolve and carry no action.
  */
 export function ApprovalQueue() {
-  const { approvalQueue, waitingQueue, setRunObjectState } = useAgents();
+  const { approvalQueue, waitingQueue, setRunObjectState, rejectActionRun } = useAgents();
 
   if (approvalQueue.length === 0 && waitingQueue.length === 0) {
     return (
@@ -45,6 +45,7 @@ export function ApprovalQueue() {
               key={item.run.id}
               item={item}
               onApprove={(state) => setRunObjectState(item.run.id, state)}
+              onReject={() => rejectActionRun(item.run.id)}
             />
           ))}
         </QueueSection>
@@ -89,9 +90,11 @@ function QueueSection({
 function ApprovalCard({
   item,
   onApprove,
+  onReject,
 }: {
   item: ApprovalQueueItem;
-  onApprove: (state: "draft" | "live" | "pending-meta" | "armed") => void;
+  onApprove: (state: AgentObjectState) => void;
+  onReject: () => void;
 }) {
   const { run, agent } = item;
   const script = getActionScript(run.action);
@@ -133,6 +136,13 @@ function ApprovalCard({
             {run.resultCtaLabel}
             <ArrowUpRight size={12} strokeWidth={2} />
           </CardCtaChip>
+          <button
+            type="button"
+            onClick={onReject}
+            className="text-[13px] tracking-[-0.078px] text-black/60 hover:text-[#0a0a0a]"
+          >
+            Reject
+          </button>
         </>
       }
     />

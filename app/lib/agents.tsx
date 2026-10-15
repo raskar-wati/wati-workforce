@@ -6,9 +6,11 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
+import { useAskWatiDrawer } from "./ask-wati-drawer";
 import {
   filterHandoffByAchievements,
   type AchievementId,
@@ -18,7 +20,7 @@ import {
   getActionScript,
   type AgentObjectState,
 } from "./agent-actions";
-import { useNotifications } from "./notifications";
+import { useNotifications, type NoticeOutcome } from "./notifications";
 import {
   buildReturningUserReadSet,
   buildReturningUserSeed,
@@ -161,6 +163,8 @@ export type Handoff = {
   runNumber: number;
   sections: HandoffSection[];
   ctas: HandoffCta[];
+  /** Set when the run errored — the handoff carries the reason, no results. */
+  failure?: { reason: string };
 };
 
 /**
@@ -241,6 +245,14 @@ type AgentsCtx = AgentsState & {
   commitActionRun: (runId: string, activate: boolean) => void;
   confirmActionRun: (runId: string) => void;
   dismissActionRun: (runId: string) => void;
+  /** Turn down a draft — it stays on record as "rejected". */
+  rejectActionRun: (runId: string) => void;
+  /**
+   * The agent thread currently on screen (drawer or Ask Wati page), or null.
+   * Runs for a watched thread don't raise island notices (PRD B7).
+   */
+  setWatchedThread: (threadId: string | null) => void;
+  getWatchedThreadId: () => string | null;
   setRunObjectState: (runId: string, objectState: AgentObjectState) => void;
   enableAutoAction: (agentId: string, action: HandoffCtaAction) => void;
   markHandoffRead: (handoffId: string) => void;
@@ -299,11 +311,30 @@ export function useAgents() {
   return ctx;
 }
 
+/** How a draft's notice closes, by the state the draft left for. */
+function outcomeFor(state: AgentObjectState): NoticeOutcome {
+  if (state === "rejected") return "rejected";
+  if (state === "expired") return "expired";
+  return "approved";
+}
+
 function sortByRunAtDesc(handoffs: Handoff[]): Handoff[] {
   return [...handoffs].sort((a, b) => (a.runAt < b.runAt ? 1 : -1));
 }
 
+/**
+ * Agent state is lifted to the preview shell so the island can raise and
+ * decide notices while the drawer is shut. Surfaces that mount their own
+ * provider (the drawer, the Ask Wati page) reuse that outer store instead of
+ * forking a second copy over the same storage key.
+ */
 export function AgentsProvider({ children }: { children: ReactNode }) {
+  const outer = useContext(AgentsContext);
+  if (outer) return <>{children}</>;
+  return <AgentsStore>{children}</AgentsStore>;
+}
+
+function AgentsStore({ children }: { children: ReactNode }) {
   const { mode, hydrated: demoHydrated } = useDemoState();
   const [state, setState] = useState<AgentsState>(EMPTY_STATE);
   /** Bumped on every demo-mode flip so the persistence effect waits for the
@@ -427,9 +458,59 @@ export function AgentsProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  // ── Island notices ────────────────────────────────────────────────
+  // Agents is the island's first sender. Finished and failed runs are info
+  // notices; drafts waiting on a human are blocking ones, synced from state
+  // below so a decision made anywhere clears them.
+  const {
+    push: pushNotice,
+    resolve: resolveNotice,
+    notifications,
+    registerSource,
+  } = useNotifications();
+  const { openThread } = useAskWatiDrawer();
+  const watchedThreadRef = useRef<string | null>(null);
+  const setWatchedThread = useCallback((threadId: string | null) => {
+    watchedThreadRef.current = threadId;
+  }, []);
+  const getWatchedThreadId = useCallback(() => watchedThreadRef.current, []);
+
+  const notifyRunFinished = useCallback(
+    (agent: Agent, handoff: Handoff) => {
+      if (watchedThreadRef.current === agent.threadId) return;
+      pushNotice(
+        handoff.failure
+          ? {
+              id: `agents:run:${handoff.id}`,
+              source: "agents",
+              kind: "run-failed",
+              priority: "info",
+              island: true,
+              title: `${agent.name} run failed`,
+              body: handoff.failure.reason,
+            }
+          : {
+              id: `agents:run:${handoff.id}`,
+              source: "agents",
+              kind: "run-done",
+              priority: "info",
+              island: true,
+              title: `${agent.name} completed a run`,
+              body: `Handoff #${handoff.runNumber} · ${
+                handoff.sections[0]?.title ?? "Results ready"
+              }`,
+            },
+      );
+    },
+    [pushNotice],
+  );
+
   const addHandoff = useCallback(
     (agentId: string, draft: HandoffDraft): Handoff => {
       let created: Handoff | null = null;
+      // Minted outside the updater so a StrictMode replay builds the same
+      // handoff — and its island notice dedupes instead of doubling.
+      const id = crypto.randomUUID();
       setState((prev) => {
         const existing = prev.handoffsByAgent[agentId] ?? [];
         // Every handoff passes the Permissions gate here, regardless of entry
@@ -441,11 +522,16 @@ export function AgentsProvider({ children }: { children: ReactNode }) {
           : draft;
         const handoff: Handoff = {
           ...gated,
-          id: crypto.randomUUID(),
+          id,
           agentId,
           runNumber: existing.length + 1,
         };
         created = handoff;
+        if (agent) {
+          // Deferred out of the updater (see resolveMetaReview); the id
+          // dedupes a StrictMode replay.
+          window.setTimeout(() => notifyRunFinished(agent, handoff), 0);
+        }
 
         // Note: no action auto-runs. Agents never fire a CTA on their own —
         // every run in a thread starts from an explicit human tap. The
@@ -461,7 +547,7 @@ export function AgentsProvider({ children }: { children: ReactNode }) {
       // setState batches; created is assigned synchronously inside the updater
       return created!;
     },
-    [],
+    [notifyRunFinished],
   );
 
   const enableAutoAction = useCallback(
@@ -648,6 +734,122 @@ export function AgentsProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const rejectActionRun = useCallback(
+    (runId: string) => setRunObjectState(runId, "rejected"),
+    [setRunObjectState],
+  );
+
+  // Blocking notices mirror the draft queue: every Class A draft raises one,
+  // and the moment it leaves draft (approved, rejected, expired — from the
+  // island or the agent view) its notice resolves. Undo back to draft
+  // revives it. An expiry also leaves an info notice behind.
+  useEffect(() => {
+    if (hydratedForMode !== mode) return;
+    const agentById = new Map(state.agents.map((a) => [a.id, a]));
+    const liveApprovalIds = new Set<string>();
+    const knownApprovalIds = new Set<string>();
+    for (const [agentId, runs] of Object.entries(state.actionRunsByAgent)) {
+      const agent = agentById.get(agentId);
+      if (!agent) continue;
+      for (const run of runs) {
+        if (run.status !== "done") continue;
+        const script = getActionScript(run.action);
+        const objectState =
+          run.objectState ?? (script.governance === "A" ? "draft" : undefined);
+        const id = `agents:approval:${run.id}`;
+        knownApprovalIds.add(id);
+        if (objectState === "draft") {
+          liveApprovalIds.add(id);
+          pushNotice({
+            id,
+            source: "agents",
+            kind: "needs-approval",
+            priority: "blocking",
+            island: true,
+            title: `${agent.name} needs approval`,
+            body: script.draft?.title ?? run.resultLabel,
+            approveLabel: script.approveLabel ?? "Approve",
+            reviewToDecide: Boolean(script.sendEstimate),
+          });
+          continue;
+        }
+        if (objectState === "expired") {
+          pushNotice({
+            id: `agents:expired:${run.id}`,
+            source: "agents",
+            kind: "approval-expired",
+            priority: "info",
+            island: true,
+            title: `${agent.name}: approval expired`,
+            body: `${script.draft?.title ?? run.resultLabel} — dropped, nothing changed`,
+          });
+        }
+        if (objectState) resolveNotice(id, outcomeFor(objectState));
+      }
+    }
+    // Drafts that vanished with their agent (deleted/archived) expire.
+    for (const n of notifications) {
+      if (
+        n.source === "agents" &&
+        n.kind === "needs-approval" &&
+        !n.resolved &&
+        !liveApprovalIds.has(n.id) &&
+        !knownApprovalIds.has(n.id)
+      ) {
+        resolveNotice(n.id, "expired");
+      }
+    }
+  }, [
+    state.agents,
+    state.actionRunsByAgent,
+    hydratedForMode,
+    mode,
+    notifications,
+    pushNotice,
+    resolveNotice,
+  ]);
+
+  // The island hands clicks and inline decisions back here.
+  useEffect(() => {
+    const findRun = (notice: { id: string }) =>
+      Object.values(state.actionRunsByAgent)
+        .flat()
+        .find((r) => notice.id.endsWith(r.id));
+    const findAgentForNotice = (notice: { id: string }) => {
+      const run = findRun(notice);
+      if (run) return state.agents.find((a) => a.id === run.agentId);
+      const handoffs = Object.values(state.handoffsByAgent).flat();
+      const handoff = handoffs.find((h) => notice.id.endsWith(h.id));
+      return handoff
+        ? state.agents.find((a) => a.id === handoff.agentId)
+        : undefined;
+    };
+    return registerSource("agents", {
+      open: (notice) => {
+        const agent = findAgentForNotice(notice);
+        if (agent) openThread(agent.threadId);
+      },
+      decide: (notice, decision) => {
+        const run = findRun(notice);
+        if (!run) return;
+        if (decision === "reject") {
+          rejectActionRun(run.id);
+          return;
+        }
+        const script = getActionScript(run.action);
+        setRunObjectState(run.id, script.draft?.activeState ?? "live");
+      },
+    });
+  }, [
+    state.actionRunsByAgent,
+    state.agents,
+    state.handoffsByAgent,
+    registerSource,
+    openThread,
+    rejectActionRun,
+    setRunObjectState,
+  ]);
+
   const markHandoffRead = useCallback((handoffId: string) => {
     setState((prev) => {
       if (prev.readHandoffIds.includes(handoffId)) return prev;
@@ -740,6 +942,9 @@ export function AgentsProvider({ children }: { children: ReactNode }) {
       commitActionRun,
       confirmActionRun,
       dismissActionRun,
+      rejectActionRun,
+      setWatchedThread,
+      getWatchedThreadId,
       setRunObjectState,
       enableAutoAction,
       markHandoffRead,
@@ -776,6 +981,9 @@ export function AgentsProvider({ children }: { children: ReactNode }) {
     commitActionRun,
     confirmActionRun,
     dismissActionRun,
+    rejectActionRun,
+    setWatchedThread,
+    getWatchedThreadId,
     setRunObjectState,
     enableAutoAction,
     markHandoffRead,

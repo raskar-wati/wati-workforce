@@ -71,6 +71,9 @@ import { HandoffInbox } from "./handoffs/HandoffInbox";
 import { ModePillRow } from "./ModePillRow";
 import { AskWatiSparkleBloom } from "./AskWatiSparkleBloom";
 import { ThinkingIndicator } from "./ThinkingIndicator";
+import { IslandNoticeCard } from "./island/IslandNotice";
+import { getStarterPrompts } from "../lib/starter-prompts";
+import { useNotifications, type AppNotification } from "../lib/notifications";
 import { ReasoningTrace } from "./ReasoningTrace";
 import { WatiWelcome } from "./WatiWelcome";
 import { OnboardingHandoffPreview } from "./onboarding/OnboardingHandoffPreview";
@@ -244,8 +247,24 @@ export function ChatArea({
   // (the drawer unmounts its whole tree on close).
   useEffect(() => () => releaseAttachments(liveAttachmentsRef.current), []);
   const { mode, setMode, view, setView } = useChatMode();
-  const { pendingAction, clearAction, pendingPrompt, clearPrompt } =
-    useAskWatiDrawer();
+  const {
+    pendingAction,
+    clearAction,
+    pendingPrompt,
+    clearPrompt,
+    pendingThread,
+    clearThread,
+    inlineHost,
+    postedNoticeIds,
+    unpostNotice,
+  } = useAskWatiDrawer();
+  const { notifications } = useNotifications();
+  // Island notices posted into the Ask Wati page's chat (not the drawer).
+  const postedNotices = inlineHost
+    ? postedNoticeIds
+        .map((id) => notifications.find((n) => n.id === id))
+        .filter((n): n is AppNotification => n !== undefined && !n.dismissed)
+    : [];
 
   // Drawer 3-dot menu → "Select an agent" opens the existing agent flow.
   // "View older chats" has no history surface yet — consume and no-op.
@@ -268,6 +287,7 @@ export function ChatArea({
     addHandoff,
     getActionRuns,
     markHandoffRead,
+    setWatchedThread,
     updateAgent,
     deleteAgent,
     setAgentStatus,
@@ -717,6 +737,28 @@ export function ChatArea({
     // sendPrompt is re-created every render; only a new prompt should fire.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingPrompt, chrome, storageReady, clearPrompt]);
+
+  // An island notice's Review brings its agent thread up — same wait for
+  // storage as a handed-in prompt.
+  const handledThreadId = useRef<string | null>(null);
+  useEffect(() => {
+    if (!pendingThread || chrome !== "drawer" || !storageReady) return;
+    if (handledThreadId.current === pendingThread.id) return;
+    handledThreadId.current = pendingThread.id;
+    clearThread();
+    setView("chat");
+    setMode(null);
+    setActiveThreadId(pendingThread.threadId);
+  }, [pendingThread, chrome, storageReady, clearThread, setView, setMode, setActiveThreadId]);
+
+  // Tell the agents store which agent thread is on screen, so runs the
+  // admin is already watching don't also ping the island.
+  const watchedThreadId =
+    chrome === "drawer" && view === "chat" && agentForThread ? activeThreadId : null;
+  useEffect(() => {
+    setWatchedThread(watchedThreadId);
+    return () => setWatchedThread(null);
+  }, [watchedThreadId, setWatchedThread]);
 
   /** Ladder card pick: lock the card and start the normal creation flow. */
   const resolveWatcherMatch = (
@@ -1260,12 +1302,17 @@ export function ChatArea({
                   How can I help you?
                 </h2>
                 <div className="flex flex-col items-start gap-2">
-                  {getStarterPrompts({
-                    hasInboxContext: Boolean(inboxCtx),
-                    hasContactsContext: Boolean(contactsCtx),
-                    hasShopifyContext: Boolean(shopifyCtx),
-                    hasAnalyticsContext: Boolean(analyticsCtx),
-                  }).map((prompt) => (
+                  {getStarterPrompts(
+                    analyticsCtx
+                      ? "analytics"
+                      : shopifyCtx
+                        ? "shopify"
+                        : contactsCtx
+                          ? "contacts"
+                          : inboxCtx
+                            ? "inbox"
+                            : null,
+                  ).map((prompt) => (
                     <button
                       key={prompt}
                       type="button"
@@ -1603,6 +1650,14 @@ export function ChatArea({
         )}
       </>
 
+      {postedNotices.length > 0 && (
+        <div className="flex flex-col gap-2 pb-3">
+          {postedNotices.map((n) => (
+            <IslandNoticeCard key={n.id} notice={n} onClose={() => unpostNotice(n.id)} />
+          ))}
+        </div>
+      )}
+
       {/* Composer — same element across both states; layout animates the position change */}
       <motion.div layout transition={COMPOSER_TRANSITION}>
         <Composer
@@ -1806,51 +1861,6 @@ function DeletedDigestPlaceholder({ onRestore }: { onRestore: () => void }) {
   );
 }
 
-function getStarterPrompts({
-  hasInboxContext,
-  hasContactsContext,
-  hasShopifyContext,
-  hasAnalyticsContext,
-}: {
-  hasInboxContext: boolean;
-  hasContactsContext: boolean;
-  hasShopifyContext: boolean;
-  hasAnalyticsContext: boolean;
-}): string[] {
-  if (hasAnalyticsContext) {
-    return [
-      "Conversation trend",
-      "Incoming message trend",
-      "Which operator performs best?",
-    ];
-  }
-  if (hasShopifyContext) {
-    return [
-      "Show conversion trend",
-      "Show CSAT trend",
-      "Show which operator performs best",
-    ];
-  }
-  if (hasContactsContext) {
-    return [
-      "Find my top spenders this month",
-      "Which contacts haven't been messaged in 30 days?",
-      "What can you do?",
-    ];
-  }
-  if (hasInboxContext) {
-    return [
-      "Summarize my inbox queue",
-      "Which conversations need a response now?",
-      "What can you do?",
-    ];
-  }
-  return [
-    "Find customers ready to book",
-    "Show me delivery complaints today",
-    "What can you do?",
-  ];
-}
 
 /**
  * Only the latest run shows by default; older ones hide behind "View older".

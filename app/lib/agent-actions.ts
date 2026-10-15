@@ -17,7 +17,15 @@ import type { HandoffCtaAction } from "./agents";
 export type GovernanceClass = "read" | "A" | "B" | "C";
 
 /** Object states shown on receipt-card pills (PRD sub-page 6). */
-export type AgentObjectState = "draft" | "live" | "pending-meta" | "armed";
+export type AgentObjectState =
+  | "draft"
+  | "live"
+  | "pending-meta"
+  | "armed"
+  /** A draft the human turned down — terminal, the receipt keeps the card. */
+  | "rejected"
+  /** A draft nobody decided in time — terminal, dropped without effect. */
+  | "expired";
 
 export type DraftCheck = {
   verdict: "ok" | "warn" | "blocker" | "info";
