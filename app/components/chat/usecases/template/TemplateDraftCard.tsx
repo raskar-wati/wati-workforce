@@ -142,7 +142,10 @@ export function TemplateDraftCard({
       }
     >
       {!locked && <TemplateFacts draft={draft} onChange={onDraftChange} />}
-      <TemplatePreview draft={draft} />
+      <TemplatePreview
+        draft={draft}
+        onButtonsChange={locked ? undefined : (buttons) => onDraftChange({ ...draft, buttons })}
+      />
 
       {!locked && !reviewing && (
         <RefineChips suggestions={refineSuggestions(draft)} onPick={onRefine} />

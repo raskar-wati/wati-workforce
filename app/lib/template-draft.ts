@@ -349,6 +349,57 @@ function providedBody(text: string): string | null {
   return cleaned ? cleaned : null;
 }
 
+export const BUTTON_TEXT_LIMIT = 25;
+
+const ORDINAL: Record<string, number> = { first: 0, second: 1, third: 2 };
+
+/**
+ * New label for an existing button: "rename 'Shop now' to 'Buy now'", or
+ * "change the (first|last|…) button to …" — the last labelled button when
+ * none is named.
+ */
+function renameButton(
+  buttons: TemplateButton[],
+  text: string,
+): { buttons: TemplateButton[]; label: string } | null {
+  const labelled = buttons
+    .map((b, i) => ({ b, i }))
+    .filter((x) => x.b.kind !== "copy-code");
+  if (labelled.length === 0) return null;
+  const unquote = (v: string) => v.trim().replace(/^["“']|["”']$/g, "").trim();
+
+  let target: number | undefined;
+  let label: string | undefined;
+  const named = text.match(
+    /\b(?:rename|change|update|replace|make)\s+(?:the\s+)?["“']([^"”']+)["”']\s*(?:button\s+)?(?:to|into|with)\s+(.+)$/i,
+  );
+  if (named) {
+    const old = named[1].trim().toLowerCase();
+    target = labelled.find(
+      (x) => x.b.kind !== "copy-code" && x.b.text.toLowerCase() === old,
+    )?.i;
+    label = unquote(named[2]);
+  } else {
+    const generic = text.match(
+      /\b(?:rename|change|update|set|make|call)\s+(?:the\s+)?(?:(first|second|third|last)\s+)?(?:(?:quick[- ]reply|link|url|website|cta)\s+)?button(?:\s+(?:text|copy|label))?\s+(?:to|as|into)\s+(.+)$/i,
+    );
+    if (!generic) return null;
+    const ord = generic[1]?.toLowerCase();
+    const pick =
+      ord && ord !== "last" ? labelled[ORDINAL[ord]] : labelled[labelled.length - 1];
+    target = pick?.i;
+    label = unquote(generic[2]);
+  }
+  if (target === undefined || !label) return null;
+  const finalLabel = label;
+  return {
+    buttons: buttons.map((b, i) =>
+      i === target && b.kind !== "copy-code" ? { ...b, text: finalLabel } : b,
+    ),
+    label: finalLabel,
+  };
+}
+
 /** Footer text from "footer: …" or "change the footer to …". */
 function providedFooter(text: string): string | null {
   const m = text.match(
@@ -377,6 +428,13 @@ export function refineTemplate(d: TemplateDraft, text: string): RefineResult | n
   const footer = providedFooter(text);
   if (footer && !removing) {
     return { draft: finish({ ...next, footer }), changes: ["New footer"] };
+  }
+  const renamed = renameButton(next.buttons, text);
+  if (renamed) {
+    return {
+      draft: finish({ ...next, buttons: renamed.buttons }),
+      changes: [`Button "${renamed.label}"`],
+    };
   }
 
   // Tone, length and offer only shape the scripted copy; the user's own
@@ -527,6 +585,16 @@ export function checkTemplate(
     checks.push({
       verdict: "blocker",
       text: `Add a sample for ${missing.map(([k]) => `{{${k}}}`).join(", ")}`,
+    });
+  }
+
+  const longButton = d.buttons.find(
+    (b) => b.kind !== "copy-code" && b.text.length > BUTTON_TEXT_LIMIT,
+  );
+  if (longButton && longButton.kind !== "copy-code") {
+    checks.push({
+      verdict: "blocker",
+      text: `Button "${longButton.text}" is over ${BUTTON_TEXT_LIMIT} characters`,
     });
   }
 

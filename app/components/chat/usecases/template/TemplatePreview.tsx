@@ -1,14 +1,21 @@
 "use client";
 
-import { Copy, ExternalLink, ImageIcon, Reply } from "lucide-react";
-import { Fragment } from "react";
+import { Copy, ExternalLink, ImageIcon, Pencil, Reply, X } from "lucide-react";
+import { Fragment, useState } from "react";
 import type { TemplateButton, TemplateDraft } from "../../../../lib/template-draft";
 
 /**
  * How the template lands in a customer's WhatsApp: header, body with its
- * variables marked, footer, then the buttons as tappable rows.
+ * variables marked, footer, then the buttons as tappable rows. Pass
+ * `onButtonsChange` to let the user edit or remove buttons in place.
  */
-export function TemplatePreview({ draft }: { draft: TemplateDraft }) {
+export function TemplatePreview({
+  draft,
+  onButtonsChange,
+}: {
+  draft: TemplateDraft;
+  onButtonsChange?: (buttons: TemplateButton[]) => void;
+}) {
   return (
     <div className="rounded-xl bg-[#efe9e1] p-3">
       <div className="max-w-[340px] overflow-hidden rounded-lg rounded-tl-none bg-white shadow-[0_1px_0.5px_rgba(0,0,0,0.13)]">
@@ -34,9 +41,20 @@ export function TemplatePreview({ draft }: { draft: TemplateDraft }) {
             <span className="shrink-0 text-[10px] text-black/40">10:24</span>
           </div>
         </div>
-        {draft.buttons.map((b, i) => (
-          <ButtonRow key={i} button={b} />
-        ))}
+        {draft.buttons.map((b, i) =>
+          onButtonsChange ? (
+            <EditableButtonRow
+              key={i}
+              button={b}
+              onChange={(next) =>
+                onButtonsChange(draft.buttons.map((x, j) => (j === i ? next : x)))
+              }
+              onRemove={() => onButtonsChange(draft.buttons.filter((_, j) => j !== i))}
+            />
+          ) : (
+            <ButtonRow key={i} button={b} />
+          ),
+        )}
       </div>
     </div>
   );
@@ -75,6 +93,101 @@ function ButtonRow({ button }: { button: TemplateButton }) {
     <div className="flex items-center justify-center gap-1.5 border-t border-black/[0.08] py-2 text-[13px] text-[#0b8ad6]">
       <Icon size={13} strokeWidth={2} />
       {label}
+    </div>
+  );
+}
+
+/**
+ * A button row that opens into inputs on click: the label (or the code, for a
+ * copy-code button) and, for a link, its URL. Enter or leaving the row saves;
+ * Escape cancels.
+ */
+function EditableButtonRow({
+  button,
+  onChange,
+  onRemove,
+}: {
+  button: TemplateButton;
+  onChange: (button: TemplateButton) => void;
+  onRemove: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [primary, setPrimary] = useState("");
+  const [url, setUrl] = useState("");
+
+  const open = () => {
+    setPrimary(button.kind === "copy-code" ? button.code : button.text);
+    setUrl(button.kind === "url" ? button.url : "");
+    setEditing(true);
+  };
+  const save = () => {
+    const value = primary.trim();
+    if (value) {
+      if (button.kind === "copy-code") onChange({ ...button, code: value.toUpperCase() });
+      else if (button.kind === "url") onChange({ ...button, text: value, url: url.trim() || button.url });
+      else onChange({ ...button, text: value });
+    }
+    setEditing(false);
+  };
+
+  if (editing) {
+    const field =
+      "w-full rounded-md border border-black/15 bg-white px-2 py-1 text-[12px] text-[#111b21] outline-none focus:border-[#1570EF]";
+    return (
+      <div
+        className="flex flex-col gap-1.5 border-t border-black/[0.08] px-2.5 py-2"
+        onBlur={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) save();
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") save();
+          if (e.key === "Escape") setEditing(false);
+        }}
+      >
+        <input
+          autoFocus
+          value={primary}
+          onChange={(e) => setPrimary(e.target.value)}
+          aria-label={button.kind === "copy-code" ? "Coupon code" : "Button text"}
+          placeholder={button.kind === "copy-code" ? "Coupon code" : "Button text"}
+          maxLength={button.kind === "copy-code" ? 15 : undefined}
+          className={field}
+        />
+        {button.kind === "url" && (
+          <input
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            aria-label="Button link"
+            placeholder="https://"
+            className={field}
+          />
+        )}
+      </div>
+    );
+  }
+
+  const Icon = BUTTON_ICON[button.kind];
+  const label = button.kind === "copy-code" ? `Copy code ${button.code}` : button.text;
+  return (
+    <div className="group relative flex items-center border-t border-black/[0.08]">
+      <button
+        type="button"
+        onClick={open}
+        aria-label={`Edit button ${label}`}
+        className="flex flex-1 items-center justify-center gap-1.5 py-2 text-[13px] text-[#0b8ad6] hover:bg-black/[0.02]"
+      >
+        <Icon size={13} strokeWidth={2} />
+        {label}
+        <Pencil size={11} className="text-black/30 opacity-0 transition-opacity group-hover:opacity-100" />
+      </button>
+      <button
+        type="button"
+        onClick={onRemove}
+        aria-label={`Remove button ${label}`}
+        className="absolute right-1.5 flex h-6 w-6 items-center justify-center rounded-md text-black/35 opacity-0 transition-opacity hover:bg-black/[0.05] hover:text-black/70 group-hover:opacity-100 focus:opacity-100"
+      >
+        <X size={12} />
+      </button>
     </div>
   );
 }
