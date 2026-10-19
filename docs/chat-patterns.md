@@ -61,6 +61,15 @@ and a lead line saying where it came from.
 - Seen in: template ("Draft … template" CTAs)
 - Lives in: `fireCta` → `startTemplateFromAgent` in `ChatArea.tsx`
 
+### Model-first, scripted fallback
+The open-weight model drafts and applies every change in the user's own words.
+The scripted drafter runs too: its result shows instantly when there's no model
+and is the fallback if the call fails. Wati says once per session why it fell
+back. A card waiting on the model shows the drafting beat, and a model-written
+draft is labelled "Drafted with <model>".
+- Seen in: template
+- Lives in: `app/api/template/route.ts` (any OpenAI-compatible provider), `lib/template-ai.ts`, `runTemplateAi` in `ChatArea.tsx`
+
 ## Component candidates
 
 | Candidate | What it is | Seen in |

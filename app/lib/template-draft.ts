@@ -414,7 +414,11 @@ export type RefineSuggestion = {
   prompt: string;
 };
 
-export function refineSuggestions(d: TemplateDraft): RefineSuggestion[] {
+/**
+ * `canRewrite`: the model is on, so the user's own copy can be rewritten too.
+ * Without it, rewrites only reshape the scripted copy.
+ */
+export function refineSuggestions(d: TemplateDraft, canRewrite = false): RefineSuggestion[] {
   const fields: RefineSuggestion[] = [];
   const field = (label: string, prompt: string) =>
     fields.push({ kind: "field", label, prompt });
@@ -431,7 +435,7 @@ export function refineSuggestions(d: TemplateDraft): RefineSuggestion[] {
   // that gets sent.
   const reply = (text: string) => rewrite(text, text);
   // Rewriting the user's own copy needs the model — offer no rewrites then.
-  if (d.customBody) return fields;
+  if (d.customBody && !canRewrite) return fields;
   return [
     ...fields,
     d.length === "short"
@@ -803,4 +807,93 @@ export function checkTemplate(
 
 export function canSubmit(checks: readonly TemplateCheck[]): boolean {
   return checks.every((c) => c.verdict !== "blocker");
+}
+
+/* ------------------------------------------------------------ Model I/O */
+
+/**
+ * The template as the model reads and writes it — the parts that make up the
+ * message, without the prototype's scripted-copy knobs (tone, length, offer).
+ */
+export type ModelTemplate = {
+  purpose: TemplatePurpose;
+  name: string;
+  category: TemplateCategory;
+  language: string;
+  header: { kind: "image" } | { kind: "text"; text: string } | null;
+  body: string;
+  footer: string | null;
+  buttons: (
+    | { kind: "url"; text: string; url: string }
+    | { kind: "phone"; text: string; phone: string }
+    | { kind: "copy-code"; code: string }
+    | { kind: "voice-call" | "request-contact" | "quick-reply" | "flow"; text: string }
+  )[];
+  samples: Record<string, string>;
+};
+
+export function toModelTemplate(d: TemplateDraft): ModelTemplate {
+  return {
+    purpose: d.purpose,
+    name: d.name,
+    category: d.category,
+    language: d.language,
+    header: d.header?.kind === "image" ? { kind: "image" } : d.header,
+    body: d.body,
+    footer: d.footer,
+    buttons: d.buttons,
+    samples: d.samples,
+  };
+}
+
+const PURPOSES: TemplatePurpose[] = ["promotion", "order-update", "delay", "reminder", "general"];
+const KINDS = BUTTON_TYPES.map((t) => t.kind);
+const str = (v: unknown, fallback = ""): string => (typeof v === "string" ? v : fallback);
+
+/**
+ * Fold a model reply into a draft, defensively: unknown values fall back to
+ * `base`, so a sloppy reply never breaks the card. What the model can't see
+ * (channel, an uploaded header image) carries over from `base`.
+ */
+export function fromModelTemplate(raw: unknown, base: TemplateDraft): TemplateDraft {
+  const m = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  const body = str(m.body).trim() || base.body;
+  const headerIn = m.header as { kind?: string; text?: string } | null | undefined;
+  const header: TemplateHeader | null =
+    headerIn?.kind === "image"
+      ? base.header?.kind === "image"
+        ? base.header
+        : { kind: "image" }
+      : headerIn?.kind === "text" && str(headerIn.text)
+        ? { kind: "text", text: str(headerIn.text) }
+        : headerIn === null
+          ? null
+          : base.header;
+  const buttons: TemplateButton[] = [];
+  for (const b of Array.isArray(m.buttons) ? m.buttons : []) {
+    const kind = (b as { kind?: string })?.kind as ButtonKind;
+    if (!KINDS.includes(kind)) continue;
+    const x = b as Record<string, unknown>;
+    if (kind === "copy-code") buttons.push({ kind, code: str(x.code).replace(/\s+/g, "") });
+    else if (kind === "url") buttons.push({ kind, text: str(x.text, "Visit website"), url: str(x.url, "https://yourstore.com") });
+    else if (kind === "phone") buttons.push({ kind, text: str(x.text, "Call us"), phone: str(x.phone, "+91 98765 43210") });
+    else buttons.push({ kind, text: str(x.text, "Reply") } as TemplateButton);
+  }
+  const samplesIn = (m.samples && typeof m.samples === "object" ? m.samples : {}) as Record<string, unknown>;
+  const samples: Record<string, string> = {};
+  for (const [k, v] of Object.entries(samplesIn)) samples[k] = str(v);
+  const name = str(m.name).toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 48);
+  return finish({
+    ...base,
+    purpose: PURPOSES.includes(m.purpose as TemplatePurpose) ? (m.purpose as TemplatePurpose) : base.purpose,
+    name: name || base.name,
+    category: m.category === "marketing" || m.category === "utility" ? m.category : base.category,
+    language: str(m.language) || base.language,
+    header,
+    customBody: body,
+    personal: body.includes("{{name}}"),
+    footer: m.footer === null ? null : str(m.footer) || base.footer,
+    buttons,
+    samples,
+  });
 }

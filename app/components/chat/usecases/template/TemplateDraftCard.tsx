@@ -28,6 +28,7 @@ import {
   type ObjectState,
 } from "../../../cards/WorkforceCard";
 import { TemplateMessagesIcon } from "../../../icons/TemplateMessagesIcon";
+import { modelLabel } from "../../../../lib/template-ai";
 import { TemplatePreview } from "./TemplatePreview";
 
 export type TemplateCardStage = "editing" | "review";
@@ -54,6 +55,10 @@ export function TemplateDraftCard({
   stage,
   templateId,
   fresh,
+  pending = false,
+  drafter,
+  canRewrite = false,
+  onEnhance,
   onDraftChange,
   onRefine,
   onStageChange,
@@ -68,6 +73,13 @@ export function TemplateDraftCard({
   templateId?: string;
   /** Just posted — play the drafting beat first. */
   fresh: boolean;
+  /** Waiting on the model's draft. */
+  pending?: boolean;
+  /** Model id when the model wrote this draft, e.g. "Qwen/Qwen3.8-27B". */
+  drafter?: string;
+  /** The model is on, so rewrites apply to the user's own copy too. */
+  canRewrite?: boolean;
+  onEnhance?: (body: string) => Promise<string | null>;
   /** In-place edits that aren't a new version (facts, samples). */
   onDraftChange: (draft: TemplateDraft) => void;
   /** A refinement chip — same as typing it. */
@@ -91,7 +103,7 @@ export function TemplateDraftCard({
     if (stage === "review") rootRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [stage]);
 
-  if (drafting) {
+  if (drafting || pending) {
     return <StatusIndicator text={version === 1 ? "Drafting your template" : "Updating the draft"} />;
   }
 
@@ -99,7 +111,7 @@ export function TemplateDraftCard({
   const status = saved?.status;
   const locked = status === "pending-meta" || status === "approved";
   const reviewing = stage === "review" && !locked;
-  const suggestions = refineSuggestions(draft);
+  const suggestions = refineSuggestions(draft, canRewrite);
   const checks = checkTemplate(draft, takenNames(templateId));
   const pill = status ? STATUS_PILL[status] : null;
 
@@ -114,7 +126,11 @@ export function TemplateDraftCard({
       // While editing, the name sits in the editable facts row instead.
       title={locked ? draft.name : "Create Template"}
       subtitle={
-        locked ? `${CHANNEL_LABEL[draft.channel ?? "whatsapp"]} template` : undefined
+        locked
+          ? `${CHANNEL_LABEL[draft.channel ?? "whatsapp"]} template`
+          : drafter
+            ? `Drafted with ${modelLabel(drafter)}`
+            : undefined
       }
       state={pill?.state}
       stateLabel={pill?.label}
@@ -150,6 +166,7 @@ export function TemplateDraftCard({
           locked ? undefined : (quickRepliesFirst) => onDraftChange({ ...draft, quickRepliesFirst })
         }
         onBodyChange={locked ? undefined : (body) => onDraftChange(withBody(draft, body))}
+        onEnhance={locked ? undefined : onEnhance}
         onHeaderChange={locked ? undefined : (header) => onDraftChange({ ...draft, header })}
       />
 

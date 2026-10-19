@@ -86,10 +86,14 @@ import {
   isNewTemplateRequest,
   isRewriteRequest,
   isTemplateRequest,
+  fromModelTemplate,
   refineTemplate,
+  toModelTemplate,
   type TemplateDraft,
   type TemplatePurpose,
 } from "../lib/template-draft";
+import { askTemplateAi, modelLabel, templateAiStatus } from "../lib/template-ai";
+import type { TemplateAiRequest } from "../api/template/route";
 import {
   SupersededTemplateCard,
   TemplateDraftCard,
@@ -199,6 +203,10 @@ type ChatMessage =
       /** Set once saved or submitted. */
       templateId?: string;
       createdAt: number;
+      /** Waiting on the model; the scripted draft stands in until it answers. */
+      pending?: boolean;
+      /** Model id when the model wrote this draft. */
+      drafter?: string;
     };
 
 const TEMPLATE_LEAD =
@@ -258,8 +266,21 @@ function openPurposeQuestion(list: readonly ChatMessage[]) {
   return pick?.kind === "template-pick-purpose" ? { id: last.id, intent: pick.intent } : null;
 }
 
+/** A model call that fills in a card once it answers. */
+type TemplateAiJob = {
+  cardId: string;
+  /** The draft the model's reply is folded into. */
+  base: TemplateDraft;
+  request: TemplateAiRequest;
+  /** Refinements: the card this one replaced, restored if the model fails
+   *  and there's no scripted result to fall back on. */
+  replacedId?: string;
+  fallback?: TemplateDraft | null;
+};
+
 /** What a template turn does to the thread besides appending `msgs`. */
 type TemplateTurn = {
+  ai?: TemplateAiJob;
   msgs: ChatMessage[];
   supersedeId?: string;
   lockId?: string;
@@ -761,14 +782,94 @@ export function ChatArea({
     return status === "pending-meta" || status === "approved";
   };
 
-  const startTemplateMessages = (
+  // Whether the open-weight model is configured; checked once per mount.
+  const [templateAi, setTemplateAi] = useState({ enabled: false, model: "" });
+  useEffect(() => {
+    let live = true;
+    templateAiStatus().then((s) => live && setTemplateAi(s));
+    return () => {
+      live = false;
+    };
+  }, []);
+  // Say once per session why the model isn't drafting, not on every turn.
+  const aiFallbackNoted = useRef(false);
+
+  /**
+   * Lead line + first card. The scripted draft is computed either way: it
+   * shows instantly without the model and is the fallback when it fails.
+   */
+  const startTemplate = (
     intent: string,
     purpose: TemplatePurpose,
     lead = TEMPLATE_LEAD,
-  ): ChatMessage[] => [
-    watiText(lead),
-    templateCardMessage(draftTemplate(intent, purpose, takenNames()), 1),
-  ];
+  ): { msgs: ChatMessage[]; ai?: TemplateAiJob } => {
+    const draft = draftTemplate(intent, purpose, takenNames());
+    const card = templateCardMessage(draft, 1) as TemplateCardMessage;
+    if (!templateAi.enabled) return { msgs: [watiText(lead), card] };
+    return {
+      msgs: [watiText(lead), { ...card, pending: true }],
+      ai: {
+        cardId: card.id,
+        base: draft,
+        request: {
+          mode: "draft",
+          intent,
+          purpose,
+          channel: draft.channel ?? "whatsapp",
+          language: draft.language,
+        },
+      },
+    };
+  };
+
+  /** Fill a pending card from the model, or fall back to the scripted path. */
+  const runTemplateAi = async (threadId: string, job: TemplateAiJob) => {
+    const res = await askTemplateAi(job.request);
+    if (res.ok && res.template) {
+      updateTemplateCard(threadId, job.cardId, {
+        draft: fromModelTemplate(res.template, job.base),
+        pending: false,
+        drafter: res.model,
+      });
+      return;
+    }
+    const reason = res.ok ? "bad-output" : res.reason;
+    if (reason === "no-key" || reason === "no-credits") {
+      setTemplateAi((s) => ({ ...s, enabled: false }));
+    }
+    const note =
+      !aiFallbackNoted.current && (reason === "no-key" || reason === "no-credits")
+        ? watiText(
+            reason === "no-credits"
+              ? `${modelLabel(templateAi.model)} couldn't run — the model account is out of credits — so I'm using the built-in drafter for now.`
+              : `${modelLabel(templateAi.model)} isn't connected, so I'm using the built-in drafter for now.`,
+          )
+        : null;
+    if (note) aiFallbackNoted.current = true;
+    setMessagesByThread((prev) => {
+      let list = prev[threadId] ?? [];
+      const keep = job.request.mode === "draft" || job.fallback;
+      if (keep) {
+        list = list.map((m) =>
+          m.kind === "template-card" && m.id === job.cardId
+            ? { ...m, pending: false, draft: job.fallback ?? m.draft }
+            : m,
+        );
+      } else {
+        // Nothing scripted to show: undo the pending turn's card.
+        list = list
+          .filter((m) => m.id !== job.cardId)
+          .map((m) =>
+            m.kind === "template-card" && m.id === job.replacedId ? { ...m, superseded: false } : m,
+          );
+      }
+      const extra = [
+        ...(note ? [note] : []),
+        ...(keep ? [] : [watiText(TEMPLATE_UNSUPPORTED)]),
+      ];
+      return { ...prev, [threadId]: [...list, ...extra] };
+    });
+  };
 
   /**
    * How a user turn moves the template flow on, or null when it isn't part
@@ -783,10 +884,7 @@ export function ChatArea({
     if (question && text) {
       return {
         lockId: question.id,
-        msgs: startTemplateMessages(
-          `${question.intent} ${text}`,
-          detectPurpose(text) ?? "general",
-        ),
+        ...startTemplate(`${question.intent} ${text}`, detectPurpose(text) ?? "general"),
       };
     }
     // Asking for another template while one is open starts that one fresh.
@@ -804,6 +902,26 @@ export function ChatArea({
       }
       if (text) {
         const result = refineTemplate(card.draft, text);
+        if (result && "blocked" in result) return { msgs: [watiText(result.blocked)] };
+        if (templateAi.enabled) {
+          // The model takes any change in the user's own words; the scripted
+          // result, if there is one, is the fallback.
+          const next = {
+            ...(templateCardMessage(card.draft, card.version + 1) as TemplateCardMessage),
+            pending: true,
+          };
+          return {
+            supersedeId: card.id,
+            msgs: [next],
+            ai: {
+              cardId: next.id,
+              base: card.draft,
+              request: { mode: "refine", template: toModelTemplate(card.draft), instruction: text },
+              replacedId: card.id,
+              fallback: result?.draft ?? null,
+            },
+          };
+        }
         if (!result) {
           const reply =
             card.draft.customBody && isRewriteRequest(text)
@@ -811,7 +929,6 @@ export function ChatArea({
               : TEMPLATE_UNSUPPORTED;
           return { msgs: [watiText(reply)] };
         }
-        if ("blocked" in result) return { msgs: [watiText(result.blocked)] };
         return {
           supersedeId: card.id,
           msgs: [templateCardMessage(result.draft, card.version + 1, result.changes)],
@@ -820,7 +937,7 @@ export function ChatArea({
     }
     if (text && isTemplateRequest(text)) {
       const purpose = detectPurpose(text);
-      if (purpose) return { msgs: startTemplateMessages(text, purpose) };
+      if (purpose) return startTemplate(text, purpose);
       return {
         msgs: [
           {
@@ -855,12 +972,13 @@ export function ChatArea({
       });
       return { ...prev, [threadId]: [...list, ...lead, ...turn.msgs] };
     });
+    if (turn.ai) void runTemplateAi(threadId, turn.ai);
   };
 
   const updateTemplateCard = (
     threadId: string,
     cardId: string,
-    patch: Partial<Pick<TemplateCardMessage, "draft" | "stage" | "templateId">>,
+    patch: Partial<Pick<TemplateCardMessage, "draft" | "stage" | "templateId" | "pending" | "drafter">>,
   ) => {
     setMessagesByThread((prev) => ({
       ...prev,
@@ -883,6 +1001,7 @@ export function ChatArea({
     }
     if (card.stage === "review") return "Anything to change before you submit?";
     // Examples are ones refineTemplate can actually apply.
+    if (templateAi.enabled) return "Describe any change in your own words";
     if (card.draft.customBody) return "Send revised text, or e.g. “footer: T&Cs apply”";
     return card.draft.purpose === "promotion"
       ? "Describe a change, e.g. “make it 25% off” or “use code DIWALI20”"
@@ -903,14 +1022,13 @@ export function ChatArea({
     const threadId = createThread(subject.charAt(0).toUpperCase() + subject.slice(1));
     setMode(null);
     setView("chat");
-    appendMessages(
-      threadId,
-      startTemplateMessages(
-        ctaLabel,
-        detectPurpose(ctaLabel) ?? "general",
-        `${agentName} flagged this in its last run, so I drafted a template for it. Tap a suggestion or tell me what to change.`,
-      ),
+    const start = startTemplate(
+      ctaLabel,
+      detectPurpose(ctaLabel) ?? "general",
+      `${agentName} flagged this in its last run, so I drafted a template for it. Tap a suggestion or tell me what to change.`,
     );
+    appendMessages(threadId, start.msgs);
+    if (start.ai) void runTemplateAi(threadId, start.ai);
   };
 
   const sendPrompt = (text: string) => {
@@ -1464,18 +1582,21 @@ export function ChatArea({
         }
 
         case "template-pick-purpose": {
+          const start = startTemplate(action.intent, action.purpose);
           appendMessages(threadId, [
             { kind: "user-text", id: crypto.randomUUID(), content: action.label },
-            ...startTemplateMessages(action.intent, action.purpose),
+            ...start.msgs,
           ]);
+          if (start.ai) void runTemplateAi(threadId, start.ai);
           break;
         }
       }
     },
-    // startTemplateMessages only reads takenNames, which it tracks.
+    // startTemplate reads takenNames and templateAi, which it tracks.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       takenNames,
+      templateAi,
       appendMessages,
       lockWatiMessageActions,
       markSeen,
@@ -1862,6 +1983,22 @@ export function ChatArea({
                       stage={m.stage}
                       templateId={m.templateId}
                       fresh={Date.now() - m.createdAt < 1500}
+                      // A pending card left over from a reload never resolves; let it show.
+                      pending={m.pending && Date.now() - m.createdAt < 90_000}
+                      drafter={m.drafter}
+                      canRewrite={templateAi.enabled}
+                      onEnhance={
+                        templateAi.enabled
+                          ? async (body) => {
+                              const res = await askTemplateAi({
+                                mode: "enhance",
+                                body,
+                                template: toModelTemplate(m.draft),
+                              });
+                              return res.ok && res.body ? res.body : null;
+                            }
+                          : undefined
+                      }
                       onDraftChange={(draft) =>
                         updateTemplateCard(activeThreadId, m.id, { draft })
                       }

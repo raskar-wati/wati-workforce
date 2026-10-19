@@ -45,11 +45,14 @@ export function TemplatePreview({
   onReorder,
   onBodyChange,
   onHeaderChange,
+  onEnhance,
 }: {
   draft: TemplateDraft;
   onButtonsChange?: (buttons: TemplateButton[]) => void;
   onReorder?: (quickRepliesFirst: boolean) => void;
   onBodyChange?: (body: string) => void;
+  /** Rewrites the body for Enhance; null means fall back to local polish. */
+  onEnhance?: (body: string) => Promise<string | null>;
   onHeaderChange?: (header: TemplateHeader | null) => void;
 }) {
   const rows = orderedButtons(draft);
@@ -70,7 +73,7 @@ export function TemplatePreview({
             <p className="text-[13px] font-semibold text-[#111b21]">{draft.header.text}</p>
           )}
           {onBodyChange ? (
-            <EditableBody body={draft.body} onChange={onBodyChange} />
+            <EditableBody body={draft.body} onChange={onBodyChange} onEnhance={onEnhance} />
           ) : (
             <p className="whitespace-pre-line text-[13px] leading-[18px] text-[#111b21]">
               <BodyText body={draft.body} />
@@ -257,20 +260,28 @@ function AddImageHeader({ onChange }: { onChange: (header: TemplateHeader) => vo
  * The body, editable in place: hover shows a pencil, click turns it into a
  * textarea. Enter or leaving saves, Shift+Enter adds a line, Escape cancels.
  */
-function EditableBody({ body, onChange }: { body: string; onChange: (body: string) => void }) {
+function EditableBody({
+  body,
+  onChange,
+  onEnhance,
+}: {
+  body: string;
+  onChange: (body: string) => void;
+  onEnhance?: (body: string) => Promise<string | null>;
+}) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(body);
   const [enhancing, setEnhancing] = useState(false);
 
-  // Brief beat so the change reads as Wati doing it, then swap the text in.
-  // The editor stays open so the user can check it before saving.
-  const enhance = () => {
+  // The model rewrites when it's connected; otherwise a local polish after a
+  // brief beat. Either way the editor stays open so the user can check it.
+  const enhance = async () => {
     if (enhancing || !value.trim()) return;
     setEnhancing(true);
-    window.setTimeout(() => {
-      setValue((v) => enhanceBody(v).slice(0, BODY_LIMIT));
-      setEnhancing(false);
-    }, 600);
+    const rewritten = onEnhance ? await onEnhance(value) : null;
+    if (!rewritten) await new Promise((r) => window.setTimeout(r, 600));
+    setValue((rewritten ?? enhanceBody(value)).slice(0, BODY_LIMIT));
+    setEnhancing(false);
   };
 
   const save = () => {
