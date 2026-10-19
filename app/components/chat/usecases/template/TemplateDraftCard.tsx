@@ -1,6 +1,5 @@
 "use client";
 
-import { AnimatePresence, motion } from "motion/react";
 import { ChevronDown, Loader2, Pencil, Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -31,7 +30,7 @@ import { TemplatePreview } from "./TemplatePreview";
 
 export type TemplateCardStage = "editing" | "review";
 
-/** How long the "drafting" beat shows before a fresh version appears. */
+/** How long the "drafting" beat shows before the first draft appears. */
 const DRAFTING_BEAT_MS = 900;
 
 const STATUS_PILL: Record<TemplateStatus, { state: ObjectState; label?: string; tone: CardTone }> = {
@@ -41,36 +40,38 @@ const STATUS_PILL: Record<TemplateStatus, { state: ObjectState; label?: string; 
 };
 
 /**
- * One version of a template being made in chat. While editing it offers
- * one-tap refinements; "Looks good" turns the same card into the review step
+ * The one card for a template being made in chat — every edit updates it.
+ * While editing it offers one-tap refinements and Undo for the last chat
+ * edit; "Looks good" turns the same card into the review step
  * (samples, checks, Submit / Save as draft). Once saved or submitted it
  * tracks the template's status from the templates store.
  */
 export function TemplateDraftCard({
   threadId,
   draft,
-  version,
   stage,
   templateId,
   fresh,
   onDraftChange,
   onRefine,
+  onUndo,
   onStageChange,
   onSaved,
   onFollowUp,
 }: {
   threadId: string;
   draft: TemplateDraft;
-  version: number;
   stage: TemplateCardStage;
   /** Set once saved or submitted. */
   templateId?: string;
   /** Just posted — play the drafting beat first. */
   fresh: boolean;
-  /** In-place edits that aren't a new version (facts, samples). */
+  /** Direct edits on the card (facts, buttons, samples). */
   onDraftChange: (draft: TemplateDraft) => void;
   /** A refinement chip — same as typing it. */
   onRefine: (text: string) => void;
+  /** Restore the draft from before the last chat edit, when there is one. */
+  onUndo?: () => void;
   onStageChange: (stage: TemplateCardStage) => void;
   onSaved: (templateId: string) => void;
   /** Hand a next step to the composer. */
@@ -91,7 +92,7 @@ export function TemplateDraftCard({
   }, [stage]);
 
   if (drafting) {
-    return <StatusIndicator text={version === 1 ? "Drafting your template" : "Updating the draft"} />;
+    return <StatusIndicator text="Drafting your template" />;
   }
 
   const saved = templateId ? getTemplate(templateId) : undefined;
@@ -112,7 +113,7 @@ export function TemplateDraftCard({
       // While editing, the name sits in the editable facts row instead.
       title={locked ? draft.name : "Create Template"}
       subtitle={
-        locked ? `${CHANNEL_LABEL[draft.channel ?? "whatsapp"]} template` : `Version ${version}`
+        locked ? `${CHANNEL_LABEL[draft.channel ?? "whatsapp"]} template` : undefined
       }
       state={pill?.state}
       stateLabel={pill?.label}
@@ -134,9 +135,12 @@ export function TemplateDraftCard({
             <TextAction onClick={() => onStageChange("editing")}>Keep editing</TextAction>
           </>
         ) : (
-          <CardCtaChip primary onClick={() => onStageChange("review")}>
-            Looks good
-          </CardCtaChip>
+          <>
+            <CardCtaChip primary onClick={() => onStageChange("review")}>
+              Looks good
+            </CardCtaChip>
+            {onUndo && <TextAction onClick={onUndo}>Undo last change</TextAction>}
+          </>
         )
       }
     >
@@ -182,42 +186,6 @@ export function TemplateDraftCard({
         <EvidenceRow verdict="info">Saved to Templates as a draft</EvidenceRow>
       )}
     </WorkforceCard>
-    </div>
-  );
-}
-
-/** Collapsed stand-in for a version that a newer one replaced. */
-export function SupersededTemplateCard({
-  draft,
-  version,
-}: {
-  draft: TemplateDraft;
-  version: number;
-}) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="flex flex-col gap-2">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 self-start rounded-full px-1 text-[12px] text-black/45 hover:text-black/70"
-      >
-        <TemplateMessagesIcon size={13} />
-        {draft.name} · v{version} — replaced by a newer version
-        <ChevronDown size={12} className={open ? "rotate-180 transition-transform" : "transition-transform"} />
-      </button>
-      <AnimatePresence initial={false}>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden opacity-70"
-          >
-            <TemplatePreview draft={draft} />
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

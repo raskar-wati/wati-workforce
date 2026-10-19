@@ -90,7 +90,6 @@ import {
   type TemplatePurpose,
 } from "../lib/template-draft";
 import {
-  SupersededTemplateCard,
   TemplateDraftCard,
   type TemplateCardStage,
 } from "./chat/usecases/template/TemplateDraftCard";
@@ -186,14 +185,17 @@ type ChatMessage =
     }
   | { kind: "daily-digest"; id: string }
   | {
-      /** One version of a template being made in chat. */
+      /**
+       * The one card for a template being made in chat. Edits update it, and
+       * a chat edit moves it below the user's turn so it stays by the composer.
+       */
       kind: "template-card";
       id: string;
-      version: number;
       draft: TemplateDraft;
-      changes?: string[];
+      /** The draft before the last chat edit — what Undo restores. */
+      previous?: TemplateDraft;
       stage: TemplateCardStage;
-      /** A newer version replaced this one — renders collapsed. */
+      /** Legacy: older builds left a stub per replaced version. Hidden now. */
       superseded?: boolean;
       /** Set once saved or submitted. */
       templateId?: string;
@@ -211,17 +213,11 @@ function watiText(text: string): ChatMessage {
   return { kind: "wati-message", id: crypto.randomUUID(), text, actions: [] };
 }
 
-function templateCardMessage(
-  draft: TemplateDraft,
-  version: number,
-  changes?: string[],
-): ChatMessage {
+function templateCardMessage(draft: TemplateDraft): ChatMessage {
   return {
     kind: "template-card",
     id: crypto.randomUUID(),
-    version,
     draft,
-    changes,
     stage: "editing",
     createdAt: Date.now(),
   };
@@ -230,7 +226,7 @@ function templateCardMessage(
 type TemplateCardMessage = Extract<ChatMessage, { kind: "template-card" }>;
 
 /**
- * The template card still taking edits: the latest version, not yet with
+ * The template card still taking edits: the latest one, not yet with
  * Meta, and nothing but the user and Wati's own notes said since. Anything
  * else in between (a model reply) means the user moved on.
  */
@@ -260,9 +256,9 @@ function openPurposeQuestion(list: readonly ChatMessage[]) {
 /** What a template turn does to the thread besides appending `msgs`. */
 type TemplateTurn = {
   msgs: ChatMessage[];
-  supersedeId?: string;
+  /** A card in `msgs` that already exists — lift it out of its old spot. */
+  moveId?: string;
   lockId?: string;
-  patch?: { id: string; draft: TemplateDraft };
 };
 
 export function ChatArea({
@@ -766,7 +762,7 @@ export function ChatArea({
     lead = TEMPLATE_LEAD,
   ): ChatMessage[] => [
     watiText(lead),
-    templateCardMessage(draftTemplate(intent, purpose, takenNames()), 1),
+    templateCardMessage(draftTemplate(intent, purpose, takenNames())),
   ];
 
   /**
@@ -793,11 +789,14 @@ export function ChatArea({
       const image = files.find((f) => f.kind === "image");
       if (image && card.draft.header?.kind === "image") {
         return {
-          patch: {
-            id: card.id,
-            draft: { ...card.draft, header: { kind: "image", fileName: image.name } },
-          },
-          msgs: [watiText(`Added ${image.name} as the header image.`)],
+          moveId: card.id,
+          msgs: [
+            {
+              ...card,
+              draft: { ...card.draft, header: { kind: "image", fileName: image.name } },
+              previous: card.draft,
+            },
+          ],
         };
       }
       if (text) {
@@ -811,8 +810,8 @@ export function ChatArea({
         }
         if ("blocked" in result) return { msgs: [watiText(result.blocked)] };
         return {
-          supersedeId: card.id,
-          msgs: [templateCardMessage(result.draft, card.version + 1, result.changes)],
+          moveId: card.id,
+          msgs: [{ ...card, draft: result.draft, previous: card.draft }],
         };
       }
     }
@@ -841,16 +840,11 @@ export function ChatArea({
   /** Apply a template turn's in-place changes and append its messages. */
   const applyTemplateTurn = (threadId: string, turn: TemplateTurn, lead: ChatMessage[]) => {
     setMessagesByThread((prev) => {
-      const list = (prev[threadId] ?? []).map((m): ChatMessage => {
-        if (m.id === turn.supersedeId && m.kind === "template-card") {
-          return { ...m, superseded: true };
-        }
-        if (m.id === turn.lockId && m.kind === "wati-message") return { ...m, locked: true };
-        if (m.id === turn.patch?.id && m.kind === "template-card") {
-          return { ...m, draft: turn.patch.draft };
-        }
-        return m;
-      });
+      const list = (prev[threadId] ?? [])
+        .filter((m) => m.id !== turn.moveId)
+        .map((m): ChatMessage =>
+          m.id === turn.lockId && m.kind === "wati-message" ? { ...m, locked: true } : m,
+        );
       return { ...prev, [threadId]: [...list, ...lead, ...turn.msgs] };
     });
   };
@@ -858,7 +852,7 @@ export function ChatArea({
   const updateTemplateCard = (
     threadId: string,
     cardId: string,
-    patch: Partial<Pick<TemplateCardMessage, "draft" | "stage" | "templateId">>,
+    patch: Partial<Pick<TemplateCardMessage, "draft" | "previous" | "stage" | "templateId">>,
   ) => {
     setMessagesByThread((prev) => ({
       ...prev,
@@ -1846,17 +1840,12 @@ export function ChatArea({
                 }
                 if (!activeThreadId) return null;
                 if (m.kind === "template-card") {
-                  if (m.superseded) {
-                    return (
-                      <SupersededTemplateCard key={m.id} draft={m.draft} version={m.version} />
-                    );
-                  }
+                  if (m.superseded) return null;
                   return (
                     <TemplateDraftCard
                       key={m.id}
                       threadId={activeThreadId}
                       draft={m.draft}
-                      version={m.version}
                       stage={m.stage}
                       templateId={m.templateId}
                       fresh={Date.now() - m.createdAt < 1500}
@@ -1864,6 +1853,15 @@ export function ChatArea({
                         updateTemplateCard(activeThreadId, m.id, { draft })
                       }
                       onRefine={(text) => sendTemplateChip(activeThreadId, text)}
+                      onUndo={
+                        m.previous
+                          ? () =>
+                              updateTemplateCard(activeThreadId, m.id, {
+                                draft: m.previous,
+                                previous: undefined,
+                              })
+                          : undefined
+                      }
                       onStageChange={(stage) =>
                         updateTemplateCard(activeThreadId, m.id, { stage })
                       }
