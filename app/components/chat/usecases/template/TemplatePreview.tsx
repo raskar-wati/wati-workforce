@@ -230,7 +230,7 @@ function CarouselCards({
         <button
           type="button"
           onClick={() => onChange([...cards, { text: "", button: "Shop now" }])}
-          className="flex w-[96px] shrink-0 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-black/20 bg-white/60 text-[12px] text-black/55 hover:bg-white"
+          className="flex w-[168px] shrink-0 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-black/20 bg-white/60 text-[12px] text-black/55 hover:bg-white"
         >
           <Plus size={14} />
           Add card
