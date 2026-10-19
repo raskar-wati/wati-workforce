@@ -9,6 +9,7 @@
  */
 
 export type TemplateCategory = "marketing" | "utility";
+export type TemplateChannel = "whatsapp" | "instagram" | "messenger" | "email";
 export type TemplatePurpose =
   | "promotion"
   | "order-update"
@@ -28,6 +29,8 @@ export type TemplateButton =
   | { kind: "quick-reply"; text: string };
 
 export type TemplateDraft = {
+  /** Optional only for drafts saved before channels existed — read as WhatsApp. */
+  channel?: TemplateChannel;
   name: string;
   category: TemplateCategory;
   language: string;
@@ -58,6 +61,13 @@ export const TEMPLATE_LANGUAGES = [
   "Arabic",
   "Indonesian",
 ] as const;
+
+export const CHANNEL_LABEL: Record<TemplateChannel, string> = {
+  whatsapp: "WhatsApp",
+  instagram: "Instagram",
+  messenger: "Messenger",
+  email: "Email",
+};
 
 export const CATEGORY_LABEL: Record<TemplateCategory, string> = {
   marketing: "Marketing",
@@ -253,6 +263,7 @@ export function draftTemplate(
     purpose === "promotion" ? slugify(offer) : DEFAULT_NAME[purpose];
   return finish({
     name: uniqueName(base, takenNames),
+    channel: "whatsapp",
     category: purpose === "promotion" ? "marketing" : "utility",
     language: "English",
     purpose,

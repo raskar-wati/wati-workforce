@@ -64,7 +64,7 @@ and a lead line saying where it came from.
 | Candidate | What it is | Seen in |
 | --- | --- | --- |
 | Object card chassis | `WorkforceCard`: icon, title, state pill, note, body, actions. Already shared. | template |
-| Editable fact chips | Inferred settings shown as chips, editable in place: text input or select. | template (name, category, language) |
+| Editable fact chips | Inferred settings shown as chips, editable in place: text input or select. | template (channel, name, category, language) |
 | Refine chips | Two groups under a draft. **+ Field** chips (dashed outline, plus icon) add a part of the object. **Rewrite** chips (grey secondary, no icon) rework the copy. A divider separates the groups. | template |
 | Required-fields form | Compact label → input rows, prefilled. | template (sample values) |
 | Issue flags | `EvidenceRow`s shown only for problems: a blocker disables commit, a warn means a likely platform flag. No all-clear rows. Already shared. | template |

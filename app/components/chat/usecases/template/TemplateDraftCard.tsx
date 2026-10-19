@@ -5,12 +5,14 @@ import { ChevronDown, FileText, Loader2, Pencil, Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
   CATEGORY_LABEL,
+  CHANNEL_LABEL,
   TEMPLATE_LANGUAGES,
   canSubmit,
   checkTemplate,
   refineSuggestions,
   type RefineSuggestion,
   type TemplateCategory,
+  type TemplateChannel,
   type TemplateDraft,
 } from "../../../../lib/template-draft";
 import { useTemplates, type TemplateStatus } from "../../../../lib/templates";
@@ -108,8 +110,10 @@ export function TemplateDraftCard({
       icon={<FileText size={11} strokeWidth={2.25} />}
       tone={pill?.tone ?? "neutral"}
       // While editing, the name sits in the editable facts row instead.
-      title={locked ? draft.name : "WhatsApp template"}
-      subtitle={locked ? "WhatsApp template" : `Version ${version}`}
+      title={locked ? draft.name : "Create Template"}
+      subtitle={
+        locked ? `${CHANNEL_LABEL[draft.channel ?? "whatsapp"]} template` : `Version ${version}`
+      }
       note={changes && changes.length > 0 && !locked ? `Updated: ${changes.join(" · ")}` : undefined}
       state={pill?.state}
       stateLabel={pill?.label}
@@ -260,7 +264,7 @@ function RefineChips({
 
 /* ------------------------------------------------------------ Facts */
 
-/** Name, category and language — set for the user, editable in place. */
+/** Channel, name, category and language — set for the user, editable in place. */
 function TemplateFacts({
   draft,
   onChange,
@@ -273,6 +277,16 @@ function TemplateFacts({
     "inline-flex items-center gap-1 rounded-full bg-black/[0.04] px-2.5 py-1 text-[12px] text-black/70 hover:bg-black/[0.07]";
   return (
     <div className="flex flex-wrap items-center gap-1.5">
+      <SelectChip
+        label="Channel"
+        value={draft.channel ?? "whatsapp"}
+        options={(Object.keys(CHANNEL_LABEL) as TemplateChannel[]).map((c) => ({
+          value: c,
+          label: CHANNEL_LABEL[c],
+        }))}
+        onChange={(channel) => onChange({ ...draft, channel: channel as TemplateChannel })}
+        className={chip}
+      />
       {editingName ? (
         <input
           autoFocus
