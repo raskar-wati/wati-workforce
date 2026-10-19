@@ -298,9 +298,9 @@ function EditableBody({ body, onChange }: { body: string; onChange: (body: strin
           maxLength={BODY_LIMIT}
           rows={Math.min(8, Math.max(3, Math.ceil(value.length / 42)))}
           aria-label="Message body"
-          className="w-full resize-none rounded-md border border-[#1570EF] bg-white px-2 py-1.5 pb-8 text-[13px] leading-[18px] text-[#111b21] outline-none"
+          className="block w-full resize-none rounded-md border border-[#1570EF] bg-white px-2 py-1.5 pb-8 text-[13px] leading-[18px] text-[#111b21] outline-none"
         />
-        <div className="pointer-events-none absolute inset-x-2 bottom-1.5 flex items-center justify-between">
+        <div className="pointer-events-none absolute bottom-[5px] left-[5px] right-[9px] flex items-center justify-between">
           <button
             type="button"
             // Keep focus in the textarea — a blur would save and close it.
