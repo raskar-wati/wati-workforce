@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { ChevronDown, FileText, Loader2, Pencil } from "lucide-react";
+import { ChevronDown, FileText, Loader2, Pencil, Plus, Sparkles } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
   CATEGORY_LABEL,
@@ -9,6 +9,7 @@ import {
   canSubmit,
   checkTemplate,
   refineSuggestions,
+  type RefineSuggestion,
   type TemplateCategory,
   type TemplateDraft,
 } from "../../../../lib/template-draft";
@@ -140,18 +141,7 @@ export function TemplateDraftCard({
       <TemplatePreview draft={draft} />
 
       {!locked && !reviewing && (
-        <div className="flex flex-wrap gap-1.5 pt-1">
-          {refineSuggestions(draft).map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => onRefine(s)}
-              className="rounded-full border border-wati-border bg-white px-2.5 py-1 text-[12px] text-black/65 transition-colors hover:border-black/20 hover:bg-black/[0.03] hover:text-black/85"
-            >
-              {s}
-            </button>
-          ))}
-        </div>
+        <RefineChips suggestions={refineSuggestions(draft)} onPick={onRefine} />
       )}
 
       {reviewing && (
@@ -219,6 +209,52 @@ export function SupersededTemplateCard({
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------ Refine */
+
+/**
+ * Two groups, read differently: "+ field" chips add a part of the template;
+ * sparkle chips have AI rewrite the copy, set apart after a divider.
+ */
+function RefineChips({
+  suggestions,
+  onPick,
+}: {
+  suggestions: RefineSuggestion[];
+  onPick: (prompt: string) => void;
+}) {
+  const fields = suggestions.filter((s) => s.kind === "field");
+  const rewrites = suggestions.filter((s) => s.kind === "rewrite");
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 pt-1">
+      {fields.map((s) => (
+        <button
+          key={s.label}
+          type="button"
+          onClick={() => onPick(s.prompt)}
+          className="inline-flex items-center gap-1 rounded-full border border-dashed border-black/20 bg-white px-2.5 py-1 text-[12px] text-black/65 transition-colors hover:border-black/35 hover:bg-black/[0.03] hover:text-black/85"
+        >
+          <Plus size={11} strokeWidth={2.25} className="text-black/45" />
+          {s.label}
+        </button>
+      ))}
+      {fields.length > 0 && rewrites.length > 0 && (
+        <span aria-hidden className="mx-1 h-4 w-px bg-black/10" />
+      )}
+      {rewrites.map((s) => (
+        <button
+          key={s.label}
+          type="button"
+          onClick={() => onPick(s.prompt)}
+          className="inline-flex items-center gap-1 rounded-full bg-wati-green-soft px-2.5 py-1 text-[12px] text-wati-green-text transition-colors hover:bg-wati-green-soft-hover"
+        >
+          <Sparkles size={11} strokeWidth={2.25} />
+          {s.label}
+        </button>
+      ))}
     </div>
   );
 }

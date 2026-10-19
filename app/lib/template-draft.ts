@@ -266,18 +266,42 @@ export function draftTemplate(
 
 /* ------------------------------------------------------------ Refine */
 
-/** One-tap refinements offered under the draft. */
-export function refineSuggestions(d: TemplateDraft): string[] {
-  const out: string[] = [];
-  if (!d.header) out.push("Add image header");
-  out.push(d.length === "short" ? "Make it longer" : "Make it shorter");
-  out.push(d.tone === "formal" ? "Make it friendlier" : "Make it more formal");
-  if (!d.personal) out.push("Greet by name");
+/**
+ * One-tap refinements offered under the draft, in two kinds: `field` adds a
+ * part of the template, `rewrite` has AI rework the copy. `prompt` is what
+ * posts to the chat, so a tap reads the same as typing it.
+ */
+export type RefineSuggestion = {
+  kind: "field" | "rewrite";
+  label: string;
+  prompt: string;
+};
+
+export function refineSuggestions(d: TemplateDraft): RefineSuggestion[] {
+  const fields: RefineSuggestion[] = [];
+  const field = (label: string, prompt: string) =>
+    fields.push({ kind: "field", label, prompt });
+  if (!d.header) field("Image header", "Add image header");
   if (d.purpose === "promotion" && !d.buttons.some((b) => b.kind === "copy-code")) {
-    out.push("Add a coupon code");
+    field("Coupon code", "Add a coupon code");
   }
-  if (d.buttons.length === 0) out.push("Add a button");
-  return out;
+  if (!d.personal) field("Name variable", "Greet by name");
+  if (d.buttons.length === 0) field("Button", "Add a button");
+
+  const rewrite = (label: string, prompt: string): RefineSuggestion => ({
+    kind: "rewrite",
+    label,
+    prompt,
+  });
+  return [
+    ...fields,
+    d.length === "short"
+      ? rewrite("Longer", "Make it longer")
+      : rewrite("Shorter", "Make it shorter"),
+    d.tone === "formal"
+      ? rewrite("Friendlier", "Make it friendlier")
+      : rewrite("More formal", "Make it more formal"),
+  ];
 }
 
 export type RefineResult = { draft: TemplateDraft; changes: string[] };
