@@ -41,8 +41,7 @@ const STATUS_PILL: Record<TemplateStatus, { state: ObjectState; label?: string; 
 
 /**
  * The one card for a template being made in chat — every edit updates it.
- * While editing it offers one-tap refinements and Undo for the last chat
- * edit; "Looks good" turns the same card into the review step
+ * While editing it offers one-tap refinements; "Looks good" turns the same card into the review step
  * (samples, checks, Submit / Save as draft). Once saved or submitted it
  * tracks the template's status from the templates store.
  */
@@ -54,7 +53,6 @@ export function TemplateDraftCard({
   fresh,
   onDraftChange,
   onRefine,
-  onUndo,
   onStageChange,
   onSaved,
   onFollowUp,
@@ -70,8 +68,6 @@ export function TemplateDraftCard({
   onDraftChange: (draft: TemplateDraft) => void;
   /** A refinement chip — same as typing it. */
   onRefine: (text: string) => void;
-  /** Restore the draft from before the last chat edit, when there is one. */
-  onUndo?: () => void;
   onStageChange: (stage: TemplateCardStage) => void;
   onSaved: (templateId: string) => void;
   /** Hand a next step to the composer. */
@@ -135,12 +131,9 @@ export function TemplateDraftCard({
             <TextAction onClick={() => onStageChange("editing")}>Keep editing</TextAction>
           </>
         ) : (
-          <>
-            <CardCtaChip primary onClick={() => onStageChange("review")}>
-              Looks good
-            </CardCtaChip>
-            {onUndo && <TextAction onClick={onUndo}>Undo last change</TextAction>}
-          </>
+          <CardCtaChip primary onClick={() => onStageChange("review")}>
+            Looks good
+          </CardCtaChip>
         )
       }
     >

@@ -192,8 +192,6 @@ type ChatMessage =
       kind: "template-card";
       id: string;
       draft: TemplateDraft;
-      /** The draft before the last chat edit — what Undo restores. */
-      previous?: TemplateDraft;
       stage: TemplateCardStage;
       /** Legacy: older builds left a stub per replaced version. Hidden now. */
       superseded?: boolean;
@@ -794,7 +792,6 @@ export function ChatArea({
             {
               ...card,
               draft: { ...card.draft, header: { kind: "image", fileName: image.name } },
-              previous: card.draft,
             },
           ],
         };
@@ -811,7 +808,7 @@ export function ChatArea({
         if ("blocked" in result) return { msgs: [watiText(result.blocked)] };
         return {
           moveId: card.id,
-          msgs: [{ ...card, draft: result.draft, previous: card.draft }],
+          msgs: [{ ...card, draft: result.draft }],
         };
       }
     }
@@ -852,7 +849,7 @@ export function ChatArea({
   const updateTemplateCard = (
     threadId: string,
     cardId: string,
-    patch: Partial<Pick<TemplateCardMessage, "draft" | "previous" | "stage" | "templateId">>,
+    patch: Partial<Pick<TemplateCardMessage, "draft" | "stage" | "templateId">>,
   ) => {
     setMessagesByThread((prev) => ({
       ...prev,
@@ -1853,15 +1850,6 @@ export function ChatArea({
                         updateTemplateCard(activeThreadId, m.id, { draft })
                       }
                       onRefine={(text) => sendTemplateChip(activeThreadId, text)}
-                      onUndo={
-                        m.previous
-                          ? () =>
-                              updateTemplateCard(activeThreadId, m.id, {
-                                draft: m.previous,
-                                previous: undefined,
-                              })
-                          : undefined
-                      }
                       onStageChange={(stage) =>
                         updateTemplateCard(activeThreadId, m.id, { stage })
                       }
