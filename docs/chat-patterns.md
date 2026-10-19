@@ -22,10 +22,11 @@ Typing an answer works the same as tapping a chip.
 - Seen in: template (purpose: Promotion / Order update / Reminder / General)
 - Lives in: `WatiMessage` + `template-pick-purpose` action in `ChatArea.tsx`
 
-### Versioned card, older versions collapse
-Each change posts a new version of the object card. There is no "Updated: …"
+### Each edit posts a new card, earlier drafts collapse
+Each change posts a new card below the user's turn, so the chat keeps its
+trail. The UI never calls these "versions". There is no "Updated: …"
 note: the user's own turn just above already says what changed.
-The previous version collapses to a single line that can be expanded.
+The earlier card collapses to an "Earlier draft of …" line that can be expanded.
 - Seen in: template
 - Lives in: `TemplateDraftCard`, `SupersededTemplateCard`
 
@@ -72,7 +73,7 @@ and a lead line saying where it came from.
 | Required value opens itself | A part that can't be valid without user input (here the coupon code) starts in edit mode with a placeholder and a counter. It is also flagged and named in the composer hint until it's filled. No made-up defaults. | template (Copy offer code) |
 | Required-fields form | Compact label → input rows, prefilled. | template (sample values) |
 | Issue flags | `EvidenceRow`s shown only for problems: a blocker disables commit, a warn means a likely platform flag. No all-clear rows. Already shared. | template |
-| Drafting beat | `StatusIndicator` shown for about 1s before a new version appears. | template |
+| Drafting beat | `StatusIndicator` shown for about 1s before a new card appears. | template |
 | Channel preview | How the message lands in WhatsApp. Parts the user owns (buttons) can be edited in place: tap to edit, × to remove. The same edits also work by chat ("rename 'Shop now' to …"). | template |
 | Contextual composer hint | The composer placeholder says what the open flow needs next: missing input first, then example edits the flow supports. | template |
 | Text action | Low-emphasis button next to the CTA chips ("Keep editing"). | template |

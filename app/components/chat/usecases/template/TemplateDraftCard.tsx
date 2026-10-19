@@ -112,7 +112,7 @@ export function TemplateDraftCard({
       // While editing, the name sits in the editable facts row instead.
       title={locked ? draft.name : "Create Template"}
       subtitle={
-        locked ? `${CHANNEL_LABEL[draft.channel ?? "whatsapp"]} template` : `Version ${version}`
+        locked ? `${CHANNEL_LABEL[draft.channel ?? "whatsapp"]} template` : undefined
       }
       state={pill?.state}
       stateLabel={pill?.label}
@@ -203,7 +203,7 @@ export function SupersededTemplateCard({
         className="flex items-center gap-2 self-start rounded-full px-1 text-[12px] text-black/45 hover:text-black/70"
       >
         <TemplateMessagesIcon size={13} />
-        {draft.name} · v{version} — replaced by a newer version
+        Earlier draft of {draft.name}
         <ChevronDown size={12} className={open ? "rotate-180 transition-transform" : "transition-transform"} />
       </button>
       <AnimatePresence initial={false}>
