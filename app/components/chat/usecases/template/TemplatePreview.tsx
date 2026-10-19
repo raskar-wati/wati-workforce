@@ -3,14 +3,19 @@
 import {
   ArrowDown,
   ArrowUp,
+  CircleCheck,
   Contact,
   Copy,
   ExternalLink,
   ImageIcon,
   Pencil,
+  Package,
   Phone,
   PhoneCall,
+  Plus,
   Reply,
+  ShoppingCart,
+  Tag,
   Trash2,
   Workflow,
   X,
@@ -20,12 +25,18 @@ import { Fragment, useRef, useState } from "react";
 import { AskWatiIcon } from "../../../icons/AskWatiIcon";
 import {
   BODY_LIMIT,
+  CAROUSEL_TEXT_LIMIT,
   COUPON_CODE_LIMIT,
+  MAX_CAROUSEL_CARDS,
+  ORDER_STATUS_LABEL,
+  allowsCustomButtons,
   buttonLabel,
+  fixedButtonLabel,
   enhanceBody,
   isQuickReply,
   orderedButtons,
   type ButtonKind,
+  type CarouselCard,
   type TemplateButton,
   type TemplateDraft,
   type TemplateHeader,
@@ -37,7 +48,12 @@ import {
  * `onButtonsChange` to let the user edit or remove buttons in place, and
  * `onReorder` to let them move the quick-reply group above or below the
  * call-to-action group. `onBodyChange` and `onHeaderChange` make the body
- * and the image header editable on hover.
+ * and the image header editable on hover, `onCardsChange` the carousel cards.
+ *
+ * The template's format shapes the message: Authentication shows Meta's
+ * fixed copy, Limited time offer an offer strip, Orders details and status
+ * an order block, Carousel a row of cards, and Catalog / Orders details /
+ * Checkout / Authentication their one fixed button.
  */
 export function TemplatePreview({
   draft,
@@ -46,6 +62,7 @@ export function TemplatePreview({
   onBodyChange,
   onHeaderChange,
   onEnhance,
+  onCardsChange,
 }: {
   draft: TemplateDraft;
   onButtonsChange?: (buttons: TemplateButton[]) => void;
@@ -54,29 +71,45 @@ export function TemplatePreview({
   /** Rewrites the body for Enhance; null means fall back to local polish. */
   onEnhance?: (body: string) => Promise<string | null>;
   onHeaderChange?: (header: TemplateHeader | null) => void;
+  onCardsChange?: (cards: CarouselCard[]) => void;
 }) {
-  const rows = orderedButtons(draft);
+  const isAuth = draft.category === "authentication";
+  const type = draft.templateType ?? "standard";
+  const fixedButton = fixedButtonLabel(draft);
+  const custom = allowsCustomButtons(draft);
+  // Authentication and Carousel messages carry no header.
+  const headerAllowed = !isAuth && type !== "carousel";
+  const rows = custom ? orderedButtons(draft) : [];
   const bothGroups =
     draft.buttons.some(isQuickReply) && draft.buttons.some((b) => !isQuickReply(b));
   const firstQuickReply = rows.find((r) => isQuickReply(r.button))?.index;
   return (
     <div className="rounded-xl bg-[#efe9e1] p-3">
       <div className="group/bubble relative max-w-[340px] overflow-hidden rounded-lg rounded-tl-none bg-white shadow-[0_1px_0.5px_rgba(0,0,0,0.13)]">
-        {draft.header?.kind === "image" ? (
-          <ImageHeader header={draft.header} onChange={onHeaderChange} />
-        ) : (
-          onHeaderChange &&
-          !draft.header && <AddImageHeader onChange={onHeaderChange} />
-        )}
+        {headerAllowed &&
+          (draft.header?.kind === "image" ? (
+            <ImageHeader header={draft.header} onChange={onHeaderChange} />
+          ) : (
+            onHeaderChange &&
+            !draft.header && <AddImageHeader onChange={onHeaderChange} />
+          ))}
+        {type === "limited-offer" && <OfferStrip draft={draft} />}
         <div className="flex flex-col gap-1 px-2.5 pb-1.5 pt-2">
-          {draft.header?.kind === "text" && (
+          {headerAllowed && draft.header?.kind === "text" && (
             <p className="text-[13px] font-semibold text-[#111b21]">{draft.header.text}</p>
           )}
-          {onBodyChange ? (
+          {onBodyChange && !isAuth ? (
             <EditableBody body={draft.body} onChange={onBodyChange} onEnhance={onEnhance} />
           ) : (
             <p className="whitespace-pre-line text-[13px] leading-[18px] text-[#111b21]">
               <BodyText body={draft.body} />
+            </p>
+          )}
+          {type === "order-details" && <OrderSummary />}
+          {type === "order-status" && draft.orderStatus && (
+            <p className="flex items-center gap-1.5 rounded-md bg-black/[0.04] px-2 py-1.5 text-[12px] text-[#111b21]">
+              <CircleCheck size={13} className="text-wati-green-text" />
+              {ORDER_STATUS_LABEL[draft.orderStatus]}
             </p>
           )}
           <div className="flex items-end justify-between gap-3">
@@ -84,6 +117,7 @@ export function TemplatePreview({
             <span className="shrink-0 text-[10px] text-black/40">10:24</span>
           </div>
         </div>
+        {fixedButton && <FixedButton label={fixedButton} />}
         {rows.map(({ button: b, index: i }) =>
           onButtonsChange ? (
             <EditableButtonRow
@@ -107,6 +141,179 @@ export function TemplatePreview({
           ),
         )}
       </div>
+      {type === "carousel" && <CarouselCards cards={draft.cards ?? []} onChange={onCardsChange} />}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------ Formats */
+
+/** Limited time offer: Meta's offer strip above the body, with the countdown. */
+function OfferStrip({ draft }: { draft: TemplateDraft }) {
+  const ends = draft.offerEndsAt ? new Date(`${draft.offerEndsAt}T23:59:59`) : null;
+  const days = ends ? Math.ceil((ends.getTime() - Date.now()) / 86_400_000) : null;
+  const when =
+    !ends || days === null
+      ? "Set when the offer ends"
+      : days < 0
+        ? "Offer has ended"
+        : days === 0
+          ? "Offer ends today"
+          : `Offer ends in ${days} day${days === 1 ? "" : "s"}`;
+  return (
+    <div className="mx-1 mt-1 flex items-center gap-2 rounded-md bg-[#f6f6f6] px-2.5 py-2">
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-wati-green-soft text-wati-green-text">
+        <Tag size={14} />
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate text-[13px] font-semibold text-[#111b21]">
+          {draft.offerTitle || "Offer title"}
+        </span>
+        <span className={`block text-[11px] ${ends ? "text-black/55" : "text-wati-state-draft-text"}`}>
+          {when}
+        </span>
+      </span>
+    </div>
+  );
+}
+
+/** Orders details: the order block customers review before paying. */
+function OrderSummary() {
+  return (
+    <div className="flex items-center gap-2 rounded-md bg-black/[0.04] px-2 py-1.5 text-[12px] text-[#111b21]">
+      <Package size={14} className="shrink-0 text-black/50" />
+      <span className="min-w-0 flex-1">
+        <span className="block font-medium">Order #10234</span>
+        <span className="block text-black/55">2 items · Total ₹2,499.00</span>
+      </span>
+    </div>
+  );
+}
+
+const FIXED_ICON: Record<string, LucideIcon> = {
+  "Copy code": Copy,
+  "View catalog": ShoppingCart,
+  "Review and pay": ExternalLink,
+  Checkout: ShoppingCart,
+};
+
+/** The one button Meta fixes for the format; not editable. */
+function FixedButton({ label }: { label: string }) {
+  const Icon = FIXED_ICON[label] ?? ExternalLink;
+  return (
+    <div className="flex items-center justify-center gap-1.5 border-t border-black/[0.08] py-2 text-[13px] text-[#0b8ad6]">
+      <Icon size={13} strokeWidth={2} />
+      {label}
+    </div>
+  );
+}
+
+/** Carousel: a swipeable row of cards, each with image, text and button. */
+function CarouselCards({
+  cards,
+  onChange,
+}: {
+  cards: CarouselCard[];
+  onChange?: (cards: CarouselCard[]) => void;
+}) {
+  const update = (i: number, patch: Partial<CarouselCard>) =>
+    onChange?.(cards.map((c, j) => (j === i ? { ...c, ...patch } : c)));
+  return (
+    <div className="-mx-1 mt-2 flex gap-2 overflow-x-auto px-1 pb-1">
+      {cards.map((card, i) => (
+        <CarouselCardView
+          key={i}
+          card={card}
+          onChange={onChange ? (patch) => update(i, patch) : undefined}
+          onRemove={onChange && cards.length > 2 ? () => onChange(cards.filter((_, j) => j !== i)) : undefined}
+        />
+      ))}
+      {onChange && cards.length < MAX_CAROUSEL_CARDS && (
+        <button
+          type="button"
+          onClick={() => onChange([...cards, { text: "", button: "Shop now" }])}
+          className="flex w-[120px] shrink-0 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-black/20 bg-white/60 text-[12px] text-black/55 hover:bg-white"
+        >
+          <Plus size={14} />
+          Add card
+        </button>
+      )}
+    </div>
+  );
+}
+
+function CarouselCardView({
+  card,
+  onChange,
+  onRemove,
+}: {
+  card: CarouselCard;
+  onChange?: (patch: Partial<CarouselCard>) => void;
+  onRemove?: () => void;
+}) {
+  const picker = useImagePicker((h) => {
+    if (h.kind === "image") onChange?.({ image: { fileName: h.fileName, previewUrl: h.previewUrl } });
+  });
+  const field =
+    "w-full bg-transparent outline-none placeholder:text-black/35 focus:rounded focus:bg-black/[0.03]";
+  return (
+    <div className="group/card relative flex w-[200px] shrink-0 flex-col overflow-hidden rounded-lg bg-white shadow-[0_1px_0.5px_rgba(0,0,0,0.13)]">
+      {onChange && picker.input}
+      <button
+        type="button"
+        onClick={onChange ? picker.open : undefined}
+        disabled={!onChange}
+        aria-label={card.image?.fileName ? "Replace card image" : "Add card image"}
+        className="m-1 mb-0 flex h-[100px] items-center justify-center overflow-hidden rounded-md bg-black/[0.05] text-[11px] text-black/40"
+      >
+        {card.image?.previewUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- local data URL
+          <img src={card.image.previewUrl} alt={card.image.fileName ?? ""} className="h-full w-full object-cover" />
+        ) : (
+          <span className="flex flex-col items-center gap-1">
+            <ImageIcon size={16} />
+            {card.image?.fileName ?? (onChange ? "Add image" : "Image")}
+          </span>
+        )}
+      </button>
+      {picker.error && <p className="px-2 pt-1 text-[11px] text-wati-state-danger-text">{picker.error}</p>}
+      {onChange ? (
+        <textarea
+          value={card.text}
+          onChange={(e) => onChange({ text: e.target.value })}
+          maxLength={CAROUSEL_TEXT_LIMIT}
+          rows={2}
+          placeholder="Card text"
+          aria-label="Card text"
+          className={`${field} resize-none px-2 py-1.5 text-[12px] leading-[16px] text-[#111b21]`}
+        />
+      ) : (
+        <p className="px-2 py-1.5 text-[12px] leading-[16px] text-[#111b21]">{card.text}</p>
+      )}
+      <div className="flex items-center justify-center gap-1 border-t border-black/[0.08] py-1.5 text-[12px] text-[#0b8ad6]">
+        <ExternalLink size={12} />
+        {onChange ? (
+          <input
+            value={card.button}
+            onChange={(e) => onChange({ button: e.target.value })}
+            maxLength={25}
+            aria-label="Card button text"
+            className={`${field} w-[120px] text-center text-[#0b8ad6]`}
+          />
+        ) : (
+          card.button
+        )}
+      </div>
+      {onRemove && (
+        <button
+          type="button"
+          onClick={onRemove}
+          aria-label="Remove card"
+          className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-black/60 opacity-0 transition-opacity hover:text-black/85 group-hover/card:opacity-100"
+        >
+          <X size={12} />
+        </button>
+      )}
     </div>
   );
 }

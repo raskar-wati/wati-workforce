@@ -8,15 +8,65 @@
  * footer and buttons.
  */
 
-export type TemplateCategory = "marketing" | "utility";
+export type TemplateCategory = "marketing" | "utility" | "authentication";
 export type TemplateChannel = "whatsapp" | "rcs" | "sms" | "email";
 export type TemplatePurpose =
   | "promotion"
   | "order-update"
   | "delay"
   | "reminder"
+  | "verification"
   | "general";
 export type TemplateTone = "friendly" | "formal";
+
+/** The template formats Meta offers on top of Standard, per category. */
+export type TemplateType =
+  | "standard"
+  | "catalog"
+  | "carousel"
+  | "limited-offer"
+  | "order-details"
+  | "checkout"
+  | "order-status";
+
+export const TEMPLATE_TYPES: Record<TemplateCategory, TemplateType[]> = {
+  marketing: ["standard", "catalog", "carousel", "limited-offer", "order-details", "checkout"],
+  utility: ["standard", "order-details", "order-status"],
+  // Authentication has one fixed format, so no type to choose.
+  authentication: [],
+};
+
+export const TEMPLATE_TYPE_LABEL: Record<TemplateType, string> = {
+  standard: "Standard",
+  catalog: "Catalog",
+  carousel: "Carousel",
+  "limited-offer": "Limited time offer",
+  "order-details": "Orders details",
+  checkout: "Checkout",
+  "order-status": "Orders status",
+};
+
+export type CarouselCard = {
+  image?: { fileName?: string; previewUrl?: string };
+  text: string;
+  button: string;
+};
+
+export type OrderStatus = "processing" | "shipped" | "out-for-delivery" | "delivered";
+
+export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
+  processing: "Processing",
+  shipped: "Shipped",
+  "out-for-delivery": "Out for delivery",
+  delivered: "Delivered",
+};
+
+/** Meta's fixed authentication copy; only the code and expiry vary. */
+export const AUTH_BODY = "{{1}} is your verification code. For your security, do not share this code.";
+export const AUTH_SAMPLE_LIMIT = 200;
+export const OFFER_TITLE_LIMIT = 16;
+export const CAROUSEL_TEXT_LIMIT = 160;
+export const MAX_CAROUSEL_CARDS = 10;
 export type TemplateLength = "standard" | "short";
 
 export type TemplateHeader =
@@ -129,6 +179,20 @@ export type TemplateDraft = {
   buttons: TemplateButton[];
   /** Quick replies above the call-to-action buttons instead of below. */
   quickRepliesFirst?: boolean;
+  /** Format within the category; absent reads as Standard. */
+  templateType?: TemplateType;
+  /** Limited time offer: the offer's title and when it ends (YYYY-MM-DD). */
+  offerTitle?: string;
+  offerEndsAt?: string;
+  /** Carousel cards, each with its own image, text and button. */
+  cards?: CarouselCard[];
+  /** Orders status: the stage the message reports. */
+  orderStatus?: OrderStatus;
+  /** Authentication: minutes until the code expires. */
+  codeExpiryMinutes?: number;
+  /** The Marketing/Utility draft set aside on switching to Authentication,
+   *  so switching back restores it. */
+  beforeAuth?: Omit<TemplateDraft, "beforeAuth">;
   /** Sample value per body variable — Meta rejects templates without them. */
   samples: Record<string, string>;
 };
@@ -152,6 +216,7 @@ export const CHANNEL_LABEL: Record<TemplateChannel, string> = {
 export const CATEGORY_LABEL: Record<TemplateCategory, string> = {
   marketing: "Marketing",
   utility: "Utility",
+  authentication: "Authentication",
 };
 
 export const BODY_LIMIT = 550;
@@ -180,10 +245,14 @@ export function isTemplateRequest(text: string): boolean {
 }
 
 const PURPOSE_HINTS: [TemplatePurpose, RegExp][] = [
+  [
+    "verification",
+    /\b(otp|one[- ]time (?:pass(?:word|code)?|code)|verification code|login code|2fa|two[- ]factor|verify (?:your )?(?:number|account|phone|login))\b/i,
+  ],
   ["delay", /\b(delay|delayed|late|running behind)\b/i],
   [
     "promotion",
-    /\b(sale|offer|discount|promo|promotion|deal|launch|coupon|festive|diwali|black friday|campaign)\b/i,
+    /\b(sale|offer|discount|promo|promotion|deal|launch|coupon|festive|diwali|black friday|campaign|new arrivals?|collection|showcase|lookbook|catalog|catalogue|checkout|cart)\b/i,
   ],
   ["order-update", /\b(order|ship|shipped|shipping|deliver|delivery|track|dispatch)\b/i],
   ["reminder", /\b(remind|reminder|appointment|booking|renewal|payment due)\b/i],
@@ -201,6 +270,7 @@ export const PURPOSE_CHOICES: { purpose: TemplatePurpose; label: string }[] = [
   { purpose: "promotion", label: "Promotion or offer" },
   { purpose: "order-update", label: "Order update" },
   { purpose: "reminder", label: "Reminder" },
+  { purpose: "verification", label: "Verification code (OTP)" },
   { purpose: "general", label: "General update" },
 ];
 
@@ -287,6 +357,8 @@ function composeBody(d: Omit<TemplateDraft, "body" | "samples">): string {
       return short
         ? `${hi}see you on {{date}} at {{time}}! ⏰`
         : `${hi}just a reminder about your appointment on {{date}} at {{time}}. Tap Confirm if you're coming, or Reschedule to pick a new slot.`;
+    case "verification":
+      return AUTH_BODY;
     case "general":
       return short
         ? `${hi}there's an update about {{topic}}.`
@@ -354,6 +426,7 @@ const DEFAULT_BUTTONS: Record<TemplatePurpose, TemplateButton[]> = {
     { kind: "quick-reply", text: "Confirm" },
     { kind: "quick-reply", text: "Reschedule" },
   ],
+  verification: [],
   general: [],
 };
 
@@ -362,6 +435,7 @@ const DEFAULT_NAME: Record<TemplatePurpose, string> = {
   "order-update": "order_shipped_update",
   delay: "order_delay_update",
   reminder: "appointment_reminder",
+  verification: "otp_verification",
   general: "general_update",
 };
 
@@ -384,21 +458,118 @@ export function draftTemplate(
   if (code) buttons.push({ kind: "copy-code", code });
   const base =
     purpose === "promotion" ? slugify(offer) : DEFAULT_NAME[purpose];
-  return finish({
+  const category: TemplateCategory =
+    purpose === "verification" ? "authentication" : purpose === "promotion" ? "marketing" : "utility";
+  const draft = finish({
     name: uniqueName(base, takenNames),
     channel: "whatsapp",
-    category: purpose === "promotion" ? "marketing" : "utility",
+    category,
     language: "English",
     purpose,
     tone: "friendly",
     length: "standard",
-    personal: true,
+    personal: purpose !== "verification",
     offer,
     discount: detectDiscount(intent) ?? "up to 30%",
     header: null,
     footer: purpose === "promotion" ? "Reply STOP to unsubscribe" : null,
     buttons,
+    ...(category === "authentication" ? authParts(10) : {}),
   });
+  return category === "authentication" ? draft : withType(draft, detectType(intent, category));
+}
+
+/* ------------------------------------------------------------ Types */
+
+/** The format a request implies, within what its category offers. */
+export function detectType(text: string, category: TemplateCategory): TemplateType {
+  const t = text.toLowerCase();
+  const pick = (type: TemplateType) => (TEMPLATE_TYPES[category].includes(type) ? type : null);
+  return (
+    (/\b(flash sale|limited[- ]time|ends? (?:today|tonight|sunday|soon)|ending|today only|expires?|hurry|countdown)\b/.test(t) &&
+      pick("limited-offer")) ||
+    (/\b(carousel|new arrivals|collection|products|range|showcase|lookbook)\b/.test(t) && pick("carousel")) ||
+    (/\b(catalog|catalogue|browse)\b/.test(t) && pick("catalog")) ||
+    (/\b(checkout|cart|abandoned)\b/.test(t) && pick("checkout")) ||
+    (/\b(pay|payment|invoice|bill|review and pay)\b/.test(t) && pick("order-details")) ||
+    (/\b(status|shipped|dispatched|out for delivery|delivered|on its way)\b/.test(t) && pick("order-status")) ||
+    "standard"
+  );
+}
+
+/** Authentication's fixed parts: Meta's body, the expiry footer, no extras. */
+function authParts(minutes: number) {
+  return {
+    purpose: "verification" as const,
+    personal: false,
+    header: null,
+    customBody: undefined,
+    footer: `This code expires in ${minutes} minutes.`,
+    codeExpiryMinutes: minutes,
+    templateType: undefined,
+  };
+}
+
+/** A button Meta fixes for the format, shown in place of custom buttons. */
+export function fixedButtonLabel(d: TemplateDraft): string | null {
+  if (d.category === "authentication") return "Copy code";
+  switch (d.templateType) {
+    case "catalog":
+      return "View catalog";
+    case "order-details":
+      return "Review and pay";
+    case "checkout":
+      return "Checkout";
+    default:
+      return null;
+  }
+}
+
+/** Formats with their own fixed button (or per-card buttons) take no custom ones. */
+export function allowsCustomButtons(d: TemplateDraft): boolean {
+  if (d.category === "authentication") return false;
+  return !["catalog", "order-details", "checkout", "carousel"].includes(d.templateType ?? "standard");
+}
+
+/** Switch format, seeding what the new one needs. Custom buttons are kept
+ *  aside (not shown) by formats that don't take them. */
+export function withType(d: TemplateDraft, type: TemplateType): TemplateDraft {
+  const next: TemplateDraft = { ...d, templateType: type };
+  if (type === "limited-offer") {
+    next.offerTitle ??= (d.offer || "Limited time offer").slice(0, OFFER_TITLE_LIMIT);
+    next.offerEndsAt ??= "";
+    if (!next.buttons.some((b) => b.kind === "copy-code")) {
+      next.buttons = [...next.buttons, { kind: "copy-code", code: "" }];
+    }
+  }
+  if (type === "carousel" && !next.cards?.length) {
+    next.cards = [
+      { text: "New in: our best-sellers, back in stock.", button: "Shop now" },
+      { text: "Just landed: this season's favourites.", button: "Shop now" },
+    ];
+  }
+  if (type === "order-status") next.orderStatus ??= "shipped";
+  return next;
+}
+
+/** Switch category. Authentication swaps in Meta's fixed format and sets the
+ *  current draft aside; leaving it restores that draft. */
+export function withCategory(d: TemplateDraft, category: TemplateCategory): TemplateDraft {
+  if (category === d.category) return d;
+  if (category === "authentication") {
+    const { beforeAuth: _ignored, ...current } = d;
+    return finish({ ...current, ...authParts(d.codeExpiryMinutes ?? 10), category, beforeAuth: current, samples: { "1": "" } });
+  }
+  const restored: TemplateDraft =
+    d.category === "authentication"
+      ? d.beforeAuth
+        ? { ...d.beforeAuth, name: d.beforeAuth.name, channel: d.channel, language: d.language }
+        : draftTemplate("", "general")
+      : d;
+  const type = TEMPLATE_TYPES[category].includes(restored.templateType ?? "standard")
+    ? restored.templateType ?? "standard"
+    : "standard";
+  return withType({ ...restored, category, beforeAuth: undefined }, type);
 }
 
 /* ------------------------------------------------------------ Refine */
@@ -580,6 +751,22 @@ export function refineTemplate(d: TemplateDraft, text: string): RefineResult | n
   const changes: string[] = [];
   const removing = /\b(remove|drop|delete|no|without)\b/.test(t);
 
+  // Authentication follows Meta's fixed format: only the expiry and a move
+  // to another category apply.
+  if (d.category === "authentication") {
+    const minutes = text.match(/\b(\d{1,2})\s*(?:min|mins|minutes)\b/i)?.[1];
+    if (minutes) {
+      const m = Math.min(90, Math.max(1, Number(minutes)));
+      return { draft: finish({ ...next, ...authParts(m) }), changes: [`Expires in ${m} minutes`] };
+    }
+    if (!/\b(utility|marketing)\b/i.test(text)) {
+      return {
+        blocked:
+          "Authentication templates use Meta's fixed wording. You can change how long the code is valid (e.g. “expires in 5 minutes”) or switch the category.",
+      };
+    }
+  }
+
   // The user's own copy goes in verbatim — and before any keyword parsing,
   // which would otherwise read words inside that copy as commands.
   const body = providedBody(text);
@@ -590,6 +777,31 @@ export function refineTemplate(d: TemplateDraft, text: string): RefineResult | n
   if (footer && !removing) {
     return { draft: finish({ ...next, footer }), changes: ["New footer"] };
   }
+  const typeAsk = text.match(
+    /\b(?:make it|switch to|change (?:it )?to|turn (?:it )?into|use)\s+(?:an?\s+)?(standard|catalog|catalogue|carousel|limited[- ]time offer|lto|orders? details|checkout|orders? status)\b/i,
+  )?.[1].toLowerCase();
+  if (typeAsk) {
+    const type: TemplateType = /carousel/.test(typeAsk)
+      ? "carousel"
+      : /catalog/.test(typeAsk)
+        ? "catalog"
+        : /limited|lto/.test(typeAsk)
+          ? "limited-offer"
+          : /details/.test(typeAsk)
+            ? "order-details"
+            : /checkout/.test(typeAsk)
+              ? "checkout"
+              : /status/.test(typeAsk)
+                ? "order-status"
+                : "standard";
+    if (!TEMPLATE_TYPES[d.category].includes(type)) {
+      return {
+        blocked: `${CATEGORY_LABEL[d.category]} templates don't offer ${TEMPLATE_TYPE_LABEL[type]}.`,
+      };
+    }
+    return { draft: withType(next, type), changes: [TEMPLATE_TYPE_LABEL[type]] };
+  }
+
   const renamed = renameButton(next.buttons, text);
   if (renamed) {
     return {
@@ -712,12 +924,15 @@ export function refineTemplate(d: TemplateDraft, text: string): RefineResult | n
     changes.push(`Renamed to ${next.name}`);
   }
 
-  if (/\butility\b/.test(t)) {
-    next.category = "utility";
-    changes.push("Category Utility");
-  } else if (/\bmarketing\b/.test(t)) {
-    next.category = "marketing";
-    changes.push("Category Marketing");
+  const toCategory: TemplateCategory | null = /\butility\b/.test(t)
+    ? "utility"
+    : /\bmarketing\b/.test(t)
+      ? "marketing"
+      : /\b(authentication|otp template)\b/.test(t)
+        ? "authentication"
+        : null;
+  if (toCategory && toCategory !== next.category) {
+    return { draft: withCategory(next, toCategory), changes: [`Category ${CATEGORY_LABEL[toCategory]}`] };
   }
 
   const language = TEMPLATE_LANGUAGES.find((l) =>
@@ -771,20 +986,22 @@ export function checkTemplate(
     });
   }
 
-  if (d.buttons.length > MAX_BUTTONS) {
+  // Formats with a fixed button keep custom ones aside, unsent — skip them.
+  const buttons = allowsCustomButtons(d) ? d.buttons : [];
+  if (buttons.length > MAX_BUTTONS) {
     checks.push({ verdict: "blocker", text: `WhatsApp allows up to ${MAX_BUTTONS} buttons` });
   }
   for (const type of BUTTON_TYPES) {
-    if (d.buttons.filter((b) => b.kind === type.kind).length > type.max) {
+    if (buttons.filter((b) => b.kind === type.kind).length > type.max) {
       checks.push({ verdict: "blocker", text: `Too many ${type.label} buttons — the limit is ${type.max}` });
     }
   }
 
-  if (d.buttons.some((b) => b.kind === "copy-code" && !b.code.trim())) {
+  if (buttons.some((b) => b.kind === "copy-code" && !b.code.trim())) {
     checks.push({ verdict: "blocker", text: "Enter the coupon code for the Copy offer code button" });
   }
 
-  const longButton = d.buttons.find(
+  const longButton = buttons.find(
     (b) => b.kind !== "copy-code" && b.text.length > BUTTON_TEXT_LIMIT,
   );
   if (longButton && longButton.kind !== "copy-code") {
@@ -794,8 +1011,37 @@ export function checkTemplate(
     });
   }
 
-  if (d.header?.kind === "image" && !d.header.fileName) {
+  // Carousel and Authentication carry no header; one set aside isn't sent.
+  const headerSent = d.templateType !== "carousel" && d.category !== "authentication";
+  if (headerSent && d.header?.kind === "image" && !d.header.fileName) {
     checks.push({ verdict: "blocker", text: "Attach the header image — use the paperclip in the composer" });
+  }
+
+  if (d.category === "authentication") {
+    const sample = d.samples["1"] ?? "";
+    if (!sample.trim()) checks.push({ verdict: "blocker", text: "Enter sample content for {{1}}" });
+    else if (sample.length > AUTH_SAMPLE_LIMIT) {
+      checks.push({ verdict: "blocker", text: `Sample content is over ${AUTH_SAMPLE_LIMIT} characters` });
+    }
+  }
+
+  if (d.templateType === "limited-offer") {
+    if (!d.offerEndsAt) checks.push({ verdict: "blocker", text: "Set when the offer ends" });
+    if (!(d.offerTitle ?? "").trim()) checks.push({ verdict: "blocker", text: "Add an offer title" });
+    else if ((d.offerTitle ?? "").length > OFFER_TITLE_LIMIT) {
+      checks.push({ verdict: "blocker", text: `Offer title is over ${OFFER_TITLE_LIMIT} characters` });
+    }
+  }
+
+  if (d.templateType === "carousel") {
+    const cards = d.cards ?? [];
+    if (cards.length < 2) checks.push({ verdict: "blocker", text: "Carousels need at least 2 cards" });
+    if (cards.some((c) => !c.image?.fileName)) {
+      checks.push({ verdict: "blocker", text: "Add an image to every carousel card" });
+    }
+    if (cards.some((c) => c.text.length > CAROUSEL_TEXT_LIMIT)) {
+      checks.push({ verdict: "blocker", text: `Card text is over ${CAROUSEL_TEXT_LIMIT} characters` });
+    }
   }
 
   if (d.category === "utility" && MARKETING_WORDS.test(d.body)) {

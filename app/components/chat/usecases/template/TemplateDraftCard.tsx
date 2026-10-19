@@ -4,8 +4,18 @@ import { AnimatePresence, motion } from "motion/react";
 import { ChevronDown, Loader2, Pencil, Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
+  AUTH_SAMPLE_LIMIT,
   BUTTON_TYPES,
   CATEGORY_LABEL,
+  OFFER_TITLE_LIMIT,
+  ORDER_STATUS_LABEL,
+  TEMPLATE_TYPES,
+  TEMPLATE_TYPE_LABEL,
+  allowsCustomButtons,
+  withCategory,
+  withType,
+  type OrderStatus,
+  type TemplateType,
   CHANNEL_LABEL,
   addButtonBlocker,
   TEMPLATE_LANGUAGES,
@@ -111,7 +121,11 @@ export function TemplateDraftCard({
   const status = saved?.status;
   const locked = status === "pending-meta" || status === "approved";
   const reviewing = stage === "review" && !locked;
-  const suggestions = refineSuggestions(draft, canRewrite);
+  const isAuth = draft.category === "authentication";
+  const suggestions = refineSuggestions(draft, canRewrite).filter(
+    // Carousel cards carry their own images; the message has no header.
+    (s) => !(s.label === "Image header" && draft.templateType === "carousel"),
+  );
   const checks = checkTemplate(draft, takenNames(templateId));
   const pill = status ? STATUS_PILL[status] : null;
 
@@ -159,6 +173,7 @@ export function TemplateDraftCard({
       }
     >
       {!locked && <TemplateFacts draft={draft} onChange={onDraftChange} />}
+      {!locked && <FormatDetails draft={draft} onChange={onDraftChange} />}
       <TemplatePreview
         draft={draft}
         onButtonsChange={locked ? undefined : (buttons) => onDraftChange({ ...draft, buttons })}
@@ -168,9 +183,10 @@ export function TemplateDraftCard({
         onBodyChange={locked ? undefined : (body) => onDraftChange(withBody(draft, body))}
         onEnhance={locked ? undefined : onEnhance}
         onHeaderChange={locked ? undefined : (header) => onDraftChange({ ...draft, header })}
+        onCardsChange={locked ? undefined : (cards) => onDraftChange({ ...draft, cards })}
       />
 
-      {!locked && !reviewing && (
+      {!locked && !reviewing && !isAuth && (
         <RefineChips draft={draft} suggestions={suggestions} onPick={onRefine} />
       )}
 
@@ -203,7 +219,7 @@ export function TemplateDraftCard({
         <EvidenceRow verdict="info">Saved to Templates as a draft</EvidenceRow>
       )}
     </WorkforceCard>
-    {!locked && !reviewing && (
+    {!locked && !reviewing && !isAuth && (
       <SuggestedReplies suggestions={suggestions} onPick={onRefine} />
     )}
     </div>
@@ -273,7 +289,7 @@ function RefineChips({
           {s.label}
         </button>
       ))}
-      <AddButtonMenu draft={draft} onPick={onPick} />
+      {allowsCustomButtons(draft) && <AddButtonMenu draft={draft} onPick={onPick} />}
     </div>
   );
 }
@@ -440,9 +456,21 @@ function TemplateFacts({
           value: c,
           label: CATEGORY_LABEL[c],
         }))}
-        onChange={(category) => onChange({ ...draft, category: category as TemplateCategory })}
+        onChange={(category) => onChange(withCategory(draft, category as TemplateCategory))}
         className={chip}
       />
+      {TEMPLATE_TYPES[draft.category].length > 0 && (
+        <SelectChip
+          label="Template type"
+          value={draft.templateType ?? "standard"}
+          options={TEMPLATE_TYPES[draft.category].map((t) => ({
+            value: t,
+            label: TEMPLATE_TYPE_LABEL[t],
+          }))}
+          onChange={(type) => onChange(withType(draft, type as TemplateType))}
+          className={chip}
+        />
+      )}
       <SelectChip
         label="Language"
         value={draft.language}
@@ -487,6 +515,115 @@ function SelectChip({
   );
 }
 
+/* ------------------------------------------------------------ Format */
+
+const FORM_INPUT =
+  "min-w-0 flex-1 rounded-lg border border-wati-border bg-white px-2.5 py-1.5 text-[13px] outline-none focus:border-[#1570EF]";
+
+/** What the chosen format needs beyond the message itself. */
+function FormatDetails({
+  draft,
+  onChange,
+}: {
+  draft: TemplateDraft;
+  onChange: (draft: TemplateDraft) => void;
+}) {
+  if (draft.category === "authentication") {
+    const sample = draft.samples["1"] ?? "";
+    return (
+      <div className="flex flex-col gap-1.5">
+        <p className="text-[13px] font-medium text-[#0a0a0a]">Sample content</p>
+        <p className="text-[12px] text-black/55">Just enter sample content here (it doesn&apos;t need to be exact!)</p>
+        <div className="relative">
+          <input
+            value={sample}
+            onChange={(e) =>
+              onChange({ ...draft, samples: { ...draft.samples, "1": e.target.value } })
+            }
+            maxLength={AUTH_SAMPLE_LIMIT}
+            placeholder="Enter content for {{1}}"
+            aria-label="Sample content for {{1}}"
+            className={`${FORM_INPUT} w-full pr-14`}
+          />
+          <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] tabular-nums text-black/40">
+            {sample.length}/{AUTH_SAMPLE_LIMIT}
+          </span>
+        </div>
+        <p className="text-[12px] text-black/55">
+          Don&apos;t include any real user or customer information — sample content only.
+        </p>
+        <label className="flex items-center gap-2 pt-1 text-[12px] text-black/60">
+          Code expires in
+          <select
+            value={draft.codeExpiryMinutes ?? 10}
+            onChange={(e) => {
+              const m = Number(e.target.value);
+              onChange({ ...draft, codeExpiryMinutes: m, footer: `This code expires in ${m} minutes.` });
+            }}
+            className="rounded-md border border-wati-border bg-white px-1.5 py-1 text-[12px] outline-none"
+          >
+            {[1, 5, 10, 15, 30, 60, 90].map((m) => (
+              <option key={m} value={m}>
+                {m} minutes
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+    );
+  }
+  if (draft.templateType === "limited-offer") {
+    const title = draft.offerTitle ?? "";
+    return (
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative min-w-[180px] flex-1">
+          <input
+            value={title}
+            onChange={(e) => onChange({ ...draft, offerTitle: e.target.value })}
+            maxLength={OFFER_TITLE_LIMIT}
+            placeholder="Offer title"
+            aria-label="Offer title"
+            className={`${FORM_INPUT} w-full pr-12`}
+          />
+          <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] tabular-nums text-black/40">
+            {title.length}/{OFFER_TITLE_LIMIT}
+          </span>
+        </div>
+        <label className="flex items-center gap-1.5 text-[12px] text-black/60">
+          Ends
+          <input
+            type="date"
+            value={draft.offerEndsAt ?? ""}
+            min={new Date().toISOString().slice(0, 10)}
+            onChange={(e) => onChange({ ...draft, offerEndsAt: e.target.value })}
+            aria-label="Offer end date"
+            className={FORM_INPUT}
+          />
+        </label>
+      </div>
+    );
+  }
+  if (draft.templateType === "order-status") {
+    return (
+      <label className="flex items-center gap-2 text-[12px] text-black/60">
+        Status shown
+        <select
+          value={draft.orderStatus ?? "shipped"}
+          onChange={(e) => onChange({ ...draft, orderStatus: e.target.value as OrderStatus })}
+          className="rounded-md border border-wati-border bg-white px-1.5 py-1 text-[12px] outline-none"
+        >
+          {(Object.keys(ORDER_STATUS_LABEL) as OrderStatus[]).map((s) => (
+            <option key={s} value={s}>
+              {ORDER_STATUS_LABEL[s]}
+            </option>
+          ))}
+        </select>
+      </label>
+    );
+  }
+  return null;
+}
+
 /* ------------------------------------------------------------ Samples */
 
 /** Meta needs an example for every variable; prefilled, so usually a glance. */
@@ -497,7 +634,10 @@ function SampleValues({
   draft: TemplateDraft;
   onChange: (draft: TemplateDraft) => void;
 }) {
-  const entries = Object.entries(draft.samples);
+  // Authentication's {{1}} sample has its own field above the preview.
+  const entries = Object.entries(draft.samples).filter(
+    ([key]) => !(draft.category === "authentication" && key === "1"),
+  );
   if (entries.length === 0) return null;
   return (
     <div className="flex flex-col gap-1.5">

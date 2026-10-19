@@ -70,6 +70,18 @@ draft is labelled "Drafted with <model>".
 - Seen in: template
 - Lives in: `app/api/template/route.ts` (any OpenAI-compatible provider), `lib/template-ai.ts`, `runTemplateAi` in `ChatArea.tsx`
 
+### Formats within a category
+The category decides which formats are offered. Marketing has Standard,
+Catalog, Carousel, Limited time offer, Orders details and Checkout. Utility has
+Standard, Orders details and Orders status. Authentication has a single fixed
+format. Wati picks the format from the request, and the Type chip changes it.
+Each format adds only what it needs: an offer strip with an end date, carousel
+cards, an order block, or a fixed button. Switching keeps the user's work: custom
+buttons are set aside, not deleted, and leaving Authentication restores the
+earlier draft.
+- Seen in: template
+- Lives in: `TEMPLATE_TYPES`, `withType` / `withCategory`, `detectType` in `lib/template-draft.ts`; `FormatDetails` in `TemplateDraftCard.tsx`; format blocks in `TemplatePreview.tsx`
+
 ## Component candidates
 
 | Candidate | What it is | Seen in |

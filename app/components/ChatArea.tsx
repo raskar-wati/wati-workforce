@@ -86,6 +86,7 @@ import {
   isNewTemplateRequest,
   isRewriteRequest,
   isTemplateRequest,
+  allowsCustomButtons,
   fromModelTemplate,
   refineTemplate,
   toModelTemplate,
@@ -903,7 +904,7 @@ export function ChatArea({
       if (text) {
         const result = refineTemplate(card.draft, text);
         if (result && "blocked" in result) return { msgs: [watiText(result.blocked)] };
-        if (templateAi.enabled) {
+        if (templateAi.enabled && card.draft.category !== "authentication") {
           // The model takes any change in the user's own words; the scripted
           // result, if there is one, is the fallback.
           const next = {
@@ -993,10 +994,18 @@ export function ChatArea({
     if (openPurposeQuestion(messages)) return "Or describe what the template is for";
     const card = openTemplateCard(messages, templateLocked);
     if (!card) return undefined;
-    if (card.draft.header?.kind === "image" && !card.draft.header.fileName) {
+    if (card.draft.category === "authentication") {
+      return "Change how long the code is valid, or switch the category";
+    }
+    // Formats that set custom buttons or the header aside don't ask for them.
+    const type = card.draft.templateType ?? "standard";
+    if (type !== "carousel" && card.draft.header?.kind === "image" && !card.draft.header.fileName) {
       return "Upload the header image, or describe a change";
     }
-    if (card.draft.buttons.some((b) => b.kind === "copy-code" && !b.code)) {
+    if (
+      allowsCustomButtons(card.draft) &&
+      card.draft.buttons.some((b) => b.kind === "copy-code" && !b.code)
+    ) {
       return "Enter the coupon code, e.g. “code DIWALI20”";
     }
     if (card.stage === "review") return "Anything to change before you submit?";
