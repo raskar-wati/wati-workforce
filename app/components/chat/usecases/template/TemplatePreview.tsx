@@ -1,21 +1,50 @@
 "use client";
 
-import { Copy, ExternalLink, ImageIcon, Pencil, Reply, X } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Contact,
+  Copy,
+  ExternalLink,
+  ImageIcon,
+  Pencil,
+  Phone,
+  PhoneCall,
+  Reply,
+  Workflow,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import { Fragment, useState } from "react";
-import type { TemplateButton, TemplateDraft } from "../../../../lib/template-draft";
+import {
+  buttonLabel,
+  isQuickReply,
+  orderedButtons,
+  type ButtonKind,
+  type TemplateButton,
+  type TemplateDraft,
+} from "../../../../lib/template-draft";
 
 /**
  * How the template lands in a customer's WhatsApp: header, body with its
  * variables marked, footer, then the buttons as tappable rows. Pass
- * `onButtonsChange` to let the user edit or remove buttons in place.
+ * `onButtonsChange` to let the user edit or remove buttons in place, and
+ * `onReorder` to let them move the quick-reply group above or below the
+ * call-to-action group.
  */
 export function TemplatePreview({
   draft,
   onButtonsChange,
+  onReorder,
 }: {
   draft: TemplateDraft;
   onButtonsChange?: (buttons: TemplateButton[]) => void;
+  onReorder?: (quickRepliesFirst: boolean) => void;
 }) {
+  const rows = orderedButtons(draft);
+  const bothGroups =
+    draft.buttons.some(isQuickReply) && draft.buttons.some((b) => !isQuickReply(b));
+  const firstQuickReply = rows.find((r) => isQuickReply(r.button))?.index;
   return (
     <div className="rounded-xl bg-[#efe9e1] p-3">
       <div className="max-w-[340px] overflow-hidden rounded-lg rounded-tl-none bg-white shadow-[0_1px_0.5px_rgba(0,0,0,0.13)]">
@@ -41,7 +70,7 @@ export function TemplatePreview({
             <span className="shrink-0 text-[10px] text-black/40">10:24</span>
           </div>
         </div>
-        {draft.buttons.map((b, i) =>
+        {rows.map(({ button: b, index: i }) =>
           onButtonsChange ? (
             <EditableButtonRow
               key={i}
@@ -50,6 +79,14 @@ export function TemplatePreview({
                 onButtonsChange(draft.buttons.map((x, j) => (j === i ? next : x)))
               }
               onRemove={() => onButtonsChange(draft.buttons.filter((_, j) => j !== i))}
+              reorder={
+                onReorder && bothGroups && i === firstQuickReply
+                  ? {
+                      up: !draft.quickRepliesFirst,
+                      onClick: () => onReorder(!draft.quickRepliesFirst),
+                    }
+                  : undefined
+              }
             />
           ) : (
             <ButtonRow key={i} button={b} />
@@ -80,15 +117,19 @@ function BodyText({ body }: { body: string }) {
   );
 }
 
-const BUTTON_ICON = {
+const BUTTON_ICON: Record<ButtonKind, LucideIcon> = {
   url: ExternalLink,
+  phone: Phone,
   "copy-code": Copy,
+  "voice-call": PhoneCall,
+  "request-contact": Contact,
   "quick-reply": Reply,
-} as const;
+  flow: Workflow,
+};
 
 function ButtonRow({ button }: { button: TemplateButton }) {
   const Icon = BUTTON_ICON[button.kind];
-  const label = button.kind === "copy-code" ? `Copy code ${button.code}` : button.text;
+  const label = buttonLabel(button);
   return (
     <div className="flex items-center justify-center gap-1.5 border-t border-black/[0.08] py-2 text-[13px] text-[#0b8ad6]">
       <Icon size={13} strokeWidth={2} />
@@ -106,10 +147,13 @@ function EditableButtonRow({
   button,
   onChange,
   onRemove,
+  reorder,
 }: {
   button: TemplateButton;
   onChange: (button: TemplateButton) => void;
   onRemove: () => void;
+  /** On the first quick reply: move the quick-reply group up or down. */
+  reorder?: { up: boolean; onClick: () => void };
 }) {
   const [editing, setEditing] = useState(false);
   const [primary, setPrimary] = useState("");
@@ -117,7 +161,7 @@ function EditableButtonRow({
 
   const open = () => {
     setPrimary(button.kind === "copy-code" ? button.code : button.text);
-    setUrl(button.kind === "url" ? button.url : "");
+    setUrl(button.kind === "url" ? button.url : button.kind === "phone" ? button.phone : "");
     setEditing(true);
   };
   const save = () => {
@@ -125,6 +169,7 @@ function EditableButtonRow({
     if (value) {
       if (button.kind === "copy-code") onChange({ ...button, code: value.toUpperCase() });
       else if (button.kind === "url") onChange({ ...button, text: value, url: url.trim() || button.url });
+      else if (button.kind === "phone") onChange({ ...button, text: value, phone: url.trim() || button.phone });
       else onChange({ ...button, text: value });
     }
     setEditing(false);
@@ -153,12 +198,12 @@ function EditableButtonRow({
           maxLength={button.kind === "copy-code" ? 15 : undefined}
           className={field}
         />
-        {button.kind === "url" && (
+        {(button.kind === "url" || button.kind === "phone") && (
           <input
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            aria-label="Button link"
-            placeholder="https://"
+            aria-label={button.kind === "url" ? "Button link" : "Phone number"}
+            placeholder={button.kind === "url" ? "https://" : "+91 98765 43210"}
             className={field}
           />
         )}
@@ -167,9 +212,21 @@ function EditableButtonRow({
   }
 
   const Icon = BUTTON_ICON[button.kind];
-  const label = button.kind === "copy-code" ? `Copy code ${button.code}` : button.text;
+  const label = buttonLabel(button);
+  const ReorderIcon = reorder?.up ? ArrowUp : ArrowDown;
   return (
     <div className="group relative flex items-center border-t border-black/[0.08]">
+      {reorder && (
+        <button
+          type="button"
+          onClick={reorder.onClick}
+          aria-label={reorder.up ? "Move quick replies to the top" : "Move quick replies to the bottom"}
+          title={reorder.up ? "Move quick replies to the top" : "Move quick replies to the bottom"}
+          className="absolute left-1.5 z-10 flex h-6 w-6 items-center justify-center rounded-md text-black/45 hover:bg-black/[0.05] hover:text-black/75"
+        >
+          <ReorderIcon size={13} />
+        </button>
+      )}
       <button
         type="button"
         onClick={open}

@@ -4,8 +4,10 @@ import { AnimatePresence, motion } from "motion/react";
 import { ChevronDown, FileText, Loader2, Pencil, Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
+  BUTTON_TYPES,
   CATEGORY_LABEL,
   CHANNEL_LABEL,
+  addButtonBlocker,
   TEMPLATE_LANGUAGES,
   canSubmit,
   checkTemplate,
@@ -145,10 +147,13 @@ export function TemplateDraftCard({
       <TemplatePreview
         draft={draft}
         onButtonsChange={locked ? undefined : (buttons) => onDraftChange({ ...draft, buttons })}
+        onReorder={
+          locked ? undefined : (quickRepliesFirst) => onDraftChange({ ...draft, quickRepliesFirst })
+        }
       />
 
       {!locked && !reviewing && (
-        <RefineChips suggestions={refineSuggestions(draft)} onPick={onRefine} />
+        <RefineChips draft={draft} suggestions={refineSuggestions(draft)} onPick={onRefine} />
       )}
 
       {reviewing && (
@@ -226,10 +231,15 @@ export function SupersededTemplateCard({
  * Two groups, read differently: "+ field" chips add a part of the template;
  * grey secondary chips rewrite the copy, set apart after a divider.
  */
+const FIELD_CHIP =
+  "inline-flex items-center gap-1 rounded-full border border-dashed border-black/20 bg-white px-2.5 py-1 text-[12px] text-black/65 transition-colors hover:border-black/35 hover:bg-black/[0.03] hover:text-black/85";
+
 function RefineChips({
+  draft,
   suggestions,
   onPick,
 }: {
+  draft: TemplateDraft;
   suggestions: RefineSuggestion[];
   onPick: (prompt: string) => void;
 }) {
@@ -238,17 +248,13 @@ function RefineChips({
   return (
     <div className="flex flex-wrap items-center gap-1.5 pt-1">
       {fields.map((s) => (
-        <button
-          key={s.label}
-          type="button"
-          onClick={() => onPick(s.prompt)}
-          className="inline-flex items-center gap-1 rounded-full border border-dashed border-black/20 bg-white px-2.5 py-1 text-[12px] text-black/65 transition-colors hover:border-black/35 hover:bg-black/[0.03] hover:text-black/85"
-        >
+        <button key={s.label} type="button" onClick={() => onPick(s.prompt)} className={FIELD_CHIP}>
           <Plus size={11} strokeWidth={2.25} className="text-black/45" />
           {s.label}
         </button>
       ))}
-      {fields.length > 0 && rewrites.length > 0 && (
+      <AddButtonMenu draft={draft} onPick={onPick} />
+      {rewrites.length > 0 && (
         <span aria-hidden className="mx-1 h-4 w-px bg-black/10" />
       )}
       {rewrites.map((s) => (
@@ -261,6 +267,85 @@ function RefineChips({
           {s.label}
         </button>
       ))}
+    </div>
+  );
+}
+
+/**
+ * "+ Button" opens every button type Wati offers, grouped as WhatsApp shows
+ * them. Types at their limit stay listed but disabled, with the reason.
+ */
+function AddButtonMenu({
+  draft,
+  onPick,
+}: {
+  draft: TemplateDraft;
+  onPick: (prompt: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [open]);
+
+  const groups = [
+    { title: "Call to action", types: BUTTON_TYPES.filter((t) => t.group === "cta") },
+    { title: "Quick reply", types: BUTTON_TYPES.filter((t) => t.group === "quick-reply") },
+  ];
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className={FIELD_CHIP}
+      >
+        <Plus size={11} strokeWidth={2.25} className="text-black/45" />
+        Button
+      </button>
+      {open && (
+        <div
+          role="menu"
+          className="absolute bottom-full left-0 z-20 mb-1 w-[240px] rounded-xl border border-wati-border bg-white p-1 shadow-[0_8px_24px_rgba(0,0,0,0.08)]"
+        >
+          {groups.map((g) => (
+            <div key={g.title} className="flex flex-col py-0.5">
+              <p className="px-2.5 pb-0.5 pt-1.5 text-[11px] font-medium text-black/40">{g.title}</p>
+              {g.types.map((t) => {
+                const blocker = addButtonBlocker(draft, t.kind);
+                return (
+                  <button
+                    key={t.kind}
+                    type="button"
+                    role="menuitem"
+                    disabled={blocker !== null}
+                    title={blocker ?? undefined}
+                    onClick={() => {
+                      setOpen(false);
+                      onPick(t.prompt);
+                    }}
+                    className="flex flex-col items-start rounded-lg px-2.5 py-1.5 text-left text-[13px] text-black/80 hover:bg-black/[0.04] disabled:cursor-not-allowed disabled:text-black/30 disabled:hover:bg-transparent"
+                  >
+                    {t.label}
+                    {blocker && <span className="text-[11px] text-black/35">{blocker}</span>}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

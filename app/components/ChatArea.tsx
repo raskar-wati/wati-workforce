@@ -809,6 +809,7 @@ export function ChatArea({
               : TEMPLATE_UNSUPPORTED;
           return { msgs: [watiText(reply)] };
         }
+        if ("blocked" in result) return { msgs: [watiText(result.blocked)] };
         return {
           supersedeId: card.id,
           msgs: [templateCardMessage(result.draft, card.version + 1, result.changes)],

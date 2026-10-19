@@ -25,8 +25,67 @@ export type TemplateHeader =
 
 export type TemplateButton =
   | { kind: "url"; text: string; url: string }
+  | { kind: "phone"; text: string; phone: string }
   | { kind: "copy-code"; code: string }
-  | { kind: "quick-reply"; text: string };
+  | { kind: "voice-call"; text: string }
+  | { kind: "request-contact"; text: string }
+  | { kind: "quick-reply"; text: string }
+  | { kind: "flow"; text: string };
+
+export type ButtonKind = TemplateButton["kind"];
+
+/**
+ * Every button type Wati offers, in the template form's order. WhatsApp
+ * shows call-to-action buttons and quick replies as two groups; `max` is the
+ * per-type cap.
+ */
+export const BUTTON_TYPES: {
+  kind: ButtonKind;
+  label: string;
+  group: "cta" | "quick-reply";
+  max: number;
+  /** Posted to the chat when picked, so picking reads like typing. */
+  prompt: string;
+}[] = [
+  { kind: "url", label: "Visit website", group: "cta", max: 2, prompt: "Add a Visit website button" },
+  { kind: "phone", label: "Call phone number", group: "cta", max: 1, prompt: "Add a Call phone number button" },
+  { kind: "copy-code", label: "Copy offer code", group: "cta", max: 1, prompt: "Add a Copy offer code button" },
+  { kind: "voice-call", label: "WA voice call", group: "cta", max: 1, prompt: "Add a WA voice call button" },
+  { kind: "request-contact", label: "Request contact info", group: "cta", max: 1, prompt: "Add a Request contact info button" },
+  { kind: "quick-reply", label: "Quick reply", group: "quick-reply", max: 10, prompt: "Add a quick reply button" },
+  { kind: "flow", label: "Complete flow", group: "quick-reply", max: 1, prompt: "Add a Complete flow button" },
+];
+
+export const MAX_BUTTONS = 10;
+
+export function isQuickReply(b: TemplateButton): boolean {
+  return b.kind === "quick-reply" || b.kind === "flow";
+}
+
+export function buttonLabel(b: TemplateButton): string {
+  return b.kind === "copy-code" ? `Copy code ${b.code}` : b.text;
+}
+
+/** Why another button of this kind can't be added, or null if it can. */
+export function addButtonBlocker(d: TemplateDraft, kind: ButtonKind): string | null {
+  if (d.buttons.length >= MAX_BUTTONS) return `WhatsApp allows up to ${MAX_BUTTONS} buttons`;
+  const type = BUTTON_TYPES.find((t) => t.kind === kind)!;
+  const count = d.buttons.filter((b) => b.kind === kind).length;
+  if (count >= type.max) {
+    return type.max === 1
+      ? `WhatsApp allows one ${type.label} button`
+      : `WhatsApp allows up to ${type.max} ${type.label} buttons`;
+  }
+  return null;
+}
+
+/** Buttons in display order — the two groups, quick replies where the user put them. */
+export function orderedButtons(d: TemplateDraft): { button: TemplateButton; index: number }[] {
+  const all = d.buttons.map((button, index) => ({ button, index }));
+  const cta = all.filter((x) => !isQuickReply(x.button));
+  const qr = all.filter((x) => isQuickReply(x.button));
+  return d.quickRepliesFirst ? [...qr, ...cta] : [...cta, ...qr];
+}
 
 export type TemplateDraft = {
   /** Optional only for drafts saved before channels existed — read as WhatsApp. */
@@ -49,6 +108,8 @@ export type TemplateDraft = {
   customBody?: string;
   footer: string | null;
   buttons: TemplateButton[];
+  /** Quick replies above the call-to-action buttons instead of below. */
+  quickRepliesFirst?: boolean;
   /** Sample value per body variable — Meta rejects templates without them. */
   samples: Record<string, string>;
 };
@@ -301,7 +362,6 @@ export function refineSuggestions(d: TemplateDraft): RefineSuggestion[] {
   }
   const greetsByName = d.customBody ? d.customBody.includes("{{name}}") : d.personal;
   if (!greetsByName) field("Name variable", "Greet by name");
-  if (d.buttons.length === 0) field("Button", "Add a button");
 
   const rewrite = (label: string, prompt: string): RefineSuggestion => ({
     kind: "rewrite",
@@ -321,7 +381,41 @@ export function refineSuggestions(d: TemplateDraft): RefineSuggestion[] {
   ];
 }
 
-export type RefineResult = { draft: TemplateDraft; changes: string[] };
+export type RefineResult =
+  | { draft: TemplateDraft; changes: string[] }
+  /** Understood, but not allowed — e.g. a second voice-call button. */
+  | { blocked: string };
+
+/** The button type a message asks to add; a bare "button" means a quick reply. */
+function detectButtonKind(t: string): ButtonKind {
+  if (/\b(voice call|wa call|whatsapp call)\b/.test(t)) return "voice-call";
+  if (/\b(contact info|request contact|share contact)\b/.test(t)) return "request-contact";
+  if (/\bflow\b/.test(t)) return "flow";
+  if (/\b(phone|call)\b/.test(t)) return "phone";
+  if (/\b(coupon|code)\b/.test(t)) return "copy-code";
+  if (/\b(website|link|url)\b/.test(t) || /https?:\/\//.test(t)) return "url";
+  return "quick-reply";
+}
+
+function newButton(kind: ButtonKind, text: string): TemplateButton {
+  const quoted = text.match(/["“']([^"”']{1,25})["”']/)?.[1];
+  switch (kind) {
+    case "url":
+      return { kind, text: quoted ?? "Visit website", url: text.match(/https?:\/\/\S+/)?.[0] ?? "https://yourstore.com" };
+    case "phone":
+      return { kind, text: quoted ?? "Call us", phone: text.match(/\+?\d[\d\s-]{6,}\d/)?.[0] ?? "+91 98765 43210" };
+    case "copy-code":
+      return { kind, code: text.match(/\b(?:code|coupon)\s+([A-Z0-9]{3,})\b/i)?.[1]?.toUpperCase() ?? "SAVE20" };
+    case "voice-call":
+      return { kind, text: quoted ?? "Call us on WhatsApp" };
+    case "request-contact":
+      return { kind, text: quoted ?? "Share contact info" };
+    case "quick-reply":
+      return { kind, text: quoted ?? "I'm interested" };
+    case "flow":
+      return { kind, text: quoted ?? "Book now" };
+  }
+}
 
 const REWRITE_ASK = /\b(shorter|short|concise|brief|trim|longer|expand|formal|professional|friendl\w*|casual|warm\w*|rewrite|reword|rephrase)\b/i;
 
@@ -437,6 +531,25 @@ export function refineTemplate(d: TemplateDraft, text: string): RefineResult | n
     };
   }
 
+  if (/\bquick repl/.test(t) && /\b(top|first|above|up|bottom|last|below|down)\b/.test(t) && /\b(move|put|place|show|order)\b/.test(t)) {
+    const first = /\b(top|first|above|up)\b/.test(t);
+    return {
+      draft: finish({ ...next, quickRepliesFirst: first }),
+      changes: [first ? "Quick replies on top" : "Quick replies at the bottom"],
+    };
+  }
+
+  if (!removing && /\b(add|insert|include|another|new|put)\b/.test(t) && /\b(button|quick repl\w*)\b/.test(t)) {
+    const kind = detectButtonKind(t);
+    const blocker = addButtonBlocker(next, kind);
+    if (blocker) return { blocked: `${blocker}.` };
+    const button = newButton(kind, text);
+    return {
+      draft: finish({ ...next, buttons: [...next.buttons, button] }),
+      changes: [`Added "${buttonLabel(button)}" button`],
+    };
+  }
+
   // Tone, length and offer only shape the scripted copy; the user's own
   // body stays as written (rewriting it needs the model).
   const scripted = !d.customBody;
@@ -509,11 +622,7 @@ export function refineTemplate(d: TemplateDraft, text: string): RefineResult | n
     }
   }
 
-  const quoted = text.match(/["“']([^"”']{1,25})["”']/)?.[1];
-  if (/\bquick repl(y|ies)\b/.test(t) || (/\bbutton\b/.test(t) && !removing && changes.every((c) => !/button/i.test(c)))) {
-    next.buttons.push({ kind: "quick-reply", text: quoted ?? "I'm interested" });
-    changes.push(`Quick reply "${quoted ?? "I'm interested"}"`);
-  } else if (removing && /\bbuttons?\b/.test(t) && !/\b(coupon|code)\b/.test(t)) {
+  if (removing && /\bbuttons?\b/.test(t) && !/\b(coupon|code)\b/.test(t)) {
     next.buttons = [];
     changes.push("Removed buttons");
   }
@@ -586,6 +695,15 @@ export function checkTemplate(
       verdict: "blocker",
       text: `Add a sample for ${missing.map(([k]) => `{{${k}}}`).join(", ")}`,
     });
+  }
+
+  if (d.buttons.length > MAX_BUTTONS) {
+    checks.push({ verdict: "blocker", text: `WhatsApp allows up to ${MAX_BUTTONS} buttons` });
+  }
+  for (const type of BUTTON_TYPES) {
+    if (d.buttons.filter((b) => b.kind === type.kind).length > type.max) {
+      checks.push({ verdict: "blocker", text: `Too many ${type.label} buttons — the limit is ${type.max}` });
+    }
   }
 
   const longButton = d.buttons.find(
