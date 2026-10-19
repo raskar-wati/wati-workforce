@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { ChevronDown, FileText, Loader2, Pencil, Plus, Sparkles } from "lucide-react";
+import { ChevronDown, FileText, Loader2, Pencil, Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
   CATEGORY_LABEL,
@@ -217,7 +217,7 @@ export function SupersededTemplateCard({
 
 /**
  * Two groups, read differently: "+ field" chips add a part of the template;
- * sparkle chips have AI rewrite the copy, set apart after a divider.
+ * grey secondary chips rewrite the copy, set apart after a divider.
  */
 function RefineChips({
   suggestions,
@@ -249,9 +249,8 @@ function RefineChips({
           key={s.label}
           type="button"
           onClick={() => onPick(s.prompt)}
-          className="inline-flex items-center gap-1 rounded-full bg-wati-green-soft px-2.5 py-1 text-[12px] text-wati-green-text transition-colors hover:bg-wati-green-soft-hover"
+          className="rounded-full bg-black/[0.05] px-2.5 py-1 text-[12px] text-black/70 transition-colors hover:bg-black/[0.08] hover:text-black/85"
         >
-          <Sparkles size={11} strokeWidth={2.25} />
           {s.label}
         </button>
       ))}
