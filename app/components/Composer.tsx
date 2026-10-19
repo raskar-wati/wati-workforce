@@ -91,6 +91,7 @@ export function Composer({
   onRemoveAttachment,
   attachmentNotice,
   onDismissAttachmentNotice,
+  placeholder,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -114,6 +115,9 @@ export function Composer({
   /** Agents the user can @-mention. When typing `@`, a popover lists
    *  these and selecting one inserts `@Name ` at the cursor. */
   mentionables?: ComposerMentionable[];
+  /** Mid-conversation hint from whatever flow is open, e.g. a template
+   *  draft; falls back to the generic "Write a message". */
+  placeholder?: string;
 }) {
   const [selectedModel, setSelectedModel] = useState<LLMOption>(LLM_OPTIONS[0]);
   // On the full Ask Wati page the header bar lines up with this card.
@@ -479,7 +483,7 @@ export function Composer({
             rows={1}
             placeholder={
               hasMessages
-                ? CONVERSATION_PLACEHOLDER
+                ? placeholder ?? CONVERSATION_PLACEHOLDER
                 : chrome === "drawer"
                   ? hasDrawerTopChips
                     ? `Ask about ${drawerTopChips[0].label.toLowerCase()}`

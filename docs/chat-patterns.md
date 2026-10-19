@@ -67,4 +67,5 @@ and a lead line saying where it came from.
 | Issue flags | `EvidenceRow`s shown only for problems: a blocker disables commit, a warn means a likely platform flag. No all-clear rows. Already shared. | template |
 | Drafting beat | `StatusIndicator` shown for about 1s before a new version appears. | template |
 | Channel preview | How the message lands in WhatsApp. | template |
+| Contextual composer hint | The composer placeholder says what the open flow needs next: missing input first, then example edits the flow supports. | template |
 | Text action | Low-emphasis button next to the CTA chips ("Keep editing"). | template |

@@ -858,6 +858,21 @@ export function ChatArea({
     }));
   };
 
+  /** Composer hint while a template flow is waiting on the user. */
+  const templatePlaceholder = (): string | undefined => {
+    if (openPurposeQuestion(messages)) return "Or describe what the template is for";
+    const card = openTemplateCard(messages, templateLocked);
+    if (!card) return undefined;
+    if (card.draft.header?.kind === "image" && !card.draft.header.fileName) {
+      return "Upload the header image, or describe a change";
+    }
+    if (card.stage === "review") return "Anything to change before you submit?";
+    // Examples are ones refineTemplate can actually apply.
+    return card.draft.purpose === "promotion"
+      ? "Describe a change, e.g. “make it 25% off” or “use code DIWALI20”"
+      : "Describe a change, e.g. “add a quick reply ‘Call me’”";
+  };
+
   /** A refinement chip on the card — posts as if the user typed it. */
   const sendTemplateChip = (threadId: string, text: string) => {
     const turn = templateTurn(messagesByThread[threadId] ?? [], text, []);
@@ -1962,6 +1977,7 @@ export function ChatArea({
           onRemoveAttachment={removeStagedAttachment}
           attachmentNotice={attachmentNotice}
           onDismissAttachmentNotice={() => setAttachmentNotice(null)}
+          placeholder={agentForThread ? undefined : templatePlaceholder()}
           mentionables={agents.map((a) => ({
             id: a.id,
             name: a.name,
