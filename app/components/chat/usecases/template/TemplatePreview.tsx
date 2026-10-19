@@ -11,12 +11,14 @@ import {
   Phone,
   PhoneCall,
   Reply,
+  Trash2,
   Workflow,
   X,
   type LucideIcon,
 } from "lucide-react";
 import { Fragment, useState } from "react";
 import {
+  COUPON_CODE_LIMIT,
   buttonLabel,
   isQuickReply,
   orderedButtons,
@@ -139,9 +141,10 @@ function ButtonRow({ button }: { button: TemplateButton }) {
 }
 
 /**
- * A button row that opens into inputs on click: the label (or the code, for a
- * copy-code button) and, for a link, its URL. Enter or leaving the row saves;
- * Escape cancels.
+ * A button row that opens into inputs on click: the label (or the coupon
+ * code, for Copy offer code) and, for a link or phone button, its URL or
+ * number. Enter or leaving the row saves; Escape cancels. A Copy offer code
+ * button with no code yet starts open, since the code is required.
  */
 function EditableButtonRow({
   button,
@@ -155,7 +158,9 @@ function EditableButtonRow({
   /** On the first quick reply: move the quick-reply group up or down. */
   reorder?: { up: boolean; onClick: () => void };
 }) {
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(
+    () => button.kind === "copy-code" && !button.code,
+  );
   const [primary, setPrimary] = useState("");
   const [url, setUrl] = useState("");
 
@@ -166,9 +171,11 @@ function EditableButtonRow({
   };
   const save = () => {
     const value = primary.trim();
-    if (value) {
-      if (button.kind === "copy-code") onChange({ ...button, code: value.toUpperCase() });
-      else if (button.kind === "url") onChange({ ...button, text: value, url: url.trim() || button.url });
+    if (button.kind === "copy-code") {
+      // Codes are copied verbatim, so keep case; spaces never belong in one.
+      onChange({ ...button, code: value.replace(/\s+/g, "") });
+    } else if (value) {
+      if (button.kind === "url") onChange({ ...button, text: value, url: url.trim() || button.url });
       else if (button.kind === "phone") onChange({ ...button, text: value, phone: url.trim() || button.phone });
       else onChange({ ...button, text: value });
     }
@@ -178,6 +185,44 @@ function EditableButtonRow({
   if (editing) {
     const field =
       "w-full rounded-md border border-black/15 bg-white px-2 py-1 text-[12px] text-[#111b21] outline-none focus:border-[#1570EF]";
+    if (button.kind === "copy-code") {
+      return (
+        <div
+          className="flex items-center gap-1.5 border-t border-black/[0.08] px-2.5 py-2"
+          onBlur={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) save();
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") save();
+            if (e.key === "Escape") setEditing(false);
+          }}
+        >
+          <div className="relative min-w-0 flex-1">
+            <input
+              autoFocus
+              value={primary}
+              onChange={(e) => setPrimary(e.target.value.replace(/\s+/g, ""))}
+              aria-label="Coupon code"
+              placeholder="Enter coupon code to copy"
+              maxLength={COUPON_CODE_LIMIT}
+              className={`${field} pr-11`}
+            />
+            <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[11px] tabular-nums text-black/40">
+              {primary.length}/{COUPON_CODE_LIMIT}
+            </span>
+          </div>
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={onRemove}
+            aria-label="Remove Copy offer code button"
+            className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-md border border-black/15 text-black/55 hover:bg-black/[0.04] hover:text-black/80"
+          >
+            <Trash2 size={13} />
+          </button>
+        </div>
+      );
+    }
     return (
       <div
         className="flex flex-col gap-1.5 border-t border-black/[0.08] px-2.5 py-2"
@@ -193,9 +238,8 @@ function EditableButtonRow({
           autoFocus
           value={primary}
           onChange={(e) => setPrimary(e.target.value)}
-          aria-label={button.kind === "copy-code" ? "Coupon code" : "Button text"}
-          placeholder={button.kind === "copy-code" ? "Coupon code" : "Button text"}
-          maxLength={button.kind === "copy-code" ? 15 : undefined}
+          aria-label="Button text"
+          placeholder="Button text"
           className={field}
         />
         {(button.kind === "url" || button.kind === "phone") && (
@@ -235,6 +279,12 @@ function EditableButtonRow({
       >
         <Icon size={13} strokeWidth={2} />
         {label}
+        {button.kind === "copy-code" &&
+          (button.code ? (
+            <span className="text-[11px] text-black/40">· {button.code}</span>
+          ) : (
+            <span className="text-[11px] text-wati-state-draft-text">· add code</span>
+          ))}
         <Pencil size={11} className="text-black/30 opacity-0 transition-opacity group-hover:opacity-100" />
       </button>
       <button

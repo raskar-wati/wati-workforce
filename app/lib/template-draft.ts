@@ -63,7 +63,21 @@ export function isQuickReply(b: TemplateButton): boolean {
 }
 
 export function buttonLabel(b: TemplateButton): string {
-  return b.kind === "copy-code" ? `Copy code ${b.code}` : b.text;
+  // WhatsApp labels it "Copy offer code"; the code itself is what gets copied.
+  return b.kind === "copy-code" ? "Copy offer code" : b.text;
+}
+
+export const COUPON_CODE_LIMIT = 15;
+
+/**
+ * A coupon code given in the message ("code DIWALI20", "coupon SAVE"), or
+ * null. Codes need a digit or be all caps, so "code button" isn't read as one.
+ */
+export function parseCouponCode(text: string): string | null {
+  const m = text.match(/\b(?:code|coupon)\s+(?:is\s+|of\s+|=\s*)?([A-Za-z0-9_-]{3,15})\b/i);
+  if (!m) return null;
+  const code = m[1];
+  return /\d/.test(code) || /^[A-Z0-9_-]+$/.test(code) ? code : null;
 }
 
 /** Why another button of this kind can't be added, or null if it can. */
@@ -317,9 +331,9 @@ export function draftTemplate(
   takenNames: readonly string[] = [],
 ): TemplateDraft {
   const offer = detectOffer(intent);
-  const code = intent.match(/\bcode\s+([A-Z0-9]{3,})\b/i)?.[1];
+  const code = parseCouponCode(intent);
   const buttons = [...DEFAULT_BUTTONS[purpose]];
-  if (code) buttons.push({ kind: "copy-code", code: code.toUpperCase() });
+  if (code) buttons.push({ kind: "copy-code", code });
   const base =
     purpose === "promotion" ? slugify(offer) : DEFAULT_NAME[purpose];
   return finish({
@@ -405,7 +419,8 @@ function newButton(kind: ButtonKind, text: string): TemplateButton {
     case "phone":
       return { kind, text: quoted ?? "Call us", phone: text.match(/\+?\d[\d\s-]{6,}\d/)?.[0] ?? "+91 98765 43210" };
     case "copy-code":
-      return { kind, code: text.match(/\b(?:code|coupon)\s+([A-Z0-9]{3,})\b/i)?.[1]?.toUpperCase() ?? "SAVE20" };
+      // No code given: left empty for the user to enter on the card.
+      return { kind, code: parseCouponCode(text) ?? "" };
     case "voice-call":
       return { kind, text: quoted ?? "Call us on WhatsApp" };
     case "request-contact":
@@ -600,15 +615,22 @@ export function refineTemplate(d: TemplateDraft, text: string): RefineResult | n
   }
 
   if (/\b(coupon|code)\b/.test(t)) {
-    const code = text.match(/\b(?:code|coupon)\s+([A-Z0-9]{3,})\b/i)?.[1]?.toUpperCase();
-    next.buttons = next.buttons.filter((b) => b.kind !== "copy-code");
+    const code = parseCouponCode(text);
+    const has = next.buttons.some((b) => b.kind === "copy-code");
     if (removing && !code) {
+      next.buttons = next.buttons.filter((b) => b.kind !== "copy-code");
       changes.push("Removed coupon code");
-    } else {
-      next.buttons.push({ kind: "copy-code", code: code ?? "SAVE20" });
-      changes.push(`Copy-code button (${code ?? "SAVE20"})`);
+    } else if (code) {
+      next.buttons = has
+        ? next.buttons.map((b) => (b.kind === "copy-code" ? { ...b, code } : b))
+        : [...next.buttons, { kind: "copy-code", code }];
+      changes.push(`Coupon code ${code}`);
+    } else if (!has) {
+      next.buttons.push({ kind: "copy-code", code: "" });
+      changes.push("Copy offer code button");
     }
   }
+
 
   const url = text.match(/https?:\/\/\S+/)?.[0];
   if (url || /\b(website|link|url|shop now)\b/.test(t)) {
@@ -704,6 +726,10 @@ export function checkTemplate(
     if (d.buttons.filter((b) => b.kind === type.kind).length > type.max) {
       checks.push({ verdict: "blocker", text: `Too many ${type.label} buttons — the limit is ${type.max}` });
     }
+  }
+
+  if (d.buttons.some((b) => b.kind === "copy-code" && !b.code.trim())) {
+    checks.push({ verdict: "blocker", text: "Enter the coupon code for the Copy offer code button" });
   }
 
   const longButton = d.buttons.find(

@@ -876,6 +876,9 @@ export function ChatArea({
     if (card.draft.header?.kind === "image" && !card.draft.header.fileName) {
       return "Upload the header image, or describe a change";
     }
+    if (card.draft.buttons.some((b) => b.kind === "copy-code" && !b.code)) {
+      return "Enter the coupon code, e.g. “code DIWALI20”";
+    }
     if (card.stage === "review") return "Anything to change before you submit?";
     // Examples are ones refineTemplate can actually apply.
     if (card.draft.customBody) return "Send revised text, or e.g. “footer: T&Cs apply”";

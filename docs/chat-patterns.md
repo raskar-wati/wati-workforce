@@ -68,6 +68,7 @@ and a lead line saying where it came from.
 | Refine chips | Two groups under a draft. **+ Field** chips (dashed outline, plus icon) add a part of the object. **Rewrite** chips (grey secondary, no icon) rework the copy. A divider separates the groups. | template |
 | Typed add menu | A "+ Button" field chip that opens every type the platform offers, grouped as the platform shows them. It opens upward, above the composer. Types at their limit stay listed but disabled, with the reason. Picking one posts as a user turn. | template (7 button types) |
 | Group reorder | One arrow on the movable group's first row flips its position, here quick replies above or below the call-to-action buttons. It also works by chat. | template |
+| Required value opens itself | A part that can't be valid without user input (here the coupon code) starts in edit mode with a placeholder and a counter. It is also flagged and named in the composer hint until it's filled. No made-up defaults. | template (Copy offer code) |
 | Required-fields form | Compact label → input rows, prefilled. | template (sample values) |
 | Issue flags | `EvidenceRow`s shown only for problems: a blocker disables commit, a warn means a likely platform flag. No all-clear rows. Already shared. | template |
 | Drafting beat | `StatusIndicator` shown for about 1s before a new version appears. | template |
