@@ -78,6 +78,21 @@ import { ReasoningTrace } from "./ReasoningTrace";
 import { WatiWelcome } from "./WatiWelcome";
 import { OnboardingHandoffPreview } from "./onboarding/OnboardingHandoffPreview";
 import { WatiMessage, type WatiChip } from "./onboarding/WatiMessage";
+import { useTemplates } from "../lib/templates";
+import {
+  PURPOSE_CHOICES,
+  detectPurpose,
+  draftTemplate,
+  isTemplateRequest,
+  refineTemplate,
+  type TemplateDraft,
+  type TemplatePurpose,
+} from "../lib/template-draft";
+import {
+  SupersededTemplateCard,
+  TemplateDraftCard,
+  type TemplateCardStage,
+} from "./chat/usecases/template/TemplateDraftCard";
 
 const ONBOARDING_TITLE = "Getting started";
 
@@ -101,7 +116,14 @@ type WatiAction =
   | { kind: "onboarding-decline"; label: string }
   | { kind: "open-handoffs"; label: string }
   | { kind: "open-digest"; label: string }
-  | { kind: "fill-composer"; label: string; prompt: string };
+  | { kind: "fill-composer"; label: string; prompt: string }
+  | {
+      kind: "template-pick-purpose";
+      label: string;
+      purpose: TemplatePurpose;
+      /** The original ask, drafted from once the purpose is known. */
+      intent: string;
+    };
 
 /** Thread title for a message that arrived as attachments with no caption. */
 function titleForAttachments(list: Attachment[]): string {
@@ -161,7 +183,84 @@ type ChatMessage =
       reasoningMs?: number;
       streaming: boolean;
     }
-  | { kind: "daily-digest"; id: string };
+  | { kind: "daily-digest"; id: string }
+  | {
+      /** One version of a template being made in chat. */
+      kind: "template-card";
+      id: string;
+      version: number;
+      draft: TemplateDraft;
+      changes?: string[];
+      stage: TemplateCardStage;
+      /** A newer version replaced this one — renders collapsed. */
+      superseded?: boolean;
+      /** Set once saved or submitted. */
+      templateId?: string;
+      createdAt: number;
+    };
+
+const TEMPLATE_LEAD =
+  "Here's a first draft. Tap a suggestion or tell me what to change — hit Looks good when it reads right.";
+const TEMPLATE_UNSUPPORTED =
+  "I can't make that change yet. I can adjust length, tone, the header image, buttons, coupon codes, the greeting, and the name, category or language.";
+
+function watiText(text: string): ChatMessage {
+  return { kind: "wati-message", id: crypto.randomUUID(), text, actions: [] };
+}
+
+function templateCardMessage(
+  draft: TemplateDraft,
+  version: number,
+  changes?: string[],
+): ChatMessage {
+  return {
+    kind: "template-card",
+    id: crypto.randomUUID(),
+    version,
+    draft,
+    changes,
+    stage: "editing",
+    createdAt: Date.now(),
+  };
+}
+
+type TemplateCardMessage = Extract<ChatMessage, { kind: "template-card" }>;
+
+/**
+ * The template card still taking edits: the latest version, not yet with
+ * Meta, and nothing but the user and Wati's own notes said since. Anything
+ * else in between (a model reply) means the user moved on.
+ */
+function openTemplateCard(
+  list: readonly ChatMessage[],
+  isLocked: (templateId?: string) => boolean,
+): TemplateCardMessage | null {
+  for (let i = list.length - 1; i >= 0; i--) {
+    const m = list[i];
+    if (m.kind === "user-text" || m.kind === "wati-message") continue;
+    if (m.kind === "template-card" && !m.superseded && !isLocked(m.templateId)) {
+      return m;
+    }
+    return null;
+  }
+  return null;
+}
+
+/** Wati's unanswered "what's this template for?" question, if it's last. */
+function openPurposeQuestion(list: readonly ChatMessage[]) {
+  const last = [...list].reverse().find((m) => m.kind !== "user-text");
+  if (last?.kind !== "wati-message" || last.locked) return null;
+  const pick = last.actions[0];
+  return pick?.kind === "template-pick-purpose" ? { id: last.id, intent: pick.intent } : null;
+}
+
+/** What a template turn does to the thread besides appending `msgs`. */
+type TemplateTurn = {
+  msgs: ChatMessage[];
+  supersedeId?: string;
+  lockId?: string;
+  patch?: { id: string; draft: TemplateDraft };
+};
 
 export function ChatArea({
   hideDailyDigest = false,
@@ -419,6 +518,12 @@ export function ChatArea({
 
   const fireCta = (handoffId: string, cta: HandoffCta) => {
     if (!agentForThread) return;
+    // Templates are made in chat, so an agent's "Draft … template" opens a
+    // template thread seeded from the run instead of a scripted action run.
+    if (cta.action === "create-template") {
+      startTemplateFromAgent(agentForThread.name, cta.label);
+      return;
+    }
     fireHandoffCta(agentForThread.id, handoffId, cta);
   };
 
@@ -644,6 +749,139 @@ export function ChatArea({
     markSeen,
   ]);
 
+  /* ---------------------------------------------- Template use case */
+
+  const { takenNames, getTemplate } = useTemplates();
+  const templateLocked = (templateId?: string) => {
+    const status = templateId ? getTemplate(templateId)?.status : undefined;
+    return status === "pending-meta" || status === "approved";
+  };
+
+  const startTemplateMessages = (
+    intent: string,
+    purpose: TemplatePurpose,
+    lead = TEMPLATE_LEAD,
+  ): ChatMessage[] => [
+    watiText(lead),
+    templateCardMessage(draftTemplate(intent, purpose, takenNames()), 1),
+  ];
+
+  /**
+   * How a user turn moves the template flow on, or null when it isn't part
+   * of one — then it goes to the model as usual.
+   */
+  const templateTurn = (
+    list: readonly ChatMessage[],
+    text: string,
+    files: readonly Attachment[],
+  ): TemplateTurn | null => {
+    const question = openPurposeQuestion(list);
+    if (question && text) {
+      return {
+        lockId: question.id,
+        msgs: startTemplateMessages(
+          `${question.intent} ${text}`,
+          detectPurpose(text) ?? "general",
+        ),
+      };
+    }
+    const card = openTemplateCard(list, templateLocked);
+    if (card) {
+      const image = files.find((f) => f.kind === "image");
+      if (image && card.draft.header?.kind === "image") {
+        return {
+          patch: {
+            id: card.id,
+            draft: { ...card.draft, header: { kind: "image", fileName: image.name } },
+          },
+          msgs: [watiText(`Added ${image.name} as the header image.`)],
+        };
+      }
+      if (text) {
+        const result = refineTemplate(card.draft, text);
+        if (!result) return { msgs: [watiText(TEMPLATE_UNSUPPORTED)] };
+        return {
+          supersedeId: card.id,
+          msgs: [templateCardMessage(result.draft, card.version + 1, result.changes)],
+        };
+      }
+    }
+    if (text && isTemplateRequest(text)) {
+      const purpose = detectPurpose(text);
+      if (purpose) return { msgs: startTemplateMessages(text, purpose) };
+      return {
+        msgs: [
+          {
+            kind: "wati-message",
+            id: crypto.randomUUID(),
+            text: "Happy to help. What's this template for?",
+            actions: PURPOSE_CHOICES.map<WatiAction>((c) => ({
+              kind: "template-pick-purpose",
+              label: c.label,
+              purpose: c.purpose,
+              intent: text,
+            })),
+          },
+        ],
+      };
+    }
+    return null;
+  };
+
+  /** Apply a template turn's in-place changes and append its messages. */
+  const applyTemplateTurn = (threadId: string, turn: TemplateTurn, lead: ChatMessage[]) => {
+    setMessagesByThread((prev) => {
+      const list = (prev[threadId] ?? []).map((m): ChatMessage => {
+        if (m.id === turn.supersedeId && m.kind === "template-card") {
+          return { ...m, superseded: true };
+        }
+        if (m.id === turn.lockId && m.kind === "wati-message") return { ...m, locked: true };
+        if (m.id === turn.patch?.id && m.kind === "template-card") {
+          return { ...m, draft: turn.patch.draft };
+        }
+        return m;
+      });
+      return { ...prev, [threadId]: [...list, ...lead, ...turn.msgs] };
+    });
+  };
+
+  const updateTemplateCard = (
+    threadId: string,
+    cardId: string,
+    patch: Partial<Pick<TemplateCardMessage, "draft" | "stage" | "templateId">>,
+  ) => {
+    setMessagesByThread((prev) => ({
+      ...prev,
+      [threadId]: (prev[threadId] ?? []).map((m) =>
+        m.kind === "template-card" && m.id === cardId ? { ...m, ...patch } : m,
+      ),
+    }));
+  };
+
+  /** A refinement chip on the card — posts as if the user typed it. */
+  const sendTemplateChip = (threadId: string, text: string) => {
+    const turn = templateTurn(messagesByThread[threadId] ?? [], text, []);
+    if (!turn) return;
+    applyTemplateTurn(threadId, turn, [
+      { kind: "user-text", id: crypto.randomUUID(), content: text },
+    ]);
+  };
+
+  const startTemplateFromAgent = (agentName: string, ctaLabel: string) => {
+    const subject = ctaLabel.replace(/^draft\s+/i, "");
+    const threadId = createThread(subject.charAt(0).toUpperCase() + subject.slice(1));
+    setMode(null);
+    setView("chat");
+    appendMessages(
+      threadId,
+      startTemplateMessages(
+        ctaLabel,
+        detectPurpose(ctaLabel) ?? "general",
+        `${agentName} flagged this in its last run, so I drafted a template for it. Tap a suggestion or tell me what to change.`,
+      ),
+    );
+  };
+
   const sendPrompt = (text: string) => {
     const trimmed = text.trim();
     // Attachments alone are a valid message — a photo with no caption still
@@ -668,6 +906,16 @@ export function ChatArea({
       setAttachmentNotice(null);
     }
     const startsAgentFlow = mode === "agent" && !agentForThread;
+    const template =
+      startsAgentFlow || agentForThread
+        ? null
+        : templateTurn(messagesByThread[threadId] ?? [], trimmed, outgoing);
+    if (template) {
+      applyTemplateTurn(threadId, template, [userMsg]);
+      setInput("");
+      setPendingWatcherTypeId(null);
+      return threadId;
+    }
     const thinkingId = crypto.randomUUID();
     const nextMessages: ChatMessage[] = [userMsg];
     if (startsAgentFlow) {
@@ -1183,9 +1431,20 @@ export function ChatArea({
           setInput(action.prompt);
           break;
         }
+
+        case "template-pick-purpose": {
+          appendMessages(threadId, [
+            { kind: "user-text", id: crypto.randomUUID(), content: action.label },
+            ...startTemplateMessages(action.intent, action.purpose),
+          ]);
+          break;
+        }
       }
     },
+    // startTemplateMessages only reads takenNames, which it tracks.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
+      takenNames,
       appendMessages,
       lockWatiMessageActions,
       markSeen,
@@ -1557,6 +1816,36 @@ export function ChatArea({
                   );
                 }
                 if (!activeThreadId) return null;
+                if (m.kind === "template-card") {
+                  if (m.superseded) {
+                    return (
+                      <SupersededTemplateCard key={m.id} draft={m.draft} version={m.version} />
+                    );
+                  }
+                  return (
+                    <TemplateDraftCard
+                      key={m.id}
+                      threadId={activeThreadId}
+                      draft={m.draft}
+                      version={m.version}
+                      changes={m.changes}
+                      stage={m.stage}
+                      templateId={m.templateId}
+                      fresh={Date.now() - m.createdAt < 1500}
+                      onDraftChange={(draft) =>
+                        updateTemplateCard(activeThreadId, m.id, { draft })
+                      }
+                      onRefine={(text) => sendTemplateChip(activeThreadId, text)}
+                      onStageChange={(stage) =>
+                        updateTemplateCard(activeThreadId, m.id, { stage })
+                      }
+                      onSaved={(templateId) =>
+                        updateTemplateCard(activeThreadId, m.id, { templateId })
+                      }
+                      onFollowUp={setInput}
+                    />
+                  );
+                }
                 if (m.kind === "watcher-match") {
                   return (
                     <motion.div

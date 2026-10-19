@@ -31,7 +31,7 @@ const PROMPTS: Record<AskWatiPage | "default", readonly string[]> = {
   default: [
     "Find customers ready to book",
     "Show me delivery complaints today",
-    "What can you do?",
+    "Create a template for our Diwali sale",
   ],
 };
 

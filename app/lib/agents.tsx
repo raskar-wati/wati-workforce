@@ -278,7 +278,7 @@ type AgentsCtx = AgentsState & {
 const STORAGE_KEY_BASE = "wati.agents.v1";
 
 /** Demo stand-in for Meta's ~48h template review window. */
-const META_REVIEW_MS = 20_000;
+export const META_REVIEW_MS = 20_000;
 
 function storageKeyFor(mode: DemoMode): string {
   return `${STORAGE_KEY_BASE}.${mode}`;

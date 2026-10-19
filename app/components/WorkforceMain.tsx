@@ -9,6 +9,7 @@ import { TenantProfileProvider } from "../lib/tenant-signal-profile";
 import { MainContent } from "./MainContent";
 import { FileDropZone } from "./attachments/FileDropZone";
 import { WorkforcePanel } from "./WorkforcePanel";
+import { TemplatesProvider } from "../lib/templates";
 
 export function WorkforceMain({
   hideHandoffs = false,
@@ -43,6 +44,7 @@ export function WorkforceMain({
         <ChatModeProvider defaultMode={defaultMode}>
           <ChatThreadsProvider>
             <AgentsProvider>
+              <TemplatesProvider>
               <DailyDigestMetaProvider>
                 <FileDropZone className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
                   <WorkforcePanel
@@ -68,6 +70,7 @@ export function WorkforceMain({
                   />
                 </FileDropZone>
               </DailyDigestMetaProvider>
+              </TemplatesProvider>
             </AgentsProvider>
           </ChatThreadsProvider>
         </ChatModeProvider>

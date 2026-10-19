@@ -191,10 +191,12 @@ export function WorkforceCard({
 export function CardCtaChip({
   children,
   primary = false,
+  disabled = false,
   onClick,
 }: {
   children: ReactNode;
   primary?: boolean;
+  disabled?: boolean;
   onClick?: () => void;
 }) {
   const className = primary
@@ -208,7 +210,12 @@ export function CardCtaChip({
     );
   }
   return (
-    <button type="button" onClick={onClick} className={className}>
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`${className} disabled:cursor-not-allowed disabled:opacity-40`}
+    >
       {children}
     </button>
   );
