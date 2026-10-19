@@ -407,9 +407,6 @@ export function refineSuggestions(d: TemplateDraft): RefineSuggestion[] {
   const field = (label: string, prompt: string) =>
     fields.push({ kind: "field", label, prompt });
   if (!d.header) field("Image header", "Add image header");
-  if (d.purpose === "promotion" && !d.buttons.some((b) => b.kind === "copy-code")) {
-    field("Coupon code", "Add a coupon code");
-  }
   const greetsByName = d.customBody ? d.customBody.includes("{{name}}") : d.personal;
   if (!greetsByName) field("Name variable", "Greet by name");
 
