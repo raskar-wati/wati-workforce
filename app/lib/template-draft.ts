@@ -427,16 +427,19 @@ export function refineSuggestions(d: TemplateDraft): RefineSuggestion[] {
     label,
     prompt,
   });
+  // Rewrites are offered as suggested replies, so the label is the message
+  // that gets sent.
+  const reply = (text: string) => rewrite(text, text);
   // Rewriting the user's own copy needs the model — offer no rewrites then.
   if (d.customBody) return fields;
   return [
     ...fields,
     d.length === "short"
-      ? rewrite("Longer", "Make it longer")
-      : rewrite("Shorter", "Make it shorter"),
+      ? reply("Add a bit more detail to the message")
+      : reply("Make it shorter and easier to skim"),
     d.tone === "formal"
-      ? rewrite("Friendlier", "Make it friendlier")
-      : rewrite("More formal", "Make it more formal"),
+      ? reply("Make the tone warmer and friendlier")
+      : reply("Make the tone more formal and professional"),
   ];
 }
 
