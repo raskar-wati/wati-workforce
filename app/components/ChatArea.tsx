@@ -83,6 +83,7 @@ import {
   PURPOSE_CHOICES,
   detectPurpose,
   draftTemplate,
+  isNewTemplateRequest,
   isRewriteRequest,
   isTemplateRequest,
   refineTemplate,
@@ -788,7 +789,8 @@ export function ChatArea({
         ),
       };
     }
-    const card = openTemplateCard(list, templateLocked);
+    // Asking for another template while one is open starts that one fresh.
+    const card = isNewTemplateRequest(text) ? null : openTemplateCard(list, templateLocked);
     if (card) {
       const image = files.find((f) => f.kind === "image");
       if (image && card.draft.header?.kind === "image") {
