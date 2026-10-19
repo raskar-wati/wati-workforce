@@ -41,6 +41,9 @@ export type TemplateDraft = {
   discount: string;
   header: TemplateHeader | null;
   body: string;
+  /** The user's own wording for the body. While set, it is the body as-is
+   *  and the scripted copy (tone, length, offer) no longer applies. */
+  customBody?: string;
   footer: string | null;
   buttons: TemplateButton[];
   /** Sample value per body variable — Meta rejects templates without them. */
@@ -200,7 +203,7 @@ export function bodyVariables(body: string): string[] {
 
 /** Recompose the body and keep a sample for every variable it uses. */
 function finish(d: Omit<TemplateDraft, "body" | "samples"> & { samples?: Record<string, string> }): TemplateDraft {
-  const body = composeBody(d);
+  const body = d.customBody ?? composeBody(d);
   const samples: Record<string, string> = {};
   for (const v of bodyVariables(body)) {
     samples[v] = d.samples?.[v] ?? SAMPLE_DEFAULTS[v] ?? "";
@@ -285,7 +288,8 @@ export function refineSuggestions(d: TemplateDraft): RefineSuggestion[] {
   if (d.purpose === "promotion" && !d.buttons.some((b) => b.kind === "copy-code")) {
     field("Coupon code", "Add a coupon code");
   }
-  if (!d.personal) field("Name variable", "Greet by name");
+  const greetsByName = d.customBody ? d.customBody.includes("{{name}}") : d.personal;
+  if (!greetsByName) field("Name variable", "Greet by name");
   if (d.buttons.length === 0) field("Button", "Add a button");
 
   const rewrite = (label: string, prompt: string): RefineSuggestion => ({
@@ -293,6 +297,8 @@ export function refineSuggestions(d: TemplateDraft): RefineSuggestion[] {
     label,
     prompt,
   });
+  // Rewriting the user's own copy needs the model — offer no rewrites then.
+  if (d.customBody) return fields;
   return [
     ...fields,
     d.length === "short"
@@ -306,6 +312,41 @@ export function refineSuggestions(d: TemplateDraft): RefineSuggestion[] {
 
 export type RefineResult = { draft: TemplateDraft; changes: string[] };
 
+const REWRITE_ASK = /\b(shorter|short|concise|brief|trim|longer|expand|formal|professional|friendl\w*|casual|warm\w*|rewrite|reword|rephrase)\b/i;
+
+/** Asks for an AI rewrite (tone/length) — can't apply to the user's own copy yet. */
+export function isRewriteRequest(text: string): boolean {
+  return REWRITE_ASK.test(text);
+}
+
+/** A message long enough that it's the copy itself, not an instruction. */
+const COPY_MIN_WORDS = 20;
+
+/**
+ * The body text the user supplied, if this message gives one: "update the
+ * draft to …", "body: …", "use this: …", or just a long message.
+ */
+function providedBody(text: string): string | null {
+  const explicit =
+    text.match(
+      /^\s*(?:please\s+)?(?:update|change|set|replace|make|edit)\s+(?:the\s+)?(?:template\s+)?(?:draft|template|body|message|text|copy)(?:\s+(?:text|copy))?\s+(?:to|with|as)\s*(?:this|the following)?\s*[:\-–—]?\s*([\s\S]+)$/i,
+    ) ??
+    text.match(/^\s*(?:body|message|copy|text)\s*:\s*([\s\S]+)$/i) ??
+    text.match(/^\s*use\s+(?:this|the following)(?:\s+(?:text|copy|instead))?\s*[:\-–—]\s*([\s\S]+)$/i);
+  const raw = explicit?.[1] ?? (text.trim().split(/\s+/).length >= COPY_MIN_WORDS ? text : null);
+  const cleaned = raw?.trim().replace(/^["“']([\s\S]*)["”']$/, "$1").trim();
+  return cleaned ? cleaned : null;
+}
+
+/** Footer text from "footer: …" or "change the footer to …". */
+function providedFooter(text: string): string | null {
+  const m = text.match(
+    /^\s*(?:(?:set|change|update|make)\s+(?:the\s+)?)?footer(?:\s+(?:to|as))?\s*[:\-–—]?\s+(.+)$/i,
+  );
+  const value = m?.[1].trim().replace(/^["“'](.*)["”']$/, "$1").trim();
+  return value ? value : null;
+}
+
 /**
  * Apply every change the message asks for. Returns null when nothing in it
  * maps to a change this flow can make, so the caller can say so.
@@ -316,18 +357,33 @@ export function refineTemplate(d: TemplateDraft, text: string): RefineResult | n
   const changes: string[] = [];
   const removing = /\b(remove|drop|delete|no|without)\b/.test(t);
 
-  if (/\b(shorter|short|concise|brief|trim)\b/.test(t)) {
+  // The user's own copy goes in verbatim — and before any keyword parsing,
+  // which would otherwise read words inside that copy as commands.
+  const body = providedBody(text);
+  if (body) {
+    return { draft: finish({ ...next, customBody: body }), changes: ["Your text as the body"] };
+  }
+  const footer = providedFooter(text);
+  if (footer && !removing) {
+    return { draft: finish({ ...next, footer }), changes: ["New footer"] };
+  }
+
+  // Tone, length and offer only shape the scripted copy; the user's own
+  // body stays as written (rewriting it needs the model).
+  const scripted = !d.customBody;
+
+  if (scripted && /\b(shorter|short|concise|brief|trim)\b/.test(t)) {
     next.length = "short";
     changes.push("Shorter");
-  } else if (/\b(longer|more detail|expand)\b/.test(t)) {
+  } else if (scripted && /\b(longer|more detail|expand)\b/.test(t)) {
     next.length = "standard";
     changes.push("Longer");
   }
 
-  if (/\b(formal|professional)\b/.test(t)) {
+  if (scripted && /\b(formal|professional)\b/.test(t)) {
     next.tone = "formal";
     changes.push("More formal");
-  } else if (/\b(friendl\w*|casual|warm\w*)\b/.test(t)) {
+  } else if (scripted && /\b(friendl\w*|casual|warm\w*)\b/.test(t)) {
     next.tone = "friendly";
     changes.push("Friendlier");
   }
@@ -346,14 +402,17 @@ export function refineTemplate(d: TemplateDraft, text: string): RefineResult | n
   }
 
   if (/\b(by name|greet|personal\w*|their name|first name)\b/.test(t) || /\bvariable\b/.test(t)) {
-    if (!next.personal) {
+    if (next.customBody && !next.customBody.includes("{{name}}")) {
+      next.customBody = `Hi {{name}}, ${next.customBody}`;
+      changes.push("Greets by name");
+    } else if (!next.customBody && !next.personal) {
       next.personal = true;
       changes.push("Greets by name");
     }
   }
 
   const discount = detectDiscount(text);
-  if (discount && discount !== next.discount) {
+  if (scripted && discount && discount !== next.discount) {
     next.discount = discount;
     changes.push(`Discount ${discount}`);
   }

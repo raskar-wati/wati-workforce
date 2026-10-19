@@ -83,6 +83,7 @@ import {
   PURPOSE_CHOICES,
   detectPurpose,
   draftTemplate,
+  isRewriteRequest,
   isTemplateRequest,
   refineTemplate,
   type TemplateDraft,
@@ -202,7 +203,9 @@ type ChatMessage =
 const TEMPLATE_LEAD =
   "Here's a first draft. Tap a suggestion or tell me what to change — hit Looks good when it reads right.";
 const TEMPLATE_UNSUPPORTED =
-  "I can't make that change yet. I can adjust length, tone, the header image, buttons, coupon codes, the greeting, and the name, category or language.";
+  "I couldn't tell what to change. Send the exact text you want (e.g. “Update the draft to: …” or “Footer: …”), or ask me to adjust the length, tone, header image, buttons, coupon code, greeting, name, category or language.";
+const TEMPLATE_NO_REWRITE =
+  "The body is your own text now, so I've kept it as written. Rewriting it for tone or length needs the AI model, which isn't connected in this prototype — send the revised text and I'll use it.";
 
 function watiText(text: string): ChatMessage {
   return { kind: "wati-message", id: crypto.randomUUID(), text, actions: [] };
@@ -799,7 +802,13 @@ export function ChatArea({
       }
       if (text) {
         const result = refineTemplate(card.draft, text);
-        if (!result) return { msgs: [watiText(TEMPLATE_UNSUPPORTED)] };
+        if (!result) {
+          const reply =
+            card.draft.customBody && isRewriteRequest(text)
+              ? TEMPLATE_NO_REWRITE
+              : TEMPLATE_UNSUPPORTED;
+          return { msgs: [watiText(reply)] };
+        }
         return {
           supersedeId: card.id,
           msgs: [templateCardMessage(result.draft, card.version + 1, result.changes)],
@@ -868,6 +877,7 @@ export function ChatArea({
     }
     if (card.stage === "review") return "Anything to change before you submit?";
     // Examples are ones refineTemplate can actually apply.
+    if (card.draft.customBody) return "Send revised text, or e.g. “footer: T&Cs apply”";
     return card.draft.purpose === "promotion"
       ? "Describe a change, e.g. “make it 25% off” or “use code DIWALI20”"
       : "Describe a change, e.g. “add a quick reply ‘Call me’”";

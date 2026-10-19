@@ -31,7 +31,10 @@ The previous version collapses to a single line that can be expanded.
 ### Refine by chip or by typing
 Suggested edits appear as small chips under the draft. A chip posts as a user
 turn, so tapping one and typing the same thing take the same path.
-Unrecognised edits get a reply listing what can be changed.
+The user's own wording always wins. Text they supply ("update the draft to
+…", "body: …", or any long message) goes in as written, before any keyword
+parsing. Scripted rewrites then step aside rather than overwrite it. Edits
+that can't be understood get a reply showing how to send exact text.
 - Seen in: template
 - Lives in: `refineSuggestions` / `refineTemplate`, `templateTurn` in `ChatArea.tsx`
 
