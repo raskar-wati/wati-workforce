@@ -258,6 +258,9 @@ export function AskWatiBar() {
                 aria-live="polite"
                 className="pointer-events-none absolute inset-0 flex items-center gap-2 text-sm"
               >
+                <span className="min-w-0 flex-1 truncate font-medium text-[var(--wati-text-title)]">
+                  {topNotice.title}
+                </span>
                 {/* Counter: red while anything is waiting on a decision,
                     grey when it's only updates. Pops on every change. */}
                 <motion.span
@@ -278,9 +281,6 @@ export function AskWatiBar() {
                 >
                   {islandNotices.length > 99 ? "99+" : islandNotices.length}
                 </motion.span>
-                <span className="truncate font-medium text-[var(--wati-text-title)]">
-                  {topNotice.title}
-                </span>
               </span>
             )}
           </div>
