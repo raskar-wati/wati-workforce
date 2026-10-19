@@ -17,10 +17,12 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Fragment, useRef, useState } from "react";
+import { AskWatiIcon } from "../../../icons/AskWatiIcon";
 import {
   BODY_LIMIT,
   COUPON_CODE_LIMIT,
   buttonLabel,
+  enhanceBody,
   isQuickReply,
   orderedButtons,
   type ButtonKind,
@@ -258,6 +260,18 @@ function AddImageHeader({ onChange }: { onChange: (header: TemplateHeader) => vo
 function EditableBody({ body, onChange }: { body: string; onChange: (body: string) => void }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(body);
+  const [enhancing, setEnhancing] = useState(false);
+
+  // Brief beat so the change reads as Wati doing it, then swap the text in.
+  // The editor stays open so the user can check it before saving.
+  const enhance = () => {
+    if (enhancing || !value.trim()) return;
+    setEnhancing(true);
+    window.setTimeout(() => {
+      setValue((v) => enhanceBody(v).slice(0, BODY_LIMIT));
+      setEnhancing(false);
+    }, 600);
+  };
 
   const save = () => {
     const next = value.trim();
@@ -284,11 +298,24 @@ function EditableBody({ body, onChange }: { body: string; onChange: (body: strin
           maxLength={BODY_LIMIT}
           rows={Math.min(8, Math.max(3, Math.ceil(value.length / 42)))}
           aria-label="Message body"
-          className="w-full resize-none rounded-md border border-[#1570EF] bg-white px-2 py-1.5 pb-5 text-[13px] leading-[18px] text-[#111b21] outline-none"
+          className="w-full resize-none rounded-md border border-[#1570EF] bg-white px-2 py-1.5 pb-8 text-[13px] leading-[18px] text-[#111b21] outline-none"
         />
-        <span className="pointer-events-none absolute bottom-2 right-2 text-[10px] tabular-nums text-black/40">
-          {value.length}/{BODY_LIMIT}
-        </span>
+        <div className="absolute bottom-2 right-2 flex items-center gap-2">
+          <span className="pointer-events-none text-[10px] tabular-nums text-black/40">
+            {value.length}/{BODY_LIMIT}
+          </span>
+          <button
+            type="button"
+            // Keep focus in the textarea — a blur would save and close it.
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={enhance}
+            disabled={enhancing}
+            className="inline-flex items-center gap-1 rounded-full border border-black/10 bg-white px-2 py-0.5 text-[11px] font-medium text-black/75 hover:bg-black/[0.03] disabled:opacity-60"
+          >
+            <AskWatiIcon size={12} variant="solid" />
+            {enhancing ? "Enhancing…" : "Enhance"}
+          </button>
+        </div>
       </div>
     );
   }

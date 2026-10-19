@@ -292,6 +292,32 @@ export function bodyVariables(body: string): string[] {
 }
 
 /** Recompose the body and keep a sample for every variable it uses. */
+/**
+ * Quick local polish for the body editor's Enhance: spacing after sentence
+ * ends, a repeated greeting dropped, sentences capitalised, closing
+ * punctuation. Stands in until the model does real rewriting.
+ */
+export function enhanceBody(text: string): string {
+  let out = text
+    .replace(/[ \t]+/g, " ")
+    .replace(/\s+([,.!?])/g, "$1")
+    .replace(/([.!?])(?=[A-Za-z{])/g, "$1 ")
+    .replace(/,(?=[A-Za-z{])/g, ", ")
+    .trim();
+  // Keep only the first greeting ("Hi {{name}}," / "Hello …," / "Dear …,").
+  let seen = false;
+  out = out.replace(/\b(?:Hi|Hello|Hey|Dear)\s+(?:\{\{\w+\}\}|there|customer),\s*/gi, (m) => {
+    if (!seen) {
+      seen = true;
+      return m;
+    }
+    return "";
+  });
+  out = out.replace(/(^|[.!?]\s+)([a-z])/g, (_, lead: string, c: string) => lead + c.toUpperCase());
+  if (!/[.!?)\u{1F300}-\u{1FAFF}]$/u.test(out)) out += ".";
+  return out;
+}
+
 /** The user's own body text, typed straight into the preview. */
 export function withBody(d: TemplateDraft, body: string): TemplateDraft {
   return finish({ ...d, customBody: body });
