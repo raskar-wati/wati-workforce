@@ -1857,7 +1857,6 @@ export function ChatArea({
                       threadId={activeThreadId}
                       draft={m.draft}
                       version={m.version}
-                      changes={m.changes}
                       stage={m.stage}
                       templateId={m.templateId}
                       fresh={Date.now() - m.createdAt < 1500}

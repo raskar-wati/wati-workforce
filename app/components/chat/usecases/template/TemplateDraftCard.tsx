@@ -49,7 +49,6 @@ export function TemplateDraftCard({
   threadId,
   draft,
   version,
-  changes,
   stage,
   templateId,
   fresh,
@@ -62,8 +61,6 @@ export function TemplateDraftCard({
   threadId: string;
   draft: TemplateDraft;
   version: number;
-  /** What this version changed from the last, e.g. ["Shorter"]. */
-  changes?: string[];
   stage: TemplateCardStage;
   /** Set once saved or submitted. */
   templateId?: string;
@@ -116,7 +113,6 @@ export function TemplateDraftCard({
       subtitle={
         locked ? `${CHANNEL_LABEL[draft.channel ?? "whatsapp"]} template` : `Version ${version}`
       }
-      note={changes && changes.length > 0 && !locked ? `Updated: ${changes.join(" · ")}` : undefined}
       state={pill?.state}
       stateLabel={pill?.label}
       actions={

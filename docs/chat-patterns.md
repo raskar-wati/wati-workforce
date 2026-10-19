@@ -23,7 +23,8 @@ Typing an answer works the same as tapping a chip.
 - Lives in: `WatiMessage` + `template-pick-purpose` action in `ChatArea.tsx`
 
 ### Versioned card, older versions collapse
-Each change posts a new version of the object card with an "Updated: …" note.
+Each change posts a new version of the object card. There is no "Updated: …"
+note: the user's own turn just above already says what changed.
 The previous version collapses to a single line that can be expanded.
 - Seen in: template
 - Lives in: `TemplateDraftCard`, `SupersededTemplateCard`
