@@ -300,21 +300,21 @@ function EditableBody({ body, onChange }: { body: string; onChange: (body: strin
           aria-label="Message body"
           className="w-full resize-none rounded-md border border-[#1570EF] bg-white px-2 py-1.5 pb-8 text-[13px] leading-[18px] text-[#111b21] outline-none"
         />
-        <div className="absolute bottom-2 right-2 flex items-center gap-2">
-          <span className="pointer-events-none text-[10px] tabular-nums text-black/40">
-            {value.length}/{BODY_LIMIT}
-          </span>
+        <div className="pointer-events-none absolute inset-x-2 bottom-1.5 flex items-center justify-between">
           <button
             type="button"
             // Keep focus in the textarea — a blur would save and close it.
             onMouseDown={(e) => e.preventDefault()}
             onClick={enhance}
             disabled={enhancing}
-            className="inline-flex items-center gap-1 rounded-full border border-black/10 bg-white px-2 py-0.5 text-[11px] font-medium text-black/75 hover:bg-black/[0.03] disabled:opacity-60"
+            className="pointer-events-auto inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-[11px] font-medium text-black/65 hover:bg-black/[0.04] hover:text-black/85 disabled:opacity-60"
           >
             <AskWatiIcon size={12} variant="solid" />
             {enhancing ? "Enhancing…" : "Enhance"}
           </button>
+          <span className="text-[10px] tabular-nums text-black/40">
+            {value.length}/{BODY_LIMIT}
+          </span>
         </div>
       </div>
     );
