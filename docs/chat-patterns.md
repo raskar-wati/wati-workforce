@@ -38,8 +38,8 @@ Unrecognised edits get a reply listing what can be changed.
 ### Edit → review → commit, on the same card
 "Looks good" turns the card into its review step without posting a new
 message. The review step has only what the platform requires, prefilled (for
-templates, sample values), plus pre-flight checks. The commit actions sit
-last.
+templates, sample values), plus flags for real problems only. Nothing is shown when
+all is well. The commit actions sit last.
 - Seen in: template (Submit to Meta / Save as draft / Keep editing)
 - Lives in: `TemplateDraftCard` (`stage`)
 
@@ -64,7 +64,7 @@ and a lead line saying where it came from.
 | Editable fact chips | Inferred settings shown as chips, editable in place: text input or select. | template (name, category, language) |
 | Refine chips | Small outline chips under a draft. | template |
 | Required-fields form | Compact label → input rows, prefilled. | template (sample values) |
-| Check list | `EvidenceRow`s with ok/warn/blocker/info, where a blocker disables commit. Already shared. | template |
+| Issue flags | `EvidenceRow`s shown only for problems: a blocker disables commit, a warn means a likely platform flag. No all-clear rows. Already shared. | template |
 | Drafting beat | `StatusIndicator` shown for about 1s before a new version appears. | template |
 | Channel preview | How the message lands in WhatsApp. | template |
 | Text action | Low-emphasis button next to the CTA chips ("Keep editing"). | template |

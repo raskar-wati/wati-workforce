@@ -399,8 +399,9 @@ export function refineTemplate(d: TemplateDraft, text: string): RefineResult | n
 
 /* ------------------------------------------------------------ Checks */
 
+/** Only problems: a blocker stops submit, a warn is a likely Meta flag. */
 export type TemplateCheck = {
-  verdict: "ok" | "warn" | "blocker" | "info";
+  verdict: "warn" | "blocker";
   text: string;
 };
 
@@ -416,24 +417,24 @@ export function checkTemplate(
     checks.push({ verdict: "blocker", text: "Name can only use lowercase letters, numbers and underscores" });
   } else if (takenNames.includes(d.name)) {
     checks.push({ verdict: "blocker", text: `A template called ${d.name} already exists` });
-  } else {
-    checks.push({ verdict: "ok", text: "Name is valid and unique" });
   }
 
   const overBody = d.body.length > BODY_LIMIT;
   const overFooter = (d.footer?.length ?? 0) > FOOTER_LIMIT;
-  checks.push(
-    overBody || overFooter
-      ? { verdict: "blocker", text: overBody ? `Body is over ${BODY_LIMIT} characters` : `Footer is over ${FOOTER_LIMIT} characters` }
-      : { verdict: "ok", text: "Body and footer are within Meta's limits" },
-  );
+  if (overBody || overFooter) {
+    checks.push({
+      verdict: "blocker",
+      text: overBody ? `Body is over ${BODY_LIMIT} characters` : `Footer is over ${FOOTER_LIMIT} characters`,
+    });
+  }
 
   const missing = Object.entries(d.samples).filter(([, v]) => !v.trim());
-  checks.push(
-    missing.length > 0
-      ? { verdict: "blocker", text: `Add a sample for ${missing.map(([k]) => `{{${k}}}`).join(", ")}` }
-      : { verdict: "ok", text: "Every variable has a sample value" },
-  );
+  if (missing.length > 0) {
+    checks.push({
+      verdict: "blocker",
+      text: `Add a sample for ${missing.map(([k]) => `{{${k}}}`).join(", ")}`,
+    });
+  }
 
   if (d.header?.kind === "image" && !d.header.fileName) {
     checks.push({ verdict: "blocker", text: "Attach the header image — use the paperclip in the composer" });

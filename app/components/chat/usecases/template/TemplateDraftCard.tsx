@@ -157,16 +157,15 @@ export function TemplateDraftCard({
       {reviewing && (
         <div className="flex flex-col gap-3 pt-1">
           <SampleValues draft={draft} onChange={onDraftChange} />
-          <div className="flex flex-col gap-1.5">
-            {checks.map((c) => (
-              <EvidenceRow key={c.text} verdict={c.verdict}>
-                {c.text}
-              </EvidenceRow>
-            ))}
-            <EvidenceRow verdict="info">
-              Submitting sends it for approval on all connected numbers
-            </EvidenceRow>
-          </div>
+          {checks.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              {checks.map((c) => (
+                <EvidenceRow key={c.text} verdict={c.verdict}>
+                  {c.text}
+                </EvidenceRow>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
