@@ -100,6 +100,7 @@ export function TemplateDraftCard({
   const status = saved?.status;
   const locked = status === "pending-meta" || status === "approved";
   const reviewing = stage === "review" && !locked;
+  const suggestions = refineSuggestions(draft);
   const checks = checkTemplate(draft, takenNames(templateId));
   const pill = status ? STATUS_PILL[status] : null;
 
@@ -154,7 +155,7 @@ export function TemplateDraftCard({
       />
 
       {!locked && !reviewing && (
-        <RefineChips draft={draft} suggestions={refineSuggestions(draft)} onPick={onRefine} />
+        <RefineChips draft={draft} suggestions={suggestions} onPick={onRefine} />
       )}
 
       {reviewing && (
@@ -186,6 +187,9 @@ export function TemplateDraftCard({
         <EvidenceRow verdict="info">Saved to Templates as a draft</EvidenceRow>
       )}
     </WorkforceCard>
+    {!locked && !reviewing && (
+      <SuggestedReplies suggestions={suggestions} onPick={onRefine} />
+    )}
     </div>
   );
 }
@@ -229,8 +233,8 @@ export function SupersededTemplateCard({
 /* ------------------------------------------------------------ Refine */
 
 /**
- * Two groups, read differently: "+ field" chips add a part of the template;
- * grey secondary chips rewrite the copy, set apart after a divider.
+ * Inside the card: "+ field" chips that add a part of the template, the
+ * button menu and its suggestion. Copy rewrites sit outside, as replies.
  */
 const FIELD_CHIP =
   "inline-flex items-center gap-1 rounded-full border border-dashed border-black/20 bg-white px-2.5 py-1 text-[12px] text-black/65 transition-colors hover:border-black/35 hover:bg-black/[0.03] hover:text-black/85";
@@ -245,7 +249,6 @@ function RefineChips({
   onPick: (prompt: string) => void;
 }) {
   const fields = suggestions.filter((s) => s.kind === "field");
-  const rewrites = suggestions.filter((s) => s.kind === "rewrite");
   return (
     <div className="flex flex-wrap items-center gap-1.5 pt-1">
       {fields.map((s) => (
@@ -256,15 +259,31 @@ function RefineChips({
       ))}
       <AddButtonMenu draft={draft} onPick={onPick} />
       <SuggestedButtonChip draft={draft} onPick={onPick} />
-      {rewrites.length > 0 && (
-        <span aria-hidden className="mx-1 h-4 w-px bg-black/10" />
-      )}
+    </div>
+  );
+}
+
+/**
+ * Below the card: copy rewrites offered as suggested replies — tapping one
+ * sends it as the user's next message.
+ */
+function SuggestedReplies({
+  suggestions,
+  onPick,
+}: {
+  suggestions: RefineSuggestion[];
+  onPick: (prompt: string) => void;
+}) {
+  const rewrites = suggestions.filter((s) => s.kind === "rewrite");
+  if (rewrites.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-1.5 pt-2.5">
       {rewrites.map((s) => (
         <button
           key={s.label}
           type="button"
           onClick={() => onPick(s.prompt)}
-          className="rounded-full bg-black/[0.05] px-2.5 py-1 text-[12px] text-black/70 transition-colors hover:bg-black/[0.08] hover:text-black/85"
+          className="rounded-full bg-black/[0.05] px-3 py-1.5 text-[13px] text-black/70 transition-colors hover:bg-black/[0.08] hover:text-black/85"
         >
           {s.label}
         </button>
