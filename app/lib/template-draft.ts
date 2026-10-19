@@ -9,7 +9,7 @@
  */
 
 export type TemplateCategory = "marketing" | "utility";
-export type TemplateChannel = "whatsapp" | "instagram" | "messenger" | "email";
+export type TemplateChannel = "whatsapp" | "rcs" | "sms" | "email";
 export type TemplatePurpose =
   | "promotion"
   | "order-update"
@@ -64,8 +64,8 @@ export const TEMPLATE_LANGUAGES = [
 
 export const CHANNEL_LABEL: Record<TemplateChannel, string> = {
   whatsapp: "WhatsApp",
-  instagram: "Instagram",
-  messenger: "Messenger",
+  rcs: "RCS",
+  sms: "SMS",
   email: "Email",
 };
 
