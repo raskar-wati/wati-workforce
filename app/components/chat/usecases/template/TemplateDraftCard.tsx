@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { ChevronDown, FileText, Loader2, Pencil, Plus } from "lucide-react";
+import { ChevronDown, Loader2, Pencil, Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
   BUTTON_TYPES,
@@ -26,6 +26,7 @@ import {
   type CardTone,
   type ObjectState,
 } from "../../../cards/WorkforceCard";
+import { TemplateMessagesIcon } from "../../../icons/TemplateMessagesIcon";
 import { TemplatePreview } from "./TemplatePreview";
 
 export type TemplateCardStage = "editing" | "review";
@@ -106,7 +107,7 @@ export function TemplateDraftCard({
   return (
     <div ref={rootRef}>
     <WorkforceCard
-      icon={<FileText size={11} strokeWidth={2.25} />}
+      icon={<TemplateMessagesIcon size={14} />}
       tone={pill?.tone ?? "neutral"}
       // While editing, the name sits in the editable facts row instead.
       title={locked ? draft.name : "Create Template"}
@@ -201,7 +202,7 @@ export function SupersededTemplateCard({
         onClick={() => setOpen((v) => !v)}
         className="flex items-center gap-2 self-start rounded-full px-1 text-[12px] text-black/45 hover:text-black/70"
       >
-        <FileText size={12} />
+        <TemplateMessagesIcon size={13} />
         {draft.name} · v{version} — replaced by a newer version
         <ChevronDown size={12} className={open ? "rotate-180 transition-transform" : "transition-transform"} />
       </button>
