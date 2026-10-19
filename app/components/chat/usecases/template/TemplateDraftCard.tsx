@@ -12,6 +12,7 @@ import {
   canSubmit,
   checkTemplate,
   refineSuggestions,
+  withBody,
   type RefineSuggestion,
   type TemplateCategory,
   type TemplateChannel,
@@ -147,6 +148,8 @@ export function TemplateDraftCard({
         onReorder={
           locked ? undefined : (quickRepliesFirst) => onDraftChange({ ...draft, quickRepliesFirst })
         }
+        onBodyChange={locked ? undefined : (body) => onDraftChange(withBody(draft, body))}
+        onHeaderChange={locked ? undefined : (header) => onDraftChange({ ...draft, header })}
       />
 
       {!locked && !reviewing && (

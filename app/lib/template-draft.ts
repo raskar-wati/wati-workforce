@@ -20,7 +20,12 @@ export type TemplateTone = "friendly" | "formal";
 export type TemplateLength = "standard" | "short";
 
 export type TemplateHeader =
-  | { kind: "image"; fileName?: string }
+  | {
+      kind: "image";
+      fileName?: string;
+      /** Small downscaled data URL for the preview — survives reloads. */
+      previewUrl?: string;
+    }
   | { kind: "text"; text: string };
 
 export type TemplateButton =
@@ -287,6 +292,11 @@ export function bodyVariables(body: string): string[] {
 }
 
 /** Recompose the body and keep a sample for every variable it uses. */
+/** The user's own body text, typed straight into the preview. */
+export function withBody(d: TemplateDraft, body: string): TemplateDraft {
+  return finish({ ...d, customBody: body });
+}
+
 function finish(d: Omit<TemplateDraft, "body" | "samples"> & { samples?: Record<string, string> }): TemplateDraft {
   const body = d.customBody ?? composeBody(d);
   const samples: Record<string, string> = {};

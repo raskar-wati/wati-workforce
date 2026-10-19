@@ -74,6 +74,6 @@ and a lead line saying where it came from.
 | Required-fields form | Compact label → input rows, prefilled. | template (sample values) |
 | Issue flags | `EvidenceRow`s shown only for problems: a blocker disables commit, a warn means a likely platform flag. No all-clear rows. Already shared. | template |
 | Drafting beat | `StatusIndicator` shown for about 1s before a new card appears. | template |
-| Channel preview | How the message lands in WhatsApp. Parts the user owns (buttons) can be edited in place: tap to edit, × to remove. The same edits also work by chat ("rename 'Shop now' to …"). | template |
+| Channel preview | How the message lands in WhatsApp. The preview is also the editor: hover the body to edit it, hover the image header to upload, replace or remove it (or "+ Add image" on the bubble), tap a button to edit it, × to remove. The same edits also work by chat ("rename 'Shop now' to …"). | template |
 | Contextual composer hint | The composer placeholder says what the open flow needs next: missing input first, then example edits the flow supports. | template |
 | Text action | Low-emphasis button next to the CTA chips ("Keep editing"). | template |

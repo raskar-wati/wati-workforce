@@ -16,8 +16,9 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import { Fragment, useState } from "react";
+import { Fragment, useRef, useState } from "react";
 import {
+  BODY_LIMIT,
   COUPON_CODE_LIMIT,
   buttonLabel,
   isQuickReply,
@@ -25,6 +26,7 @@ import {
   type ButtonKind,
   type TemplateButton,
   type TemplateDraft,
+  type TemplateHeader,
 } from "../../../../lib/template-draft";
 
 /**
@@ -32,16 +34,21 @@ import {
  * variables marked, footer, then the buttons as tappable rows. Pass
  * `onButtonsChange` to let the user edit or remove buttons in place, and
  * `onReorder` to let them move the quick-reply group above or below the
- * call-to-action group.
+ * call-to-action group. `onBodyChange` and `onHeaderChange` make the body
+ * and the image header editable on hover.
  */
 export function TemplatePreview({
   draft,
   onButtonsChange,
   onReorder,
+  onBodyChange,
+  onHeaderChange,
 }: {
   draft: TemplateDraft;
   onButtonsChange?: (buttons: TemplateButton[]) => void;
   onReorder?: (quickRepliesFirst: boolean) => void;
+  onBodyChange?: (body: string) => void;
+  onHeaderChange?: (header: TemplateHeader | null) => void;
 }) {
   const rows = orderedButtons(draft);
   const bothGroups =
@@ -49,24 +56,24 @@ export function TemplatePreview({
   const firstQuickReply = rows.find((r) => isQuickReply(r.button))?.index;
   return (
     <div className="rounded-xl bg-[#efe9e1] p-3">
-      <div className="max-w-[340px] overflow-hidden rounded-lg rounded-tl-none bg-white shadow-[0_1px_0.5px_rgba(0,0,0,0.13)]">
-        {draft.header?.kind === "image" && (
-          <div className="p-1 pb-0">
-            <div className="flex h-[120px] flex-col items-center justify-center gap-1 rounded-md bg-black/[0.05] text-black/40">
-              <ImageIcon size={20} strokeWidth={1.75} />
-              <span className="max-w-[90%] truncate text-[11px]">
-                {draft.header.fileName ?? "Header image"}
-              </span>
-            </div>
-          </div>
+      <div className="group/bubble relative max-w-[340px] overflow-hidden rounded-lg rounded-tl-none bg-white shadow-[0_1px_0.5px_rgba(0,0,0,0.13)]">
+        {draft.header?.kind === "image" ? (
+          <ImageHeader header={draft.header} onChange={onHeaderChange} />
+        ) : (
+          onHeaderChange &&
+          !draft.header && <AddImageHeader onChange={onHeaderChange} />
         )}
         <div className="flex flex-col gap-1 px-2.5 pb-1.5 pt-2">
           {draft.header?.kind === "text" && (
             <p className="text-[13px] font-semibold text-[#111b21]">{draft.header.text}</p>
           )}
-          <p className="whitespace-pre-line text-[13px] leading-[18px] text-[#111b21]">
-            <BodyText body={draft.body} />
-          </p>
+          {onBodyChange ? (
+            <EditableBody body={draft.body} onChange={onBodyChange} />
+          ) : (
+            <p className="whitespace-pre-line text-[13px] leading-[18px] text-[#111b21]">
+              <BodyText body={draft.body} />
+            </p>
+          )}
           <div className="flex items-end justify-between gap-3">
             <span className="text-[11px] text-black/45">{draft.footer ?? ""}</span>
             <span className="shrink-0 text-[10px] text-black/40">10:24</span>
@@ -118,6 +125,196 @@ function BodyText({ body }: { body: string }) {
     </>
   );
 }
+
+/* ------------------------------------------------------------ Header */
+
+/** WhatsApp's cap for an image header. */
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+
+/** Downscale to a small JPEG data URL so the preview survives a reload. */
+async function previewDataUrl(file: File): Promise<string | undefined> {
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, 480 / bitmap.width);
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    canvas.getContext("2d")?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL("image/jpeg", 0.75);
+  } catch {
+    return undefined;
+  }
+}
+
+/** Hidden file input plus a function that opens it and hands back a header. */
+function useImagePicker(onPicked: (header: TemplateHeader) => void) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [error, setError] = useState<string | null>(null);
+  const input = (
+    <input
+      ref={inputRef}
+      type="file"
+      accept="image/jpeg,image/png"
+      className="hidden"
+      onChange={async (e) => {
+        const file = e.target.files?.[0];
+        e.target.value = "";
+        if (!file) return;
+        if (file.size > MAX_IMAGE_BYTES) {
+          setError("Images must be 5 MB or smaller");
+          return;
+        }
+        setError(null);
+        onPicked({ kind: "image", fileName: file.name, previewUrl: await previewDataUrl(file) });
+      }}
+    />
+  );
+  return { input, open: () => inputRef.current?.click(), error };
+}
+
+function ImageHeader({
+  header,
+  onChange,
+}: {
+  header: Extract<TemplateHeader, { kind: "image" }>;
+  onChange?: (header: TemplateHeader | null) => void;
+}) {
+  const picker = useImagePicker((h) => onChange?.(h));
+  return (
+    <div className="group/header relative p-1 pb-0">
+      {header.previewUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element -- local data URL
+        <img
+          src={header.previewUrl}
+          alt={header.fileName ?? "Header image"}
+          className="h-[140px] w-full rounded-md object-cover"
+        />
+      ) : (
+        <div className="flex h-[120px] flex-col items-center justify-center gap-1 rounded-md bg-black/[0.05] text-black/40">
+          <ImageIcon size={20} strokeWidth={1.75} />
+          <span className="max-w-[90%] truncate text-[11px]">
+            {header.fileName ?? "Header image"}
+          </span>
+        </div>
+      )}
+      {onChange && (
+        <>
+          {picker.input}
+          <div className="absolute inset-1 bottom-0 flex items-center justify-center gap-1.5 rounded-md bg-black/35 opacity-0 transition-opacity group-hover/header:opacity-100 focus-within:opacity-100">
+            <button
+              type="button"
+              onClick={picker.open}
+              className="rounded-full bg-white px-3 py-1 text-[12px] font-medium text-black/80 hover:bg-white/90"
+            >
+              {header.fileName ? "Replace image" : "Upload image"}
+            </button>
+            <button
+              type="button"
+              onClick={() => onChange(null)}
+              aria-label="Remove image header"
+              className="flex h-[26px] w-[26px] items-center justify-center rounded-full bg-white text-black/70 hover:bg-white/90"
+            >
+              <Trash2 size={12} />
+            </button>
+          </div>
+          {picker.error && (
+            <p className="px-1 pt-1 text-[11px] text-wati-state-danger-text">{picker.error}</p>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+/** With no header: "+ Add image" floats in on hovering the bubble. */
+function AddImageHeader({ onChange }: { onChange: (header: TemplateHeader) => void }) {
+  const picker = useImagePicker(onChange);
+  return (
+    <>
+      {picker.input}
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-center pt-1.5 opacity-0 transition-opacity group-hover/bubble:pointer-events-auto group-hover/bubble:opacity-100 focus-within:pointer-events-auto focus-within:opacity-100">
+        <button
+          type="button"
+          onClick={picker.open}
+          className="inline-flex items-center gap-1 rounded-full border border-black/10 bg-white px-2.5 py-1 text-[11px] text-black/70 shadow-sm hover:bg-black/[0.03]"
+        >
+          <ImageIcon size={11} />
+          Add image
+        </button>
+      </div>
+      {picker.error && (
+        <p className="px-2.5 pt-2 text-[11px] text-wati-state-danger-text">{picker.error}</p>
+      )}
+    </>
+  );
+}
+
+/* ------------------------------------------------------------ Body */
+
+/**
+ * The body, editable in place: hover shows a pencil, click turns it into a
+ * textarea. Enter or leaving saves, Shift+Enter adds a line, Escape cancels.
+ */
+function EditableBody({ body, onChange }: { body: string; onChange: (body: string) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(body);
+
+  const save = () => {
+    const next = value.trim();
+    if (next && next !== body) onChange(next);
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <div className="relative">
+        <textarea
+          autoFocus
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onBlur={save}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              save();
+            }
+            if (e.key === "Escape") setEditing(false);
+          }}
+          onFocus={(e) => e.currentTarget.setSelectionRange(value.length, value.length)}
+          maxLength={BODY_LIMIT}
+          rows={Math.min(8, Math.max(3, Math.ceil(value.length / 42)))}
+          aria-label="Message body"
+          className="w-full resize-none rounded-md border border-[#1570EF] bg-white px-2 py-1.5 pb-5 text-[13px] leading-[18px] text-[#111b21] outline-none"
+        />
+        <span className="pointer-events-none absolute bottom-2 right-2 text-[10px] tabular-nums text-black/40">
+          {value.length}/{BODY_LIMIT}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        setValue(body);
+        setEditing(true);
+      }}
+      aria-label="Edit message body"
+      className="group/body relative -mx-1 rounded-md px-1 py-0.5 text-left hover:bg-black/[0.03]"
+    >
+      <span className="block whitespace-pre-line text-[13px] leading-[18px] text-[#111b21]">
+        <BodyText body={body} />
+      </span>
+      <Pencil
+        size={11}
+        className="absolute right-1 top-1 text-black/35 opacity-0 transition-opacity group-hover/body:opacity-100"
+      />
+    </button>
+  );
+}
+
+/* ------------------------------------------------------------ Buttons */
 
 const BUTTON_ICON: Record<ButtonKind, LucideIcon> = {
   url: ExternalLink,
