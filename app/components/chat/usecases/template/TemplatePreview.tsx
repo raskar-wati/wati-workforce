@@ -86,13 +86,11 @@ export function TemplatePreview({
   return (
     <div className="rounded-xl bg-[#efe9e1] p-3">
       <div className="group/bubble relative max-w-[340px] overflow-hidden rounded-lg rounded-tl-none bg-white shadow-[0_1px_0.5px_rgba(0,0,0,0.13)]">
-        {headerAllowed &&
-          (draft.header?.kind === "image" ? (
-            <ImageHeader header={draft.header} onChange={onHeaderChange} />
-          ) : (
-            onHeaderChange &&
-            !draft.header && <AddImageHeader onChange={onHeaderChange} />
-          ))}
+        {/* Adding a header is the "+ Image header" chip's job; the preview
+            only edits one that exists. */}
+        {headerAllowed && draft.header?.kind === "image" && (
+          <ImageHeader header={draft.header} onChange={onHeaderChange} />
+        )}
         {type === "limited-offer" && <OfferStrip draft={draft} />}
         <div className="flex flex-col gap-1 px-2.5 pb-1.5 pt-2">
           {headerAllowed && draft.header?.kind === "text" && (
@@ -219,7 +217,7 @@ function CarouselCards({
   const update = (i: number, patch: Partial<CarouselCard>) =>
     onChange?.(cards.map((c, j) => (j === i ? { ...c, ...patch } : c)));
   return (
-    <div className="-mx-1 mt-2 flex gap-2 overflow-x-auto px-1 pb-1">
+    <div className="mt-2 flex max-w-full gap-2 overflow-x-auto pb-1 [scrollbar-width:thin]">
       {cards.map((card, i) => (
         <CarouselCardView
           key={i}
@@ -232,7 +230,7 @@ function CarouselCards({
         <button
           type="button"
           onClick={() => onChange([...cards, { text: "", button: "Shop now" }])}
-          className="flex w-[120px] shrink-0 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-black/20 bg-white/60 text-[12px] text-black/55 hover:bg-white"
+          className="flex w-[96px] shrink-0 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-black/20 bg-white/60 text-[12px] text-black/55 hover:bg-white"
         >
           <Plus size={14} />
           Add card
@@ -257,14 +255,14 @@ function CarouselCardView({
   const field =
     "w-full bg-transparent outline-none placeholder:text-black/35 focus:rounded focus:bg-black/[0.03]";
   return (
-    <div className="group/card relative flex w-[200px] shrink-0 flex-col overflow-hidden rounded-lg bg-white shadow-[0_1px_0.5px_rgba(0,0,0,0.13)]">
+    <div className="group/card relative flex w-[168px] shrink-0 flex-col overflow-hidden rounded-lg bg-white shadow-[0_1px_0.5px_rgba(0,0,0,0.13)]">
       {onChange && picker.input}
       <button
         type="button"
         onClick={onChange ? picker.open : undefined}
         disabled={!onChange}
         aria-label={card.image?.fileName ? "Replace card image" : "Add card image"}
-        className="m-1 mb-0 flex h-[100px] items-center justify-center overflow-hidden rounded-md bg-black/[0.05] text-[11px] text-black/40"
+        className="m-1 mb-0 flex h-[92px] items-center justify-center overflow-hidden rounded-md bg-black/[0.05] text-[11px] text-black/40"
       >
         {card.image?.previewUrl ? (
           // eslint-disable-next-line @next/next/no-img-element -- local data URL
@@ -297,8 +295,11 @@ function CarouselCardView({
             value={card.button}
             onChange={(e) => onChange({ button: e.target.value })}
             maxLength={25}
+            placeholder="Button"
             aria-label="Card button text"
-            className={`${field} w-[120px] text-center text-[#0b8ad6]`}
+            // Sized to its text so the icon sits beside the label, as in WhatsApp.
+            style={{ width: `${Math.max(card.button.length, 6) + 1}ch` }}
+            className={`${field} min-w-0 max-w-[130px] text-[#0b8ad6]`}
           />
         ) : (
           card.button
@@ -435,29 +436,6 @@ function ImageHeader({
         </>
       )}
     </div>
-  );
-}
-
-/** With no header: "+ Add image" floats in on hovering the bubble. */
-function AddImageHeader({ onChange }: { onChange: (header: TemplateHeader) => void }) {
-  const picker = useImagePicker(onChange);
-  return (
-    <>
-      {picker.input}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-center pt-1.5 opacity-0 transition-opacity group-hover/bubble:pointer-events-auto group-hover/bubble:opacity-100 focus-within:pointer-events-auto focus-within:opacity-100">
-        <button
-          type="button"
-          onClick={picker.open}
-          className="inline-flex items-center gap-1 rounded-full border border-black/10 bg-white px-2.5 py-1 text-[11px] text-black/70 shadow-sm hover:bg-black/[0.03]"
-        >
-          <ImageIcon size={11} />
-          Add image
-        </button>
-      </div>
-      {picker.error && (
-        <p className="px-2.5 pt-2 text-[11px] text-wati-state-danger-text">{picker.error}</p>
-      )}
-    </>
   );
 }
 
