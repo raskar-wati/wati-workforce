@@ -98,45 +98,6 @@ export function addButtonBlocker(d: TemplateDraft, kind: ButtonKind): string | n
   return null;
 }
 
-/** Button types that tend to work for each kind of template, best first. */
-const SUGGESTED_BUTTONS: Record<TemplatePurpose, { kind: ButtonKind; why: string }[]> = {
-  promotion: [
-    { kind: "copy-code", why: "Promotions convert better with a code customers can copy" },
-    { kind: "url", why: "Send shoppers straight to the sale" },
-  ],
-  "order-update": [
-    { kind: "url", why: "Let customers track the order themselves" },
-    { kind: "voice-call", why: "One tap to call if something's wrong" },
-  ],
-  delay: [
-    { kind: "voice-call", why: "Delays prompt questions — make calling easy" },
-    { kind: "quick-reply", why: "A one-tap reply for customers who want help" },
-  ],
-  reminder: [
-    { kind: "phone", why: "Customers often call to reschedule" },
-    { kind: "quick-reply", why: "Let customers confirm in one tap" },
-  ],
-  general: [
-    { kind: "quick-reply", why: "Invite a one-tap reply" },
-    { kind: "url", why: "Point customers to more details" },
-  ],
-};
-
-/**
- * The one button to recommend next for this template: the best type for its
- * purpose that it doesn't have yet and still has room for.
- */
-export function suggestedButton(
-  d: TemplateDraft,
-): { type: (typeof BUTTON_TYPES)[number]; why: string } | null {
-  for (const s of SUGGESTED_BUTTONS[d.purpose]) {
-    if (d.buttons.some((b) => b.kind === s.kind)) continue;
-    if (addButtonBlocker(d, s.kind)) continue;
-    return { type: BUTTON_TYPES.find((t) => t.kind === s.kind)!, why: s.why };
-  }
-  return null;
-}
-
 /** Buttons in display order — the two groups, quick replies where the user put them. */
 export function orderedButtons(d: TemplateDraft): { button: TemplateButton; index: number }[] {
   const all = d.buttons.map((button, index) => ({ button, index }));

@@ -12,7 +12,6 @@ import {
   canSubmit,
   checkTemplate,
   refineSuggestions,
-  suggestedButton,
   withBody,
   type RefineSuggestion,
   type TemplateCategory,
@@ -233,8 +232,8 @@ export function SupersededTemplateCard({
 /* ------------------------------------------------------------ Refine */
 
 /**
- * Inside the card: "+ field" chips that add a part of the template, the
- * button menu and its suggestion. Copy rewrites sit outside, as replies.
+ * Inside the card: "+ field" chips that add a part of the template and the
+ * button menu. Copy rewrites sit outside, as replies.
  */
 const FIELD_CHIP =
   "inline-flex items-center gap-1 rounded-full border border-dashed border-black/20 bg-white px-2.5 py-1 text-[12px] text-black/65 transition-colors hover:border-black/35 hover:bg-black/[0.03] hover:text-black/85";
@@ -258,7 +257,6 @@ function RefineChips({
         </button>
       ))}
       <AddButtonMenu draft={draft} onPick={onPick} />
-      <SuggestedButtonChip draft={draft} onPick={onPick} />
     </div>
   );
 }
@@ -289,33 +287,6 @@ function SuggestedReplies({
         </button>
       ))}
     </div>
-  );
-}
-
-/**
- * Sits right after "+ Button": the one button type worth adding next for this
- * kind of template, with the reason on hover.
- */
-function SuggestedButtonChip({
-  draft,
-  onPick,
-}: {
-  draft: TemplateDraft;
-  onPick: (prompt: string) => void;
-}) {
-  const suggestion = suggestedButton(draft);
-  if (!suggestion) return null;
-  return (
-    <button
-      type="button"
-      onClick={() => onPick(suggestion.type.prompt)}
-      title={suggestion.why}
-      className="inline-flex items-center gap-1 rounded-full border border-dashed border-wati-green/50 bg-wati-green-soft/40 px-2.5 py-1 text-[12px] text-black/70 transition-colors hover:border-wati-green hover:bg-wati-green-soft hover:text-black/85"
-    >
-      <span className="text-wati-green-text">Suggested</span>
-      <Plus size={11} strokeWidth={2.25} className="text-black/45" />
-      {suggestion.type.label}
-    </button>
   );
 }
 
