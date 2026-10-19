@@ -22,13 +22,12 @@ Typing an answer works the same as tapping a chip.
 - Seen in: template (purpose: Promotion / Order update / Reminder / General)
 - Lives in: `WatiMessage` + `template-pick-purpose` action in `ChatArea.tsx`
 
-### One living card
-Each object has exactly one card. Every edit updates that card, whether it
-comes from a chip, typing, or a direct edit on the card. A chat edit also
-moves the card below the user's turn, so it stays next to the composer. There
-are no version labels, no leftover copies and no undo control.
+### Versioned card, older versions collapse
+Each change posts a new version of the object card. There is no "Updated: …"
+note: the user's own turn just above already says what changed.
+The previous version collapses to a single line that can be expanded.
 - Seen in: template
-- Lives in: `TemplateDraftCard`, `templateTurn` / `applyTemplateTurn` (`moveId`) in `ChatArea.tsx`
+- Lives in: `TemplateDraftCard`, `SupersededTemplateCard`
 
 ### Refine by chip or by typing
 Suggested edits appear as small chips under the draft. A chip posts as a user
