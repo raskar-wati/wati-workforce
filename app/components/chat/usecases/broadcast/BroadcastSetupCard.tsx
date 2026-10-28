@@ -8,7 +8,7 @@ import {
   CALENDAR_TODAY,
 } from "../../../../lib/campaigns-data";
 import { useTemplates } from "../../../../lib/templates";
-import { CardCtaChip, WorkforceCard } from "../../../cards/WorkforceCard";
+import { CardCtaChip, StatePill, WorkforceCard } from "../../../cards/WorkforceCard";
 import { TemplateMessagesIcon } from "../../../icons/TemplateMessagesIcon";
 import { DateChip, EditableTitle, FACT_VALUE, FactSection, SelectChip } from "../../FactChips";
 
@@ -110,17 +110,16 @@ export function BroadcastSetupCard({
         <dl className="-mx-5 flex flex-col gap-4 border-t border-wati-border px-5 pt-4">
           <FactSection
             label="Template"
-            detail={
-              awaitingMeta
-                ? "Waiting for Meta's approval. The campaign goes out once it's approved."
-                : templateStatus === "approved"
-                  ? "Approved by Meta"
-                  : undefined
-            }
+            detail={awaitingMeta ? "The campaign goes out once Meta approves it." : undefined}
           >
             <span className="flex items-center gap-1.5 text-[14px] font-medium text-[#0a0a0a]">
               <TemplateMessagesIcon size={15} className="text-black/50" />
               {templateName}
+            </span>
+            {/* Same status pill the template card shows. */}
+            <span className="ml-1.5 flex">
+              {awaitingMeta && <StatePill state="pending-meta" />}
+              {templateStatus === "approved" && <StatePill state="live" label="Approved" />}
             </span>
           </FactSection>
           <FactSection
