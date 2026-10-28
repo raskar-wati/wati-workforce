@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock, Megaphone, Users } from "lucide-react";
+import { Megaphone } from "lucide-react";
 import { useEffect, useRef } from "react";
 import {
   AUDIENCE_SEGMENTS,
@@ -8,8 +8,8 @@ import {
   CALENDAR_TODAY,
 } from "../../../../lib/campaigns-data";
 import { useTemplates } from "../../../../lib/templates";
-import { CardCtaChip, EvidenceRow, WorkforceCard } from "../../../cards/WorkforceCard";
-import { DateChip, EditableTitle, FactRow, SelectChip } from "../../FactChips";
+import { CardCtaChip, WorkforceCard } from "../../../cards/WorkforceCard";
+import { DateChip, EditableTitle, FACT_VALUE, FactSection, SelectChip } from "../../FactChips";
 
 export type BroadcastSetup = {
   name: string;
@@ -77,7 +77,9 @@ export function BroadcastSetupCard({
       // The broadcast's name leads; the template it sends is context.
       title={
         editable ? (
-          <EditableTitle label="Broadcast name" value={setup.name} onChange={(name) => onChange({ ...setup, name })} />
+          <span className="text-[15px] font-semibold">
+            <EditableTitle label="Broadcast name" value={setup.name} onChange={(name) => onChange({ ...setup, name })} />
+          </span>
         ) : (
           setup.name
         )
@@ -107,45 +109,50 @@ export function BroadcastSetupCard({
       }
     >
       {editable && (
-        <dl className="flex flex-col gap-3 pt-1">
-          <FactRow label="Audience">
-            <div className="flex flex-wrap items-center gap-2">
-              <SelectChip
-                label="Audience"
-                icon={<Users size={11} className="text-black/45" />}
-                value={audience.id}
-                options={AUDIENCE_SEGMENTS.map((s) => ({ value: s.id, label: s.name }))}
-                onChange={(audienceId) => onChange({ ...setup, audienceId })}
-              />
-              <span className="text-[13px] text-black/55">
+        <dl className="-mx-5 flex flex-col gap-4 border-t border-wati-border px-5 pt-4">
+          <FactSection
+            label="Audience"
+            detail={
+              <>
                 {audience.contacts.toLocaleString("en-IN")} contacts
-              </span>
-            </div>
-            {overLimit && (
-              <EvidenceRow verdict="warn">
-                Over your daily limit of {DAILY_MESSAGING_LIMIT.toLocaleString("en-IN")}. Some contacts
-                won&apos;t receive it.
-              </EvidenceRow>
-            )}
-          </FactRow>
-          <FactRow label="Send">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <DateChip
-                label="Send date"
-                value={setup.date}
-                min={CALENDAR_TODAY}
-                onChange={(date) => onChange({ ...setup, date })}
-              />
-              <SelectChip
-                label="Send time"
-                icon={<Clock size={11} className="text-black/45" />}
-                value={setup.time}
-                options={times.map((t) => ({ value: t, label: t }))}
-                onChange={(time) => onChange({ ...setup, time })}
-              />
-            </div>
-            {awaitingMeta && <EvidenceRow verdict="info">Sends once Meta approves the template</EvidenceRow>}
-          </FactRow>
+                {overLimit && (
+                  <span className="text-wati-state-draft-text">
+                    {" "}
+                    · {(audience.contacts - DAILY_MESSAGING_LIMIT).toLocaleString("en-IN")} over your daily limit
+                  </span>
+                )}
+              </>
+            }
+          >
+            <SelectChip
+              label="Audience"
+              value={audience.id}
+              options={AUDIENCE_SEGMENTS.map((s) => ({ value: s.id, label: s.name }))}
+              onChange={(audienceId) => onChange({ ...setup, audienceId })}
+              className={FACT_VALUE}
+            />
+          </FactSection>
+          <FactSection label="Send">
+            <DateChip
+              label="Send date"
+              value={setup.date}
+              min={CALENDAR_TODAY}
+              onChange={(date) => onChange({ ...setup, date })}
+              className={FACT_VALUE}
+              showIcon={false}
+            />
+            at
+            <SelectChip
+              label="Send time"
+              value={setup.time}
+              options={times.map((t) => ({ value: t, label: t }))}
+              onChange={(time) => onChange({ ...setup, time })}
+              className={FACT_VALUE}
+            />
+          </FactSection>
+          {awaitingMeta && (
+            <p className="text-[12px] text-black/45">Goes out once Meta approves the template.</p>
+          )}
         </dl>
       )}
     </WorkforceCard>

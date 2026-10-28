@@ -9,6 +9,10 @@ import { useState, type ReactNode } from "react";
  * chips the user can change in place. Shared across chat use cases.
  */
 
+/** A fact that is a decision, shown as its value in plain, larger text. */
+export const FACT_VALUE =
+  "-mx-1 inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-[14px] font-medium text-[#0a0a0a] hover:bg-black/[0.04]";
+
 export const FACT_CHIP =
   "inline-flex items-center gap-1 rounded-full bg-black/[0.04] px-2.5 py-1 text-[12px] text-black/70 hover:bg-black/[0.07]";
 
@@ -122,7 +126,7 @@ export function EditableTitle({
           if (e.key === "Escape") setEditing(false);
         }}
         aria-label={label}
-        className="-mx-1 w-full max-w-[320px] rounded-md border border-[#1570EF] bg-white px-1 text-[13px] font-medium text-[#0a0a0a] outline-none"
+        className="-mx-1 w-full max-w-[320px] rounded-md border border-[#1570EF] bg-white px-1 text-[#0a0a0a] outline-none [font:inherit]"
       />
     );
   }
@@ -139,13 +143,24 @@ export function EditableTitle({
   );
 }
 
-/** A labelled row of facts: a grey label column, the value and anything
- *  about it (a flag) stacked beside it. */
-export function FactRow({ label, children }: { label: string; children: ReactNode }) {
+/**
+ * One decision on a card: a small label, the value in plain larger text, and
+ * a muted line under it for what that value means (counts, problems).
+ */
+export function FactSection({
+  label,
+  detail,
+  children,
+}: {
+  label: string;
+  detail?: ReactNode;
+  children: ReactNode;
+}) {
   return (
-    <div className="grid grid-cols-[64px_1fr] items-start gap-x-3">
-      <dt className="pt-1 text-[12px] text-black/45">{label}</dt>
-      <dd className="flex min-w-0 flex-col gap-1.5">{children}</dd>
+    <div className="flex flex-col gap-1">
+      <dt className="text-[11px] font-medium uppercase tracking-[0.04em] text-black/45">{label}</dt>
+      <dd className="flex flex-wrap items-center gap-x-1 text-[14px] text-black/55">{children}</dd>
+      {detail && <p className="text-[12px] text-black/55">{detail}</p>}
     </div>
   );
 }
@@ -158,16 +173,21 @@ export function DateChip({
   value,
   min,
   onChange,
+  className = FACT_CHIP,
+  showIcon = true,
 }: {
   label: string;
   value: string;
   min?: string;
   onChange: (value: string) => void;
+  className?: string;
+  showIcon?: boolean;
 }) {
   return (
-    <label className={`${FACT_CHIP} relative cursor-pointer`}>
-      <CalendarDays size={11} className="text-black/45" />
+    <label className={`${className} relative cursor-pointer`}>
+      {showIcon && <CalendarDays size={11} className="text-black/45" />}
       {value ? DATE_LABEL.format(new Date(`${value}T00:00:00`)) : "Pick a date"}
+      {!showIcon && <ChevronDown size={11} className="text-black/40" />}
       <input
         type="date"
         aria-label={label}
