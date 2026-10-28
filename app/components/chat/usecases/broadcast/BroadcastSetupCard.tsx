@@ -9,8 +9,7 @@ import {
 } from "../../../../lib/campaigns-data";
 import { useTemplates } from "../../../../lib/templates";
 import { CardCtaChip, EvidenceRow, WorkforceCard } from "../../../cards/WorkforceCard";
-import { TemplateMessagesIcon } from "../../../icons/TemplateMessagesIcon";
-import { DateChip, FACT_CHIP, SelectChip, TextChip } from "../../FactChips";
+import { DateChip, EditableTitle, FactRow, SelectChip } from "../../FactChips";
 
 export type BroadcastSetup = {
   name: string;
@@ -67,27 +66,26 @@ export function BroadcastSetupCard({
   const editable = state === "setup";
   const times = TIMES.includes(setup.time) ? TIMES : [setup.time, ...TIMES];
 
-  const flags: { verdict: "warn" | "info"; text: string }[] = [];
-  if (audience.contacts > DAILY_MESSAGING_LIMIT) {
-    flags.push({
-      verdict: "warn",
-      text: `${audience.contacts.toLocaleString("en-IN")} contacts is over your daily limit of ${DAILY_MESSAGING_LIMIT.toLocaleString("en-IN")}. Some won't receive it.`,
-    });
-  }
-  if (editable && templateStatus === "pending-meta") {
-    flags.push({ verdict: "info", text: "Sends once Meta approves the template" });
-  }
+  const overLimit = audience.contacts > DAILY_MESSAGING_LIMIT;
+  const awaitingMeta = templateStatus === "pending-meta";
 
   return (
     <div ref={rootRef}>
     <WorkforceCard
       icon={<Megaphone size={11} strokeWidth={2.25} />}
       tone={state === "scheduled" ? "info" : state === "removed" ? "neutral" : "neutral"}
-      title={editable ? "Set up broadcast" : setup.name}
+      // The broadcast's name leads; the template it sends is context.
+      title={
+        editable ? (
+          <EditableTitle label="Broadcast name" value={setup.name} onChange={(name) => onChange({ ...setup, name })} />
+        ) : (
+          setup.name
+        )
+      }
       subtitle={
         state === "scheduled"
           ? `${DATE_LABEL.format(new Date(`${setup.date}T00:00:00`))} · ${setup.time} · ${audience.contacts.toLocaleString("en-IN")} contacts`
-          : undefined
+          : `Broadcast · ${templateName}`
       }
       state={state === "scheduled" ? "armed" : state === "removed" ? "expired" : undefined}
       stateLabel={state === "scheduled" ? "Scheduled" : state === "removed" ? "Removed" : undefined}
@@ -109,45 +107,46 @@ export function BroadcastSetupCard({
       }
     >
       {editable && (
-        <div className="flex flex-wrap items-center gap-1.5">
-          <TextChip label="Broadcast name" value={setup.name} onChange={(name) => onChange({ ...setup, name })} />
-          <span className={FACT_CHIP}>
-            <TemplateMessagesIcon size={12} />
-            {templateName}
-          </span>
-          <SelectChip
-            label="Audience"
-            icon={<Users size={11} className="text-black/45" />}
-            value={audience.id}
-            options={AUDIENCE_SEGMENTS.map((s) => ({
-              value: s.id,
-              label: `${s.name} · ${s.contacts.toLocaleString("en-IN")}`,
-            }))}
-            onChange={(audienceId) => onChange({ ...setup, audienceId })}
-          />
-          <DateChip
-            label="Send date"
-            value={setup.date}
-            min={CALENDAR_TODAY}
-            onChange={(date) => onChange({ ...setup, date })}
-          />
-          <SelectChip
-            label="Send time"
-            icon={<Clock size={11} className="text-black/45" />}
-            value={setup.time}
-            options={times.map((t) => ({ value: t, label: t }))}
-            onChange={(time) => onChange({ ...setup, time })}
-          />
-        </div>
-      )}
-      {editable && flags.length > 0 && (
-        <div className="flex flex-col gap-1.5">
-          {flags.map((f) => (
-            <EvidenceRow key={f.text} verdict={f.verdict}>
-              {f.text}
-            </EvidenceRow>
-          ))}
-        </div>
+        <dl className="flex flex-col gap-3 pt-1">
+          <FactRow label="Audience">
+            <div className="flex flex-wrap items-center gap-2">
+              <SelectChip
+                label="Audience"
+                icon={<Users size={11} className="text-black/45" />}
+                value={audience.id}
+                options={AUDIENCE_SEGMENTS.map((s) => ({ value: s.id, label: s.name }))}
+                onChange={(audienceId) => onChange({ ...setup, audienceId })}
+              />
+              <span className="text-[13px] text-black/55">
+                {audience.contacts.toLocaleString("en-IN")} contacts
+              </span>
+            </div>
+            {overLimit && (
+              <EvidenceRow verdict="warn">
+                Over your daily limit of {DAILY_MESSAGING_LIMIT.toLocaleString("en-IN")}. Some contacts
+                won&apos;t receive it.
+              </EvidenceRow>
+            )}
+          </FactRow>
+          <FactRow label="Send">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <DateChip
+                label="Send date"
+                value={setup.date}
+                min={CALENDAR_TODAY}
+                onChange={(date) => onChange({ ...setup, date })}
+              />
+              <SelectChip
+                label="Send time"
+                icon={<Clock size={11} className="text-black/45" />}
+                value={setup.time}
+                options={times.map((t) => ({ value: t, label: t }))}
+                onChange={(time) => onChange({ ...setup, time })}
+              />
+            </div>
+            {awaitingMeta && <EvidenceRow verdict="info">Sends once Meta approves the template</EvidenceRow>}
+          </FactRow>
+        </dl>
       )}
     </WorkforceCard>
     </div>

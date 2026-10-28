@@ -136,7 +136,8 @@ export function WorkforceCard({
   /** Bare lucide icon; the chassis wraps it in the tone chip. */
   icon?: ReactNode;
   tone?: CardTone;
-  title: string;
+  /** Usually text; a node when the title is editable in place. */
+  title: ReactNode;
   subtitle?: string;
   /** Tone-colored line under the subtitle, e.g. the draft-approval notice. */
   note?: string;
