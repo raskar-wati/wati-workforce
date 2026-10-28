@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
+import { usePathname, useRouter } from "next/navigation";
 import { Loader2, Play } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAgents, type HandoffCta, type WatcherTypeId } from "../lib/agents";
@@ -260,6 +261,8 @@ function templateCardMessage(
 type TemplateCardMessage = Extract<ChatMessage, { kind: "template-card" }>;
 type BroadcastCardMessage = Extract<ChatMessage, { kind: "broadcast-card" }>;
 
+const CAMPAIGNS_PAGE = "/preview/campaigns";
+
 const CAMPAIGN_DATE = new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short" });
 
 /** The broadcast set-up card, prefilled from Wati's recommendation. */
@@ -422,6 +425,7 @@ export function ChatArea({
     clearThread,
     pendingCampaign,
     clearCampaign,
+    closeDrawer,
     inlineHost,
     postedNoticeIds,
     unpostNotice,
@@ -822,6 +826,8 @@ export function ChatArea({
 
   const { takenNames, getTemplate, submit: submitTemplate } = useTemplates();
   const campaigns = useCampaigns();
+  const router = useRouter();
+  const pathname = usePathname();
   const templateLocked = (templateId?: string) => {
     const status = templateId ? getTemplate(templateId)?.status : undefined;
     return status === "pending-meta" || status === "approved";
@@ -2138,9 +2144,11 @@ export function ChatArea({
                         campaigns.schedule(m.campaignId, { ...m.setup, threadId: activeThreadId });
                         update({ state: "scheduled" });
                       }}
-                      onRemove={() => {
-                        campaigns.remove(m.campaignId);
-                        update({ state: "removed" });
+                      onViewInCampaigns={() => {
+                        // On the Campaigns page the calendar is right behind
+                        // the drawer; elsewhere, go there.
+                        closeDrawer();
+                        if (pathname !== CAMPAIGNS_PAGE) router.push(CAMPAIGNS_PAGE);
                       }}
                     />
                   );

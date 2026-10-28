@@ -43,7 +43,7 @@ export function BroadcastSetupCard({
   state,
   onChange,
   onSchedule,
-  onRemove,
+  onViewInCampaigns,
 }: {
   setup: BroadcastSetup;
   /** The template it sends, once submitted — its Meta status shows here. */
@@ -52,7 +52,8 @@ export function BroadcastSetupCard({
   state: BroadcastState;
   onChange: (setup: BroadcastSetup) => void;
   onSchedule: () => void;
-  onRemove: () => void;
+  /** Back to the Campaigns calendar, where the broadcast lives. */
+  onViewInCampaigns: () => void;
 }) {
   const { getTemplate } = useTemplates();
   // It arrives below the template card, under the fold — bring it up.
@@ -90,20 +91,14 @@ export function BroadcastSetupCard({
       state={state === "scheduled" ? "armed" : state === "removed" ? "expired" : undefined}
       stateLabel={state === "scheduled" ? "Scheduled" : state === "removed" ? "Removed" : undefined}
       actions={
-        editable ? (
-          <>
+        <>
+          {editable && (
             <CardCtaChip primary onClick={onSchedule}>
               Schedule broadcast
             </CardCtaChip>
-            <button
-              type="button"
-              onClick={onRemove}
-              className="text-[13px] tracking-[-0.078px] text-wati-state-danger-text hover:underline"
-            >
-              Remove from calendar
-            </button>
-          </>
-        ) : null
+          )}
+          <CardCtaChip onClick={onViewInCampaigns}>View in campaigns</CardCtaChip>
+        </>
       }
     >
       {editable && (
