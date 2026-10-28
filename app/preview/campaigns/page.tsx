@@ -6,10 +6,12 @@ import { MainSidebar } from "../../components/MainSidebar";
 import { CampaignCalendar } from "../../components/campaigns/CampaignCalendar";
 import { CampaignsNav } from "../../components/campaigns/CampaignsNav";
 import { RecommendedCampaignPreview } from "../../components/campaigns/RecommendedCampaignPreview";
+import { useAskWatiDrawer } from "../../lib/ask-wati-drawer";
 import type { RecommendedCampaign } from "../../lib/campaigns-data";
 
 export default function CampaignsPage() {
   const [open, setOpen] = useState<RecommendedCampaign | null>(null);
+  const { setUpCampaign } = useAskWatiDrawer();
   return (
     <div className="relative flex min-h-0 flex-1 overflow-hidden">
       <MainSidebar />
@@ -18,8 +20,19 @@ export default function CampaignsPage() {
         <CampaignCalendar onOpenRecommendation={setOpen} />
       </main>
       <AskWatiDrawer />
-      {/* Edit and Approve lead into the chat set-up flow, built next. */}
-      <RecommendedCampaignPreview campaign={open} onClose={() => setOpen(null)} />
+      {/* Both ways forward continue in the Ask Wati drawer over the calendar. */}
+      <RecommendedCampaignPreview
+        campaign={open}
+        onClose={() => setOpen(null)}
+        onEditWithAi={(c) => {
+          setOpen(null);
+          setUpCampaign(c.id, "edit");
+        }}
+        onApprove={(c) => {
+          setOpen(null);
+          setUpCampaign(c.id, "approve");
+        }}
+      />
     </div>
   );
 }

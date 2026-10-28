@@ -8,6 +8,7 @@ import {
   type CalendarCampaign,
   type RecommendedCampaign,
 } from "../../lib/campaigns-data";
+import { useCampaigns } from "../../lib/campaigns";
 import { AskWatiIcon } from "../icons/AskWatiIcon";
 
 /** Entries shown per day before "+N more". */
@@ -47,9 +48,18 @@ export function CampaignCalendar({
   const year = 2026;
   const month = 9; // October
   const days = monthGrid(year, month);
+  const { scheduled, removed } = useCampaigns();
+  // A recommendation the user scheduled shows as a scheduled broadcast, on
+  // the date and under the name they chose; one they removed is gone.
+  const recommendations = RECOMMENDED_CAMPAIGNS.filter((c) => !removed.includes(c.id)).map(
+    (c): CalendarCampaign | RecommendedCampaign =>
+      scheduled[c.id]
+        ? { id: c.id, name: scheduled[c.id].name, date: scheduled[c.id].date, status: "scheduled" }
+        : c,
+  );
   const byDate = new Map<string, (CalendarCampaign | RecommendedCampaign)[]>();
   // Recommendations lead their day so they're never hidden behind "+N more".
-  for (const c of [...RECOMMENDED_CAMPAIGNS, ...CALENDAR_CAMPAIGNS]) {
+  for (const c of [...recommendations, ...CALENDAR_CAMPAIGNS]) {
     byDate.set(c.date, [...(byDate.get(c.date) ?? []), c]);
   }
   const monthLabel = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric" }).format(

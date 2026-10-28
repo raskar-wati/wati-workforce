@@ -78,6 +78,13 @@ import { ReasoningTrace } from "./ReasoningTrace";
 import { WatiWelcome } from "./WatiWelcome";
 import { OnboardingHandoffPreview } from "./onboarding/OnboardingHandoffPreview";
 import { WatiMessage, type WatiChip } from "./onboarding/WatiMessage";
+import {
+  BroadcastSetupCard,
+  type BroadcastSetup,
+  type BroadcastState,
+} from "./chat/usecases/broadcast/BroadcastSetupCard";
+import { RECOMMENDED_CAMPAIGNS, segmentFor, type RecommendedCampaign } from "../lib/campaigns-data";
+import { useCampaigns } from "../lib/campaigns";
 import { useTemplates } from "../lib/templates";
 import {
   PURPOSE_CHOICES,
@@ -208,6 +215,19 @@ type ChatMessage =
       pending?: boolean;
       /** Model id when the model wrote this draft. */
       drafter?: string;
+      /** Set when the template came from a recommended campaign: submitting
+       *  it leads on to the broadcast set-up. */
+      campaignId?: string;
+    }
+  | {
+      /** Setting up the broadcast for a recommended campaign's template. */
+      kind: "broadcast-card";
+      id: string;
+      campaignId: string;
+      templateId?: string;
+      templateName: string;
+      setup: BroadcastSetup;
+      state: BroadcastState;
     };
 
 const TEMPLATE_LEAD =
@@ -238,6 +258,27 @@ function templateCardMessage(
 }
 
 type TemplateCardMessage = Extract<ChatMessage, { kind: "template-card" }>;
+type BroadcastCardMessage = Extract<ChatMessage, { kind: "broadcast-card" }>;
+
+const CAMPAIGN_DATE = new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short" });
+
+/** The broadcast set-up card, prefilled from Wati's recommendation. */
+function broadcastCardMessage(campaign: RecommendedCampaign, templateId?: string): ChatMessage {
+  return {
+    kind: "broadcast-card",
+    id: crypto.randomUUID(),
+    campaignId: campaign.id,
+    templateId,
+    templateName: campaign.template.name,
+    setup: {
+      name: campaign.name,
+      audienceId: segmentFor(campaign.audience.name).id,
+      date: campaign.date,
+      time: campaign.sendTime,
+    },
+    state: "setup",
+  };
+}
 
 /**
  * The template card still taking edits: the latest version, not yet with
@@ -379,6 +420,8 @@ export function ChatArea({
     clearPrompt,
     pendingThread,
     clearThread,
+    pendingCampaign,
+    clearCampaign,
     inlineHost,
     postedNoticeIds,
     unpostNotice,
@@ -777,7 +820,8 @@ export function ChatArea({
 
   /* ---------------------------------------------- Template use case */
 
-  const { takenNames, getTemplate } = useTemplates();
+  const { takenNames, getTemplate, submit: submitTemplate } = useTemplates();
+  const campaigns = useCampaigns();
   const templateLocked = (templateId?: string) => {
     const status = templateId ? getTemplate(templateId)?.status : undefined;
     return status === "pending-meta" || status === "approved";
@@ -909,6 +953,7 @@ export function ChatArea({
           // result, if there is one, is the fallback.
           const next = {
             ...(templateCardMessage(card.draft, card.version + 1) as TemplateCardMessage),
+            campaignId: card.campaignId,
             pending: true,
           };
           return {
@@ -932,7 +977,12 @@ export function ChatArea({
         }
         return {
           supersedeId: card.id,
-          msgs: [templateCardMessage(result.draft, card.version + 1, result.changes)],
+          msgs: [
+            {
+              ...(templateCardMessage(result.draft, card.version + 1, result.changes) as TemplateCardMessage),
+              campaignId: card.campaignId,
+            },
+          ],
         };
       }
     }
@@ -1156,6 +1206,38 @@ export function ChatArea({
     setMode(null);
     setActiveThreadId(pendingThread.threadId);
   }, [pendingThread, chrome, storageReady, clearThread, setView, setMode, setActiveThreadId]);
+
+  // A recommended campaign handed over from the Campaigns calendar opens its
+  // own thread: "edit" with the template ready to change, "approve" with it
+  // submitted as-is and the broadcast set-up next.
+  const handledCampaignId = useRef<string | null>(null);
+  useEffect(() => {
+    if (!pendingCampaign || chrome !== "drawer" || !storageReady) return;
+    if (handledCampaignId.current === pendingCampaign.id) return;
+    handledCampaignId.current = pendingCampaign.id;
+    clearCampaign();
+    const campaign = RECOMMENDED_CAMPAIGNS.find((c) => c.id === pendingCampaign.campaignId);
+    if (!campaign) return;
+    const threadId = createThread(campaign.name);
+    setView("chat");
+    setMode(null);
+    const card = templateCardMessage(campaign.template, 1) as TemplateCardMessage;
+    const lead = watiText(
+      `Recommended for ${CAMPAIGN_DATE.format(new Date(`${campaign.date}T00:00:00`))}, ${campaign.sendTime}.`,
+    );
+    if (pendingCampaign.mode === "edit") {
+      appendMessages(threadId, [lead, { ...card, campaignId: campaign.id }]);
+      return;
+    }
+    const templateId = submitTemplate(threadId, campaign.template);
+    appendMessages(threadId, [
+      lead,
+      { ...card, campaignId: campaign.id, templateId, stage: "review" },
+      broadcastCardMessage(campaign, templateId),
+    ]);
+    // Thread and template stores are read fresh on the next render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingCampaign, chrome, storageReady]);
 
   // Tell the agents store which agent thread is on screen, so runs the
   // admin is already watching don't also ping the island.
@@ -2015,10 +2097,51 @@ export function ChatArea({
                       onStageChange={(stage) =>
                         updateTemplateCard(activeThreadId, m.id, { stage })
                       }
-                      onSaved={(templateId) =>
-                        updateTemplateCard(activeThreadId, m.id, { templateId })
-                      }
-                      onFollowUp={setInput}
+                      onSaved={(templateId, status) => {
+                        updateTemplateCard(activeThreadId, m.id, { templateId });
+                        // A recommended campaign's template, once submitted,
+                        // moves on to its broadcast set-up (once per thread).
+                        const campaign = RECOMMENDED_CAMPAIGNS.find((c) => c.id === m.campaignId);
+                        const hasBroadcast = messages.some(
+                          (x) => x.kind === "broadcast-card" && x.campaignId === m.campaignId,
+                        );
+                        if (campaign && status === "pending-meta" && !hasBroadcast) {
+                          appendMessages(activeThreadId, [
+                            broadcastCardMessage(
+                              { ...campaign, template: { ...campaign.template, name: m.draft.name } },
+                              templateId,
+                            ),
+                          ]);
+                        }
+                      }}
+                      onFollowUp={m.campaignId ? undefined : setInput}
+                    />
+                  );
+                }
+                if (m.kind === "broadcast-card") {
+                  const update = (patch: Partial<BroadcastCardMessage>) =>
+                    setMessagesByThread((prev) => ({
+                      ...prev,
+                      [activeThreadId]: (prev[activeThreadId] ?? []).map((x) =>
+                        x.kind === "broadcast-card" && x.id === m.id ? { ...x, ...patch } : x,
+                      ),
+                    }));
+                  return (
+                    <BroadcastSetupCard
+                      key={m.id}
+                      setup={m.setup}
+                      templateId={m.templateId}
+                      templateName={m.templateName}
+                      state={m.state}
+                      onChange={(setup) => update({ setup })}
+                      onSchedule={() => {
+                        campaigns.schedule(m.campaignId, { ...m.setup, threadId: activeThreadId });
+                        update({ state: "scheduled" });
+                      }}
+                      onRemove={() => {
+                        campaigns.remove(m.campaignId);
+                        update({ state: "removed" });
+                      }}
                     />
                   );
                 }

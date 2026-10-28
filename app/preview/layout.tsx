@@ -3,6 +3,7 @@ import { IslandSimulator } from "../components/island/IslandSimulator";
 import { AgentsProvider } from "../lib/agents";
 import { DemoStateProvider } from "../lib/demo-state";
 import { TemplatesProvider } from "../lib/templates";
+import { CampaignsProvider } from "../lib/campaigns";
 
 /**
  * Shared shell for every preview module. The header lives here rather than
@@ -19,11 +20,13 @@ export default function PreviewLayout({ children }: { children: React.ReactNode 
     <DemoStateProvider forceMode="returning">
       <AgentsProvider>
         <TemplatesProvider>
+        <CampaignsProvider>
         <div className="flex h-screen flex-col bg-[var(--wati-surface-subtle)]">
           <GlobalHeader />
           {children}
         </div>
         <IslandSimulator />
+        </CampaignsProvider>
         </TemplatesProvider>
       </AgentsProvider>
     </DemoStateProvider>

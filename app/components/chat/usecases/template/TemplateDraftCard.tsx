@@ -39,6 +39,7 @@ import {
 } from "../../../cards/WorkforceCard";
 import { TemplateMessagesIcon } from "../../../icons/TemplateMessagesIcon";
 import { modelLabel } from "../../../../lib/template-ai";
+import { SelectChip, TextChip } from "../../FactChips";
 import { TemplatePreview } from "./TemplatePreview";
 
 export type TemplateCardStage = "editing" | "review";
@@ -95,9 +96,11 @@ export function TemplateDraftCard({
   /** A refinement chip — same as typing it. */
   onRefine: (text: string) => void;
   onStageChange: (stage: TemplateCardStage) => void;
-  onSaved: (templateId: string) => void;
-  /** Hand a next step to the composer. */
-  onFollowUp: (prompt: string) => void;
+  /** After Save as draft or Submit to Meta, with the status it moved to. */
+  onSaved: (templateId: string, status: "draft" | "pending-meta") => void;
+  /** Hand a next step to the composer. Absent when the next step is
+   *  already in the thread (a campaign's broadcast set-up). */
+  onFollowUp?: (prompt: string) => void;
 }) {
   const { getTemplate, takenNames, saveDraft, submit } = useTemplates();
   const [drafting, setDrafting] = useState(fresh);
@@ -129,8 +132,8 @@ export function TemplateDraftCard({
   const checks = checkTemplate(draft, takenNames(templateId));
   const pill = status ? STATUS_PILL[status] : null;
 
-  const doSubmit = () => onSaved(submit(threadId, draft, templateId));
-  const doSave = () => onSaved(saveDraft(threadId, draft, templateId));
+  const doSubmit = () => onSaved(submit(threadId, draft, templateId), "pending-meta");
+  const doSave = () => onSaved(saveDraft(threadId, draft, templateId), "draft");
 
   return (
     <div ref={rootRef}>
@@ -150,7 +153,7 @@ export function TemplateDraftCard({
       stateLabel={pill?.label}
       actions={
         locked ? (
-          status === "approved" ? (
+          status === "approved" && onFollowUp ? (
             <CardCtaChip onClick={() => onFollowUp(`Send ${draft.name} as a broadcast`)}>
               Use in a broadcast
             </CardCtaChip>
@@ -412,9 +415,6 @@ function TemplateFacts({
   draft: TemplateDraft;
   onChange: (draft: TemplateDraft) => void;
 }) {
-  const [editingName, setEditingName] = useState(false);
-  const chip =
-    "inline-flex items-center gap-1 rounded-full bg-black/[0.04] px-2.5 py-1 text-[12px] text-black/70 hover:bg-black/[0.07]";
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       <SelectChip
@@ -425,30 +425,13 @@ function TemplateFacts({
           label: CHANNEL_LABEL[c],
         }))}
         onChange={(channel) => onChange({ ...draft, channel: channel as TemplateChannel })}
-        className={chip}
       />
-      {editingName ? (
-        <input
-          autoFocus
-          defaultValue={draft.name}
-          onBlur={(e) => {
-            const name = e.target.value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_");
-            if (name) onChange({ ...draft, name });
-            setEditingName(false);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") e.currentTarget.blur();
-            if (e.key === "Escape") setEditingName(false);
-          }}
-          aria-label="Template name"
-          className="w-[200px] rounded-full border border-[#1570EF] bg-white px-2.5 py-1 text-[12px] outline-none"
-        />
-      ) : (
-        <button type="button" onClick={() => setEditingName(true)} className={chip}>
-          {draft.name}
-          <Pencil size={10} className="text-black/40" />
-        </button>
-      )}
+      <TextChip
+        label="Template name"
+        value={draft.name}
+        normalize={(v) => v.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_")}
+        onChange={(name) => onChange({ ...draft, name })}
+      />
       <SelectChip
         label="Category"
         value={draft.category}
@@ -457,7 +440,6 @@ function TemplateFacts({
           label: CATEGORY_LABEL[c],
         }))}
         onChange={(category) => onChange(withCategory(draft, category as TemplateCategory))}
-        className={chip}
       />
       {TEMPLATE_TYPES[draft.category].length > 0 && (
         <SelectChip
@@ -468,52 +450,18 @@ function TemplateFacts({
             label: TEMPLATE_TYPE_LABEL[t],
           }))}
           onChange={(type) => onChange(withType(draft, type as TemplateType))}
-          className={chip}
-        />
+          />
       )}
       <SelectChip
         label="Language"
         value={draft.language}
         options={TEMPLATE_LANGUAGES.map((l) => ({ value: l, label: l }))}
         onChange={(language) => onChange({ ...draft, language })}
-        className={chip}
       />
     </div>
   );
 }
 
-function SelectChip({
-  label,
-  value,
-  options,
-  onChange,
-  className,
-}: {
-  label: string;
-  value: string;
-  options: { value: string; label: string }[];
-  onChange: (value: string) => void;
-  className: string;
-}) {
-  return (
-    <label className={`${className} relative cursor-pointer`}>
-      {options.find((o) => o.value === value)?.label ?? value}
-      <ChevronDown size={11} className="text-black/40" />
-      <select
-        aria-label={label}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="absolute inset-0 cursor-pointer opacity-0"
-      >
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
-}
 
 /* ------------------------------------------------------------ Format */
 

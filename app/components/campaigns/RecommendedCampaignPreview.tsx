@@ -1,8 +1,8 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { CalendarClock, Users, X } from "lucide-react";
-import { useEffect } from "react";
+import { CalendarClock, ChevronDown, Megaphone, Users, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import type { RecommendedCampaign } from "../../lib/campaigns-data";
 import { CATEGORY_LABEL } from "../../lib/template-draft";
 import { AskWatiIcon } from "../icons/AskWatiIcon";
@@ -17,13 +17,13 @@ const DATE_FMT = new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "nume
 export function RecommendedCampaignPreview({
   campaign,
   onClose,
-  onEdit,
+  onEditWithAi,
   onApprove,
 }: {
   campaign: RecommendedCampaign | null;
   onClose: () => void;
-  /** Change the template before it goes for approval. */
-  onEdit?: (campaign: RecommendedCampaign) => void;
+  /** Change the template in the Ask Wati chat before it goes for approval. */
+  onEditWithAi?: (campaign: RecommendedCampaign) => void;
   /** Take the template as it is and move on to setting up the campaign. */
   onApprove?: (campaign: RecommendedCampaign) => void;
 }) {
@@ -100,13 +100,7 @@ export function RecommendedCampaignPreview({
               </div>
 
               <div className="mt-auto flex items-center justify-end gap-2 pt-8">
-                <button
-                  type="button"
-                  onClick={() => onEdit?.(campaign)}
-                  className="rounded-lg border border-wati-border bg-white px-4 py-2 text-[13px] font-medium text-[#0a0a0a] hover:bg-black/[0.03]"
-                >
-                  Edit template
-                </button>
+                <EditTemplateMenu onEditWithAi={() => onEditWithAi?.(campaign)} />
                 <button
                   type="button"
                   onClick={() => onApprove?.(campaign)}
@@ -146,5 +140,61 @@ function Fact({
 function Chip({ children }: { children: React.ReactNode }) {
   return (
     <span className="rounded-full bg-black/[0.04] px-2.5 py-1 text-[12px] text-black/65">{children}</span>
+  );
+}
+
+/**
+ * "Edit template" opens two ways to edit, right above the button: the
+ * Broadcast editor (not part of this prototype) or Ask Wati.
+ */
+function EditTemplateMenu({ onEditWithAi }: { onEditWithAi: () => void }) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [open]);
+  const item =
+    "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[13px] text-[#0a0a0a] hover:bg-black/[0.04]";
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="flex items-center gap-1.5 rounded-lg border border-wati-border bg-white px-4 py-2 text-[13px] font-medium text-[#0a0a0a] hover:bg-black/[0.03]"
+      >
+        Edit template
+        <ChevronDown size={14} className={open ? "rotate-180 text-black/45" : "text-black/45"} />
+      </button>
+      {open && (
+        <div
+          role="menu"
+          className="absolute bottom-full right-0 z-10 mb-2 w-[200px] rounded-xl border border-wati-border bg-white p-1 shadow-[0_8px_24px_rgba(0,0,0,0.1)]"
+        >
+          <button type="button" role="menuitem" onClick={() => setOpen(false)} className={item}>
+            <Megaphone size={14} className="text-black/50" />
+            Edit in Broadcast
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              onEditWithAi();
+            }}
+            className={item}
+          >
+            <AskWatiIcon size={14} />
+            Edit with AI
+          </button>
+        </div>
+      )}
+    </div>
   );
 }

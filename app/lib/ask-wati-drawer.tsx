@@ -47,6 +47,14 @@ type AskWatiDrawerCtx = {
   openThread: (threadId: string) => void;
   clearThread: () => void;
   /**
+   * A Wati-recommended campaign to set up in chat, from the Campaigns
+   * calendar: "edit" opens its template for changes, "approve" submits it
+   * as-is and goes straight to the broadcast set-up. Consumed once.
+   */
+  pendingCampaign: { id: string; campaignId: string; mode: "edit" | "approve" } | null;
+  setUpCampaign: (campaignId: string, mode: "edit" | "approve") => void;
+  clearCampaign: () => void;
+  /**
    * Island notices posted into the Ask Wati page's chat. On that page the
    * island doesn't open over the conversation — its notices land in the
    * chat as cards instead. Ephemeral, newest last.
@@ -64,6 +72,7 @@ export function AskWatiDrawerProvider({ children }: { children: ReactNode }) {
   const [pendingPrompt, setPendingPrompt] = useState<AskWatiDrawerCtx["pendingPrompt"]>(null);
   const [inlineHost, setInlineHostState] = useState(false);
   const [pendingThread, setPendingThread] = useState<AskWatiDrawerCtx["pendingThread"]>(null);
+  const [pendingCampaign, setPendingCampaign] = useState<AskWatiDrawerCtx["pendingCampaign"]>(null);
   const [postedNoticeIds, setPostedNoticeIds] = useState<string[]>([]);
   // Leaving the Ask Wati page drops the notice cards it was showing.
   const setInlineHost = useCallback((v: boolean) => {
@@ -88,6 +97,14 @@ export function AskWatiDrawerProvider({ children }: { children: ReactNode }) {
     if (!inlineHost) setOpen(true);
   }, [inlineHost]);
   const clearThread = useCallback(() => setPendingThread(null), []);
+  const setUpCampaign = useCallback(
+    (campaignId: string, mode: "edit" | "approve") => {
+      setPendingCampaign({ id: crypto.randomUUID(), campaignId, mode });
+      if (!inlineHost) setOpen(true);
+    },
+    [inlineHost],
+  );
+  const clearCampaign = useCallback(() => setPendingCampaign(null), []);
   const postNotices = useCallback((ids: string[]) => {
     setPostedNoticeIds((prev) => {
       const fresh = ids.filter((id) => !prev.includes(id));
@@ -115,6 +132,9 @@ export function AskWatiDrawerProvider({ children }: { children: ReactNode }) {
       pendingThread,
       openThread,
       clearThread,
+      pendingCampaign,
+      setUpCampaign,
+      clearCampaign,
       postedNoticeIds,
       postNotices,
       unpostNotice,
@@ -135,6 +155,9 @@ export function AskWatiDrawerProvider({ children }: { children: ReactNode }) {
       pendingThread,
       openThread,
       clearThread,
+      pendingCampaign,
+      setUpCampaign,
+      clearCampaign,
       postedNoticeIds,
       postNotices,
       unpostNotice,

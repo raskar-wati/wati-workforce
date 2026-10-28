@@ -149,3 +149,24 @@ export const RECOMMENDED_CAMPAIGNS: RecommendedCampaign[] = [
 
 /** "Today" for the demo calendar. */
 export const CALENDAR_TODAY = "2026-10-28";
+
+/* ------------------------------------------------------------ Audiences */
+
+export type AudienceSegment = { id: string; name: string; contacts: number };
+
+/** Segments offered when setting up a broadcast. */
+export const AUDIENCE_SEGMENTS: AudienceSegment[] = [
+  { id: "all", name: "All Contacts", contacts: 124801 },
+  { id: "engaged-90", name: "Engaged buyers (90 days)", contacts: 2340 },
+  { id: "lapsed-60", name: "Lapsed customers (60+ days)", contacts: 1180 },
+  { id: "gold-buyers", name: "Gold buyers", contacts: 860 },
+  { id: "diwali-enquiries", name: "Diwali enquiries", contacts: 412 },
+  { id: "vip", name: "VIP customers", contacts: 96 },
+];
+
+/** The account's messaging tier: unique contacts per day. */
+export const DAILY_MESSAGING_LIMIT = 1000;
+
+export function segmentFor(name: string): AudienceSegment {
+  return AUDIENCE_SEGMENTS.find((s) => s.name === name) ?? AUDIENCE_SEGMENTS[0];
+}

@@ -82,12 +82,30 @@ earlier draft.
 - Seen in: template
 - Lives in: `TEMPLATE_TYPES`, `withType` / `withCategory`, `detectType` in `lib/template-draft.ts`; `FormatDetails` in `TemplateDraftCard.tsx`; format blocks in `TemplatePreview.tsx`
 
+### Recommendation hand-off into chat
+A recommendation picked on a module page opens the Ask Wati drawer over the
+page, in its own thread with one lead line ("Recommended for Thu 29 Oct,
+11:00 AM.") and the object's card, prefilled. "Edit" starts on the card;
+"Approve" commits it and moves straight to the next step. Whatever is
+decided in chat writes back to the page (here the calendar) through an
+app-wide store.
+- Seen in: Campaigns (recommended broadcast → template card → broadcast card)
+- Lives in: `setUpCampaign` in `lib/ask-wati-drawer.tsx`, the `pendingCampaign` effect in `ChatArea.tsx`, `lib/campaigns.tsx`
+
+### One step leads to the next card
+When committing one card unlocks the next step, the next card follows in the
+same thread, prefilled, and scrolls into view. It doesn't wait for slow
+external steps; a pending one shows as a flag instead ("Sends once Meta
+approves the template").
+- Seen in: Campaigns (Submit to Meta → Set up broadcast)
+- Lives in: `onSaved` → `broadcastCardMessage` in `ChatArea.tsx`, `BroadcastSetupCard`
+
 ## Component candidates
 
 | Candidate | What it is | Seen in |
 | --- | --- | --- |
 | Object card chassis | `WorkforceCard`: icon, title, state pill, note, body, actions. Already shared. | template |
-| Editable fact chips | Inferred settings shown as chips, editable in place: text input or select. | template (channel, name, category, language) |
+| Editable fact chips | Inferred settings shown as chips, editable in place: text, select or date. **Extracted** to `components/chat/FactChips.tsx` (`SelectChip`, `TextChip`, `DateChip`, `FACT_CHIP`). | template (channel, name, category, language), broadcast (name, audience, date, time) |
 | Refine chips | Inside the card: **+ Field** chips (dashed outline, plus icon) add a part of the object. | template |
 | Suggested replies | Below the latest card, outside it: copy rewrites as grey reply chips, worded as the full message they send (e.g. "Make it shorter and easier to skim"). Tapping one sends it as the user's next message. They hide on the review step and on earlier cards. | template |
 | Typed add menu | A "+ Button" field chip that opens every type the platform offers, grouped as the platform shows them. It opens upward, above the composer. Types at their limit stay listed but disabled, with the reason. Picking one posts as a user turn. | template (7 button types) |
