@@ -25,7 +25,7 @@ type NavItem = {
 };
 
 const NAV: NavItem[] = [
-  { id: "campaigns", label: "Campaigns", icon: "campaigns" },
+  { id: "campaigns", label: "Campaigns", icon: "campaigns", href: "/preview/campaigns" },
   { id: "inbox", label: "Inbox", icon: "inbox", href: "/preview" },
   { id: "contacts", label: "Contacts", icon: "contacts", href: "/preview/contacts" },
   { id: "automations", label: "Automations", icon: "automations" },
