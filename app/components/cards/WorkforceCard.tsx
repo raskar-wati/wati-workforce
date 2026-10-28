@@ -138,7 +138,8 @@ export function WorkforceCard({
   tone?: CardTone;
   /** Usually text; a node when the title is editable in place. */
   title: ReactNode;
-  subtitle?: string;
+  /** Usually text; a node when it's editable in place. */
+  subtitle?: ReactNode;
   /** Tone-colored line under the subtitle, e.g. the draft-approval notice. */
   note?: string;
   state?: ObjectState;

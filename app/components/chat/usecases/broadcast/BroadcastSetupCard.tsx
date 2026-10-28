@@ -9,6 +9,7 @@ import {
 } from "../../../../lib/campaigns-data";
 import { useTemplates } from "../../../../lib/templates";
 import { CardCtaChip, WorkforceCard } from "../../../cards/WorkforceCard";
+import { TemplateMessagesIcon } from "../../../icons/TemplateMessagesIcon";
 import { DateChip, EditableTitle, FACT_VALUE, FactSection, SelectChip } from "../../FactChips";
 
 export type BroadcastSetup = {
@@ -74,20 +75,17 @@ export function BroadcastSetupCard({
     <WorkforceCard
       icon={<Megaphone size={11} strokeWidth={2.25} />}
       tone={state === "scheduled" ? "info" : state === "removed" ? "neutral" : "neutral"}
-      // The broadcast's name leads; the template it sends is context.
-      title={
-        editable ? (
-          <span className="text-[15px] font-semibold">
-            <EditableTitle label="Broadcast name" value={setup.name} onChange={(name) => onChange({ ...setup, name })} />
-          </span>
-        ) : (
-          setup.name
-        )
-      }
+      // While setting up, the card names the task; the campaign's own name
+      // (editable) is the subtitle. Once scheduled, the name leads.
+      title={editable ? <span className="text-[15px] font-semibold">Schedule campaign</span> : setup.name}
       subtitle={
-        state === "scheduled"
-          ? `${DATE_LABEL.format(new Date(`${setup.date}T00:00:00`))} · ${setup.time} · ${audience.contacts.toLocaleString("en-IN")} contacts`
-          : `Broadcast · ${templateName}`
+        editable ? (
+          <span className="text-[13px] text-black/60">
+            <EditableTitle label="Campaign name" value={setup.name} onChange={(name) => onChange({ ...setup, name })} />
+          </span>
+        ) : state === "scheduled" ? (
+          `${DATE_LABEL.format(new Date(`${setup.date}T00:00:00`))} · ${setup.time} · ${audience.contacts.toLocaleString("en-IN")} contacts`
+        ) : undefined
       }
       state={state === "scheduled" ? "armed" : state === "removed" ? "expired" : undefined}
       stateLabel={state === "scheduled" ? "Scheduled" : state === "removed" ? "Removed" : undefined}
@@ -110,6 +108,21 @@ export function BroadcastSetupCard({
     >
       {editable && (
         <dl className="-mx-5 flex flex-col gap-4 border-t border-wati-border px-5 pt-4">
+          <FactSection
+            label="Template"
+            detail={
+              awaitingMeta
+                ? "Waiting for Meta's approval. The campaign goes out once it's approved."
+                : templateStatus === "approved"
+                  ? "Approved by Meta"
+                  : undefined
+            }
+          >
+            <span className="flex items-center gap-1.5 text-[14px] font-medium text-[#0a0a0a]">
+              <TemplateMessagesIcon size={15} className="text-black/50" />
+              {templateName}
+            </span>
+          </FactSection>
           <FactSection
             label="Audience"
             detail={
@@ -150,9 +163,6 @@ export function BroadcastSetupCard({
               className={FACT_VALUE}
             />
           </FactSection>
-          {awaitingMeta && (
-            <p className="text-[12px] text-black/45">Goes out once Meta approves the template.</p>
-          )}
         </dl>
       )}
     </WorkforceCard>
