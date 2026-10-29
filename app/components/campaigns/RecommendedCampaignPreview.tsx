@@ -145,7 +145,7 @@ function Chip({ children }: { children: React.ReactNode }) {
 
 /**
  * "Edit template" opens two ways to edit, right above the button: the
- * Broadcast editor (not part of this prototype) or Ask Wati.
+ * Campaigns editor (not part of this prototype) or Ask Wati.
  */
 function EditTemplateMenu({ onEditWithAi }: { onEditWithAi: () => void }) {
   const [open, setOpen] = useState(false);
@@ -179,7 +179,7 @@ function EditTemplateMenu({ onEditWithAi }: { onEditWithAi: () => void }) {
         >
           <button type="button" role="menuitem" onClick={() => setOpen(false)} className={item}>
             <Megaphone size={14} className="text-black/50" />
-            Edit in Broadcast
+            Edit in Campaigns
           </button>
           <button
             type="button"

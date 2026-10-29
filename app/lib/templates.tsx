@@ -99,7 +99,7 @@ function TemplatesStore({ children }: { children: ReactNode }) {
               priority: "info",
               island: true,
               title: "Template approved by Meta",
-              body: `${t.draft.name} is ready to use in broadcasts`,
+              body: `${t.draft.name} is ready to use in campaigns`,
             });
           },
           Math.max(0, t.submittedAt! + META_REVIEW_MS - Date.now()),

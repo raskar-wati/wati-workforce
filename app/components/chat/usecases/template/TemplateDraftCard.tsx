@@ -154,8 +154,8 @@ export function TemplateDraftCard({
       actions={
         locked ? (
           status === "approved" && onFollowUp ? (
-            <CardCtaChip onClick={() => onFollowUp(`Send ${draft.name} as a broadcast`)}>
-              Use in a broadcast
+            <CardCtaChip onClick={() => onFollowUp(`Send ${draft.name} as a campaign`)}>
+              Use in a campaign
             </CardCtaChip>
           ) : null
         ) : reviewing ? (
@@ -216,7 +216,7 @@ export function TemplateDraftCard({
         </div>
       )}
       {status === "approved" && (
-        <EvidenceRow verdict="ok">Approved — ready to use in broadcasts and automations</EvidenceRow>
+        <EvidenceRow verdict="ok">Approved — ready to use in campaigns and automations</EvidenceRow>
       )}
       {status === "draft" && !reviewing && (
         <EvidenceRow verdict="info">Saved to Templates as a draft</EvidenceRow>

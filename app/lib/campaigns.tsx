@@ -96,7 +96,7 @@ function CampaignsStore({ children }: { children: ReactNode }) {
         kind: "scheduled",
         priority: "info",
         island: true,
-        title: "Broadcast scheduled",
+        title: "Campaign scheduled",
         body: `${broadcast.name} · ${broadcast.date} ${broadcast.time}`,
       });
     },

@@ -94,7 +94,7 @@ export function BroadcastSetupCard({
         <>
           {editable && (
             <CardCtaChip primary onClick={onSchedule}>
-              Schedule broadcast
+              Schedule campaign
             </CardCtaChip>
           )}
           <CardCtaChip onClick={onViewInCampaigns}>View in campaigns</CardCtaChip>
