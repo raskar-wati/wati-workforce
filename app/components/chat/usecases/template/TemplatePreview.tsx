@@ -477,7 +477,9 @@ function EditableBody({
 
   if (editing) {
     return (
-      <div className="relative">
+      // The box grows with the text and can be dragged taller; the toolbar
+      // sits in its own row below, so it never covers the message.
+      <div className="flex flex-col rounded-md border border-[#1570EF] bg-white">
         <textarea
           autoFocus
           value={value}
@@ -492,18 +494,17 @@ function EditableBody({
           }}
           onFocus={(e) => e.currentTarget.setSelectionRange(value.length, value.length)}
           maxLength={BODY_LIMIT}
-          rows={Math.min(8, Math.max(3, Math.ceil(value.length / 42)))}
           aria-label="Message body"
-          className="block w-full resize-none rounded-md border border-[#1570EF] bg-white px-2 py-1.5 pb-8 text-[13px] leading-[18px] text-[#111b21] outline-none"
+          className="block min-h-[72px] w-full resize-y rounded-t-md bg-transparent px-2 pt-1.5 text-[13px] leading-[18px] text-[#111b21] outline-none [field-sizing:content]"
         />
-        <div className="pointer-events-none absolute bottom-[5px] left-[5px] right-[9px] flex items-center justify-between">
+        <div className="flex items-center justify-between px-[5px] pb-[5px] pr-[9px] pt-1">
           <button
             type="button"
             // Keep focus in the textarea — a blur would save and close it.
             onMouseDown={(e) => e.preventDefault()}
             onClick={enhance}
             disabled={enhancing}
-            className="pointer-events-auto inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-[11px] font-medium text-black/65 hover:bg-black/[0.04] hover:text-black/85 disabled:opacity-60"
+            className="inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-[11px] font-medium text-black/65 hover:bg-black/[0.04] hover:text-black/85 disabled:opacity-60"
           >
             <AskWatiIcon size={12} variant="solid" />
             {enhancing ? "Enhancing…" : "Enhance"}
