@@ -1,5 +1,4 @@
 import { GlobalHeader } from "../components/GlobalHeader";
-import { IslandSimulator } from "../components/island/IslandSimulator";
 import { AgentsProvider } from "../lib/agents";
 import { DemoStateProvider } from "../lib/demo-state";
 import { TemplatesProvider } from "../lib/templates";
@@ -25,7 +24,6 @@ export default function PreviewLayout({ children }: { children: React.ReactNode 
           <GlobalHeader />
           {children}
         </div>
-        <IslandSimulator />
         </CampaignsProvider>
         </TemplatesProvider>
       </AgentsProvider>
