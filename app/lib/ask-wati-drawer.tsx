@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -46,6 +47,10 @@ type AskWatiDrawerCtx = {
   pendingThread: { id: string; threadId: string } | null;
   openThread: (threadId: string) => void;
   clearThread: () => void;
+  /** The chat reports the thread it's showing, so Expand can carry it over. */
+  reportShownThread: (threadId: string | null) => void;
+  /** Hand the shown thread to the next chat that mounts (the full page). */
+  carryShownThread: () => void;
   /**
    * A Wati-recommended campaign to set up in chat, from the Campaigns
    * calendar: "edit" opens its template for changes, "approve" submits it
@@ -97,6 +102,14 @@ export function AskWatiDrawerProvider({ children }: { children: ReactNode }) {
     if (!inlineHost) setOpen(true);
   }, [inlineHost]);
   const clearThread = useCallback(() => setPendingThread(null), []);
+  const shownThreadId = useRef<string | null>(null);
+  const reportShownThread = useCallback((threadId: string | null) => {
+    shownThreadId.current = threadId;
+  }, []);
+  const carryShownThread = useCallback(() => {
+    const threadId = shownThreadId.current;
+    if (threadId) setPendingThread({ id: crypto.randomUUID(), threadId });
+  }, []);
   const setUpCampaign = useCallback(
     (campaignId: string, mode: "edit" | "approve") => {
       setPendingCampaign({ id: crypto.randomUUID(), campaignId, mode });
@@ -132,6 +145,8 @@ export function AskWatiDrawerProvider({ children }: { children: ReactNode }) {
       pendingThread,
       openThread,
       clearThread,
+      reportShownThread,
+      carryShownThread,
       pendingCampaign,
       setUpCampaign,
       clearCampaign,
@@ -155,6 +170,8 @@ export function AskWatiDrawerProvider({ children }: { children: ReactNode }) {
       pendingThread,
       openThread,
       clearThread,
+      reportShownThread,
+      carryShownThread,
       pendingCampaign,
       setUpCampaign,
       clearCampaign,

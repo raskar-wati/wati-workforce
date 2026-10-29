@@ -16,7 +16,7 @@ export const ASK_WATI_PAGE = "/preview/ask-wati";
  * in different parts of the tree. Expand hands off to the full page.
  */
 export function AskWatiDrawer() {
-  const { open, closeDrawer, inlineHost } = useAskWatiDrawer();
+  const { open, closeDrawer, inlineHost, carryShownThread } = useAskWatiDrawer();
   const router = useRouter();
   const [panelCollapsed, setPanelCollapsed] = useState(true);
   const drawerWidth = panelCollapsed ? 458 : 690;
@@ -44,6 +44,8 @@ export function AskWatiDrawer() {
         <button
           type="button"
           onClick={() => {
+            // The full page picks up the thread the drawer was showing.
+            carryShownThread();
             closeDrawer();
             router.push(ASK_WATI_PAGE);
           }}

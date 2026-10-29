@@ -423,6 +423,7 @@ export function ChatArea({
     clearPrompt,
     pendingThread,
     clearThread,
+    reportShownThread,
     pendingCampaign,
     clearCampaign,
     closeDrawer,
@@ -1212,6 +1213,12 @@ export function ChatArea({
     setMode(null);
     setActiveThreadId(pendingThread.threadId);
   }, [pendingThread, chrome, storageReady, clearThread, setView, setMode, setActiveThreadId]);
+
+  // Tell the drawer which thread is up, so Expand opens the same one.
+  useEffect(() => {
+    if (chrome !== "drawer") return;
+    reportShownThread(view === "chat" ? activeThreadId : null);
+  }, [chrome, view, activeThreadId, reportShownThread]);
 
   // A recommended campaign handed over from the Campaigns calendar opens its
   // own thread: "edit" with the template ready to change, "approve" with it
