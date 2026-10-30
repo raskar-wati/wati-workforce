@@ -158,7 +158,7 @@ export function FactSection({
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <dt className="text-[11px] font-medium uppercase tracking-[0.04em] text-black/45">{label}</dt>
+      <dt className="text-[12px] font-medium text-black/65">{label}</dt>
       <dd className="flex flex-wrap items-center gap-x-1 text-[14px] text-black/55">{children}</dd>
       {detail && <p className="text-[12px] text-black/55">{detail}</p>}
     </div>
