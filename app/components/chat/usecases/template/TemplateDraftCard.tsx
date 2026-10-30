@@ -574,7 +574,11 @@ function FormatDetails({
 
 /* ------------------------------------------------------------ Samples */
 
-/** Meta needs an example for every variable; prefilled, so usually a glance. */
+/**
+ * Meta needs an example for every variable. Wati prefills them, so they stay
+ * out of sight; only a variable it had no example for asks for one (it would
+ * otherwise block Submit with nowhere to fix it).
+ */
 function SampleValues({
   draft,
   onChange,
@@ -582,15 +586,18 @@ function SampleValues({
   draft: TemplateDraft;
   onChange: (draft: TemplateDraft) => void;
 }) {
+  // Fixed on arrival, so a row doesn't vanish once the user starts typing.
   // Authentication's {{1}} sample has its own field above the preview.
-  const entries = Object.entries(draft.samples).filter(
-    ([key]) => !(draft.category === "authentication" && key === "1"),
+  const [asking] = useState(() =>
+    Object.entries(draft.samples)
+      .filter(([key, value]) => !value.trim() && !(draft.category === "authentication" && key === "1"))
+      .map(([key]) => key),
   );
-  if (entries.length === 0) return null;
+  if (asking.length === 0) return null;
   return (
     <div className="flex flex-col gap-1.5">
       <p className="text-[12px] text-black/50">Sample values for Meta&apos;s review</p>
-      {entries.map(([key, value]) => (
+      {asking.map((key) => [key, draft.samples[key] ?? ""] as const).map(([key, value]) => (
         <label key={key} className="flex items-center gap-2">
           <span className="w-[120px] shrink-0 truncate font-mono text-[12px] text-wati-green-text">
             {`{{${key}}}`}

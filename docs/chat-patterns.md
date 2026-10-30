@@ -42,8 +42,9 @@ that can't be understood get a reply showing how to send exact text.
 
 ### Edit → review → commit, on the same card
 "Looks good" turns the card into its review step without posting a new
-message. The review step has only what the platform requires, prefilled (for
-templates, sample values), plus flags for real problems only. Nothing is shown when
+message. The review step has only flags for real problems. What the platform
+requires is prefilled and kept out of sight (for templates, sample values);
+a field shows only when Wati couldn't fill it. Nothing is shown when
 all is well. The commit actions sit last.
 - Seen in: template (Submit to Meta / Save as draft / Keep editing)
 - Lives in: `TemplateDraftCard` (`stage`)
@@ -112,7 +113,7 @@ approves the template").
 | Typed add menu | A "+ Button" field chip that opens every type the platform offers, grouped as the platform shows them. It opens upward, above the composer. Types at their limit stay listed but disabled, with the reason. Picking one posts as a user turn. | template (7 button types) |
 | Group reorder | One arrow on the movable group's first row flips its position, here quick replies above or below the call-to-action buttons. It also works by chat. | template |
 | Required value opens itself | A part that can't be valid without user input (here the coupon code) starts in edit mode with a placeholder and a counter. It is also flagged and named in the composer hint until it's filled. No made-up defaults. | template (Copy offer code) |
-| Required-fields form | Compact label → input rows, prefilled. | template (sample values) |
+| Required-fields form | Compact label → input rows, shown only for required values Wati couldn't prefill. | template (sample values) |
 | Issue flags | `EvidenceRow`s shown only for problems: a blocker disables commit, a warn means a likely platform flag. No all-clear rows. Already shared. | template |
 | Drafting beat | `StatusIndicator` shown for about 1s before a new card appears. | template |
 | Channel preview | How the message lands in WhatsApp. The preview is also the editor: hover the body to edit it, hover an existing image header to replace or remove it (adding one is the "+ Image header" chip), tap a button to edit it, × to remove. The same edits also work by chat ("rename 'Shop now' to …"). | template |
