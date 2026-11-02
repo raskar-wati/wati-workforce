@@ -34,8 +34,8 @@ export function SelectChip({
   options: { value: string; label: string }[];
   onChange: (value: string) => void;
   icon?: ReactNode;
-  /** A muted name before the value, for chips whose value alone is unclear
-   *  ("Format Standard"); clear ones (WhatsApp, English) go without. */
+  /** A muted name before the value ("Format Standard"), so the chip says
+   *  what it sets. */
   prefix?: string;
   className?: string;
 }) {

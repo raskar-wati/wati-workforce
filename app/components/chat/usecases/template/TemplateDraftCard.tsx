@@ -431,6 +431,7 @@ function TemplateFacts({
     <div className="flex flex-wrap items-center gap-1.5">
       <SelectChip
         label="Channel"
+        prefix="Channel"
         value={draft.channel ?? "whatsapp"}
         options={(Object.keys(CHANNEL_LABEL) as TemplateChannel[]).map((c) => ({
           value: c,
@@ -462,6 +463,7 @@ function TemplateFacts({
       )}
       <SelectChip
         label="Language"
+        prefix="Language"
         value={draft.language}
         options={TEMPLATE_LANGUAGES.map((l) => ({ value: l, label: l }))}
         onChange={(language) => onChange({ ...draft, language })}
