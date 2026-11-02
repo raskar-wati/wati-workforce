@@ -120,7 +120,7 @@ approves the template").
 | Required-fields form | Compact label → input rows, shown only for required values Wati couldn't prefill. | template (sample values) |
 | Issue flags | `EvidenceRow`s shown only for problems: a blocker disables commit, a warn means a likely platform flag. No all-clear rows. Already shared. | template |
 | Drafting beat | `StatusIndicator` shown for about 1s before a new card appears. | template |
-| Channel preview | How the message lands in WhatsApp. The preview is also the editor: hover the body to edit it, hover an existing image header to replace or remove it (adding one is the "+ Image header" chip), tap a button to edit it, × to remove. The same edits also work by chat ("rename 'Shop now' to …"). | template |
+| Channel preview | How the message lands in WhatsApp. **Read-only in this launch** (edits go through chat and the chips). Supported in code for later: the preview as the editor: hover the body to edit it, hover an existing image header to replace or remove it (adding one is the "+ Image header" chip), tap a button to edit it, × to remove. The same edits also work by chat ("rename 'Shop now' to …"). | template |
 | Contextual composer hint | The composer placeholder says what the open flow needs next: missing input first, then example edits the flow supports. | template |
 | Toast | One-line success confirmation for an action taken outside chat: slides in top right, green bar counts down 5 s, × closes. `components/Toast.tsx`, `useToast()` from `lib/toast.tsx`. | Campaigns (Schedule campaign) |
 | Text action | Low-emphasis button next to the CTA chips ("Keep editing"). | template |

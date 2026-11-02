@@ -22,7 +22,6 @@ import {
   canSubmit,
   checkTemplate,
   refineSuggestions,
-  withBody,
   type RefineSuggestion,
   type TemplateCategory,
   type TemplateChannel,
@@ -72,7 +71,6 @@ export function TemplateDraftCard({
   pending = false,
   drafter,
   canRewrite = false,
-  onEnhance,
   onDraftChange,
   onRefine,
   onStageChange,
@@ -93,6 +91,8 @@ export function TemplateDraftCard({
   drafter?: string;
   /** The model is on, so rewrites apply to the user's own copy too. */
   canRewrite?: boolean;
+  /** Enhance for the in-place body editor; unused while the preview is
+   *  read-only (this launch). */
   onEnhance?: (body: string) => Promise<string | null>;
   /** In-place edits that aren't a new version (facts, samples). */
   onDraftChange: (draft: TemplateDraft) => void;
@@ -189,17 +189,10 @@ export function TemplateDraftCard({
     >
       {!locked && <TemplateFacts draft={draft} onChange={onDraftChange} />}
       {!locked && <FormatDetails draft={draft} onChange={onDraftChange} />}
-      <TemplatePreview
-        draft={draft}
-        onButtonsChange={locked ? undefined : (buttons) => onDraftChange({ ...draft, buttons })}
-        onReorder={
-          locked ? undefined : (quickRepliesFirst) => onDraftChange({ ...draft, quickRepliesFirst })
-        }
-        onBodyChange={locked ? undefined : (body) => onDraftChange(withBody(draft, body))}
-        onEnhance={locked ? undefined : onEnhance}
-        onHeaderChange={locked ? undefined : (header) => onDraftChange({ ...draft, header })}
-        onCardsChange={locked ? undefined : (cards) => onDraftChange({ ...draft, cards })}
-      />
+      {/* Read-only in this launch: changes go through chat and the chips
+          below, not in-place edits on the preview. TemplatePreview still
+          supports them (onBodyChange, onButtonsChange, …) for later. */}
+      <TemplatePreview draft={draft} />
 
       {!locked && !reviewing && !isAuth && (
         <RefineChips draft={draft} suggestions={suggestions} onPick={onRefine} />
