@@ -24,13 +24,13 @@ export default function CampaignsPage() {
       <RecommendedCampaignPreview
         campaign={open}
         onClose={() => setOpen(null)}
-        onEditWithAi={(c) => {
+        onEditWithAi={(c, plan) => {
           setOpen(null);
-          setUpCampaign(c.id, "edit");
+          setUpCampaign(c.id, "edit", plan);
         }}
-        onApprove={(c) => {
+        onApprove={(c, plan) => {
           setOpen(null);
-          setUpCampaign(c.id, "approve");
+          setUpCampaign(c.id, "approve", plan);
         }}
       />
     </div>

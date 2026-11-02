@@ -170,3 +170,30 @@ export const DAILY_MESSAGING_LIMIT = 1000;
 export function segmentFor(name: string): AudienceSegment {
   return AUDIENCE_SEGMENTS.find((s) => s.name === name) ?? AUDIENCE_SEGMENTS[0];
 }
+
+/** Half-hour send slots, 8 AM to 10 PM. */
+export const SEND_TIMES = Array.from({ length: 29 }, (_, i) => {
+  const mins = 8 * 60 + i * 30;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return `${((h + 11) % 12) + 1}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
+});
+
+/** When and to whom, as picked on the recommendation before going to chat. */
+export type CampaignPlan = { audienceId: string; date: string; time: string };
+
+export function planFor(c: RecommendedCampaign): CampaignPlan {
+  return { audienceId: segmentFor(c.audience.name).id, date: c.date, time: c.sendTime };
+}
+
+/** The recommendation with the user's picks applied. */
+export function withPlan(c: RecommendedCampaign, plan?: CampaignPlan): RecommendedCampaign {
+  if (!plan) return c;
+  const segment = AUDIENCE_SEGMENTS.find((s) => s.id === plan.audienceId) ?? segmentFor(c.audience.name);
+  return {
+    ...c,
+    date: plan.date,
+    sendTime: plan.time,
+    audience: { name: segment.name, contacts: segment.contacts },
+  };
+}

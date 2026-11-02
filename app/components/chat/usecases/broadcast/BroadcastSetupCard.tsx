@@ -6,6 +6,7 @@ import {
   AUDIENCE_SEGMENTS,
   DAILY_MESSAGING_LIMIT,
   CALENDAR_TODAY,
+  SEND_TIMES,
 } from "../../../../lib/campaigns-data";
 import { useTemplates } from "../../../../lib/templates";
 import { CardCtaChip, StatePill, WorkforceCard } from "../../../cards/WorkforceCard";
@@ -21,14 +22,6 @@ export type BroadcastSetup = {
 };
 
 export type BroadcastState = "setup" | "scheduled" | "removed";
-
-/** Half-hour send slots, 8 AM to 10 PM. */
-const TIMES = Array.from({ length: 29 }, (_, i) => {
-  const mins = 8 * 60 + i * 30;
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return `${((h + 11) % 12) + 1}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
-});
 
 const DATE_LABEL = new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short" });
 
@@ -66,7 +59,7 @@ export function BroadcastSetupCard({
   const templateStatus = templateId ? getTemplate(templateId)?.status : undefined;
   const audience = AUDIENCE_SEGMENTS.find((s) => s.id === setup.audienceId) ?? AUDIENCE_SEGMENTS[0];
   const editable = state === "setup";
-  const times = TIMES.includes(setup.time) ? TIMES : [setup.time, ...TIMES];
+  const times = SEND_TIMES.includes(setup.time) ? SEND_TIMES : [setup.time, ...SEND_TIMES];
 
   const overLimit = audience.contacts > DAILY_MESSAGING_LIMIT;
   const awaitingMeta = templateStatus === "pending-meta";

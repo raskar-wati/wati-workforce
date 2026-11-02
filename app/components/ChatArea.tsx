@@ -84,7 +84,13 @@ import {
   type BroadcastSetup,
   type BroadcastState,
 } from "./chat/usecases/broadcast/BroadcastSetupCard";
-import { RECOMMENDED_CAMPAIGNS, segmentFor, type RecommendedCampaign } from "../lib/campaigns-data";
+import {
+  RECOMMENDED_CAMPAIGNS,
+  segmentFor,
+  withPlan,
+  type CampaignPlan,
+  type RecommendedCampaign,
+} from "../lib/campaigns-data";
 import { useCampaigns } from "../lib/campaigns";
 import { useTemplates } from "../lib/templates";
 import {
@@ -219,6 +225,8 @@ type ChatMessage =
       /** Set when the template came from a recommended campaign: submitting
        *  it leads on to the broadcast set-up. */
       campaignId?: string;
+      /** Audience and send time picked on the recommendation, if changed. */
+      campaignPlan?: CampaignPlan;
     }
   | {
       /** Setting up the broadcast for a recommended campaign's template. */
@@ -961,6 +969,7 @@ export function ChatArea({
           const next = {
             ...(templateCardMessage(card.draft, card.version + 1) as TemplateCardMessage),
             campaignId: card.campaignId,
+            campaignPlan: card.campaignPlan,
             pending: true,
           };
           return {
@@ -988,6 +997,7 @@ export function ChatArea({
             {
               ...(templateCardMessage(result.draft, card.version + 1, result.changes) as TemplateCardMessage),
               campaignId: card.campaignId,
+              campaignPlan: card.campaignPlan,
             },
           ],
         };
@@ -1229,23 +1239,27 @@ export function ChatArea({
     if (handledCampaignId.current === pendingCampaign.id) return;
     handledCampaignId.current = pendingCampaign.id;
     clearCampaign();
-    const campaign = RECOMMENDED_CAMPAIGNS.find((c) => c.id === pendingCampaign.campaignId);
-    if (!campaign) return;
+    const recommended = RECOMMENDED_CAMPAIGNS.find((c) => c.id === pendingCampaign.campaignId);
+    if (!recommended) return;
+    const { plan } = pendingCampaign;
+    const campaign = withPlan(recommended, plan);
     const threadId = createThread(campaign.name);
     setView("chat");
     setMode(null);
     const card = templateCardMessage(campaign.template, 1) as TemplateCardMessage;
+    // Once the user moved it, it's their slot, not Wati's suggestion.
+    const moved = campaign.date !== recommended.date || campaign.sendTime !== recommended.sendTime;
     const lead = watiText(
-      `Recommended for ${CAMPAIGN_DATE.format(new Date(`${campaign.date}T00:00:00`))}, ${campaign.sendTime}.`,
+      `${moved ? "Planned for" : "Recommended for"} ${CAMPAIGN_DATE.format(new Date(`${campaign.date}T00:00:00`))}, ${campaign.sendTime}.`,
     );
     if (pendingCampaign.mode === "edit") {
-      appendMessages(threadId, [lead, { ...card, campaignId: campaign.id }]);
+      appendMessages(threadId, [lead, { ...card, campaignId: campaign.id, campaignPlan: plan }]);
       return;
     }
     const templateId = submitTemplate(threadId, campaign.template);
     appendMessages(threadId, [
       lead,
-      { ...card, campaignId: campaign.id, templateId, stage: "review" },
+      { ...card, campaignId: campaign.id, campaignPlan: plan, templateId, stage: "review" },
       broadcastCardMessage(campaign, templateId),
     ]);
     // Thread and template stores are read fresh on the next render.
@@ -2114,7 +2128,8 @@ export function ChatArea({
                         updateTemplateCard(activeThreadId, m.id, { templateId });
                         // A recommended campaign's template, once submitted,
                         // moves on to its broadcast set-up (once per thread).
-                        const campaign = RECOMMENDED_CAMPAIGNS.find((c) => c.id === m.campaignId);
+                        const recommended = RECOMMENDED_CAMPAIGNS.find((c) => c.id === m.campaignId);
+                        const campaign = recommended && withPlan(recommended, m.campaignPlan);
                         const hasBroadcast = messages.some(
                           (x) => x.kind === "broadcast-card" && x.campaignId === m.campaignId,
                         );

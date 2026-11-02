@@ -9,6 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import type { CampaignPlan } from "./campaigns-data";
 
 /**
  * Shared state for the Ask Wati drawer. Lifted to a context so the
@@ -56,8 +57,8 @@ type AskWatiDrawerCtx = {
    * calendar: "edit" opens its template for changes, "approve" submits it
    * as-is and goes straight to the broadcast set-up. Consumed once.
    */
-  pendingCampaign: { id: string; campaignId: string; mode: "edit" | "approve" } | null;
-  setUpCampaign: (campaignId: string, mode: "edit" | "approve") => void;
+  pendingCampaign: { id: string; campaignId: string; mode: "edit" | "approve"; plan?: CampaignPlan } | null;
+  setUpCampaign: (campaignId: string, mode: "edit" | "approve", plan?: CampaignPlan) => void;
   clearCampaign: () => void;
   /**
    * Island notices posted into the Ask Wati page's chat. On that page the
@@ -111,8 +112,8 @@ export function AskWatiDrawerProvider({ children }: { children: ReactNode }) {
     if (threadId) setPendingThread({ id: crypto.randomUUID(), threadId });
   }, []);
   const setUpCampaign = useCallback(
-    (campaignId: string, mode: "edit" | "approve") => {
-      setPendingCampaign({ id: crypto.randomUUID(), campaignId, mode });
+    (campaignId: string, mode: "edit" | "approve", plan?: CampaignPlan) => {
+      setPendingCampaign({ id: crypto.randomUUID(), campaignId, mode, plan });
       if (!inlineHost) setOpen(true);
     },
     [inlineHost],
