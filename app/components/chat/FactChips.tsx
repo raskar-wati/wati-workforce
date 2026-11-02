@@ -39,14 +39,27 @@ export function SelectChip({
   prefix?: string;
   className?: string;
 }) {
+  // Beside a muted name, the value goes full strength so it leads.
+  const valueLabel = (
+    <span className={prefix ? "font-medium text-[#0a0a0a]" : undefined}>
+      {options.find((o) => o.value === value)?.label ?? value}
+    </span>
+  );
+  // One option is nothing to choose: show it as a fixed fact, no menu.
+  if (options.length <= 1) {
+    return (
+      <span className={`${className} pointer-events-none`} aria-label={label}>
+        {icon}
+        {prefix && <span className="text-black/50">{prefix}</span>}
+        {valueLabel}
+      </span>
+    );
+  }
   return (
     <label className={`${className} relative cursor-pointer`}>
       {icon}
       {prefix && <span className="text-black/50">{prefix}</span>}
-      {/* Beside a muted name, the value goes full strength so it leads. */}
-      <span className={prefix ? "font-medium text-[#0a0a0a]" : undefined}>
-        {options.find((o) => o.value === value)?.label ?? value}
-      </span>
+      {valueLabel}
       <ChevronDown size={11} className="text-black/40" />
       <select
         aria-label={label}

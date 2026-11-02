@@ -41,6 +41,9 @@ import { modelLabel } from "../../../../lib/template-ai";
 import { EditableTitle, SelectChip } from "../../FactChips";
 import { TemplatePreview } from "./TemplatePreview";
 
+/** Channels offered in this launch: WhatsApp only (RCS, SMS, Email later). */
+const LAUNCH_CHANNELS: TemplateChannel[] = ["whatsapp"];
+
 /** Meta template names: lowercase, words joined by underscores. */
 const snakeName = (v: string) => v.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_");
 
@@ -426,10 +429,7 @@ function TemplateFacts({
         label="Channel"
         prefix="Channel"
         value={draft.channel ?? "whatsapp"}
-        options={(Object.keys(CHANNEL_LABEL) as TemplateChannel[]).map((c) => ({
-          value: c,
-          label: CHANNEL_LABEL[c],
-        }))}
+        options={LAUNCH_CHANNELS.map((c) => ({ value: c, label: CHANNEL_LABEL[c] }))}
         onChange={(channel) => onChange({ ...draft, channel: channel as TemplateChannel })}
       />
       <SelectChip
