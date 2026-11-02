@@ -13,6 +13,8 @@ import {
   TEMPLATE_TYPE_LABEL,
   allowsCustomButtons,
   withCategory,
+  LAUNCH_CATEGORIES,
+  LAUNCH_CHANNELS,
   withType,
   type OrderStatus,
   type TemplateType,
@@ -40,9 +42,6 @@ import { TemplateMessagesIcon } from "../../../icons/TemplateMessagesIcon";
 import { modelLabel } from "../../../../lib/template-ai";
 import { EditableTitle, SelectChip } from "../../FactChips";
 import { TemplatePreview } from "./TemplatePreview";
-
-/** Channels offered in this launch: WhatsApp only (RCS, SMS, Email later). */
-const LAUNCH_CHANNELS: TemplateChannel[] = ["whatsapp"];
 
 /** Meta template names: lowercase, words joined by underscores. */
 const snakeName = (v: string) => v.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_");
@@ -436,10 +435,7 @@ function TemplateFacts({
         label="Category"
         prefix="Category"
         value={draft.category}
-        options={(Object.keys(CATEGORY_LABEL) as TemplateCategory[]).map((c) => ({
-          value: c,
-          label: CATEGORY_LABEL[c],
-        }))}
+        options={LAUNCH_CATEGORIES.map((c) => ({ value: c, label: CATEGORY_LABEL[c] }))}
         onChange={(category) => onChange(withCategory(draft, category as TemplateCategory))}
       />
       {TEMPLATE_TYPES[draft.category].length > 0 && (

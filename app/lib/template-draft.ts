@@ -29,6 +29,13 @@ export type TemplateType =
   | "checkout"
   | "order-status";
 
+/** What this launch supports: WhatsApp, Marketing. The rest stays in the
+ *  model for later; drafts, chat edits and model replies are held to these. */
+export const LAUNCH_CHANNELS: TemplateChannel[] = ["whatsapp"];
+export const LAUNCH_CATEGORIES: TemplateCategory[] = ["marketing"];
+const inLaunch = (c: TemplateCategory): TemplateCategory =>
+  LAUNCH_CATEGORIES.includes(c) ? c : LAUNCH_CATEGORIES[0];
+
 export const TEMPLATE_TYPES: Record<TemplateCategory, TemplateType[]> = {
   marketing: ["standard", "catalog", "carousel", "limited-offer", "order-details", "checkout"],
   utility: ["standard", "order-details", "order-status"],
@@ -458,8 +465,9 @@ export function draftTemplate(
   if (code) buttons.push({ kind: "copy-code", code });
   const base =
     purpose === "promotion" ? slugify(offer) : DEFAULT_NAME[purpose];
-  const category: TemplateCategory =
-    purpose === "verification" ? "authentication" : purpose === "promotion" ? "marketing" : "utility";
+  const category: TemplateCategory = inLaunch(
+    purpose === "verification" ? "authentication" : purpose === "promotion" ? "marketing" : "utility",
+  );
   const draft = finish({
     name: uniqueName(base, takenNames),
     channel: "whatsapp",
@@ -931,6 +939,9 @@ export function refineTemplate(d: TemplateDraft, text: string): RefineResult | n
       : /\b(authentication|otp template)\b/.test(t)
         ? "authentication"
         : null;
+  if (toCategory && !LAUNCH_CATEGORIES.includes(toCategory)) {
+    return { blocked: `Only Marketing templates are supported for now, so this one stays Marketing.` };
+  }
   if (toCategory && toCategory !== next.category) {
     return { draft: withCategory(next, toCategory), changes: [`Category ${CATEGORY_LABEL[toCategory]}`] };
   }
@@ -1133,7 +1144,7 @@ export function fromModelTemplate(raw: unknown, base: TemplateDraft): TemplateDr
     ...base,
     purpose: PURPOSES.includes(m.purpose as TemplatePurpose) ? (m.purpose as TemplatePurpose) : base.purpose,
     name: name || base.name,
-    category: m.category === "marketing" || m.category === "utility" ? m.category : base.category,
+    category: inLaunch(m.category === "marketing" || m.category === "utility" ? m.category : base.category),
     language: str(m.language) || base.language,
     header,
     customBody: body,
