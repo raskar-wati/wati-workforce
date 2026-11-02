@@ -3,6 +3,7 @@ import { AgentsProvider } from "../lib/agents";
 import { DemoStateProvider } from "../lib/demo-state";
 import { TemplatesProvider } from "../lib/templates";
 import { CampaignsProvider } from "../lib/campaigns";
+import { ToastProvider } from "../lib/toast";
 
 /**
  * Shared shell for every preview module. The header lives here rather than
@@ -20,10 +21,12 @@ export default function PreviewLayout({ children }: { children: React.ReactNode 
       <AgentsProvider>
         <TemplatesProvider>
         <CampaignsProvider>
+        <ToastProvider>
         <div className="flex h-screen flex-col bg-[var(--wati-surface-subtle)]">
           <GlobalHeader />
           {children}
         </div>
+        </ToastProvider>
         </CampaignsProvider>
         </TemplatesProvider>
       </AgentsProvider>

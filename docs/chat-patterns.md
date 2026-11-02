@@ -89,8 +89,9 @@ page, in its own thread with one lead line ("Recommended for Thu 29 Oct,
 11:00 AM.", or "Planned for …" if the user moved it) and the object's card,
 prefilled. The audience and send time can be changed on the recommendation
 itself, and Wati offers up to 3 template options to step through
-("‹ Option 1 of 3 ›" under the preview); those picks prefill the chat cards. "Edit" starts on the card;
-"Approve" commits it and moves straight to the next step. Whatever is
+("‹ Option 1 of 3 ›" under the preview); those picks prefill the chat cards. "Edit with AI" starts on the card in chat;
+"Schedule campaign" schedules it straight from the page, confirmed by a
+toast (top right, 5 s), with no chat. Whatever is
 decided in chat writes back to the page (here the calendar) through an
 app-wide store.
 - Seen in: Campaigns (recommended broadcast → template card → broadcast card)
@@ -121,4 +122,5 @@ approves the template").
 | Drafting beat | `StatusIndicator` shown for about 1s before a new card appears. | template |
 | Channel preview | How the message lands in WhatsApp. The preview is also the editor: hover the body to edit it, hover an existing image header to replace or remove it (adding one is the "+ Image header" chip), tap a button to edit it, × to remove. The same edits also work by chat ("rename 'Shop now' to …"). | template |
 | Contextual composer hint | The composer placeholder says what the open flow needs next: missing input first, then example edits the flow supports. | template |
+| Toast | One-line success confirmation for an action taken outside chat: slides in top right, green bar counts down 5 s, × closes. `components/Toast.tsx`, `useToast()` from `lib/toast.tsx`. | Campaigns (Schedule campaign) |
 | Text action | Low-emphasis button next to the CTA chips ("Keep editing"). | template |

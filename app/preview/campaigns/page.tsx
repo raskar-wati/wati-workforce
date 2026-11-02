@@ -8,12 +8,16 @@ import { CampaignsNav } from "../../components/campaigns/CampaignsNav";
 import { RecommendedCampaignPreview } from "../../components/campaigns/RecommendedCampaignPreview";
 import { useAskWatiDrawer } from "../../lib/ask-wati-drawer";
 import { useCampaigns } from "../../lib/campaigns";
-import type { RecommendedCampaign } from "../../lib/campaigns-data";
+import { withPlan, type RecommendedCampaign } from "../../lib/campaigns-data";
+import { useToast } from "../../lib/toast";
+
+const SEND_DATE = new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short" });
 
 export default function CampaignsPage() {
   const [open, setOpen] = useState<RecommendedCampaign | null>(null);
   const { setUpCampaign } = useAskWatiDrawer();
-  const { remove } = useCampaigns();
+  const { remove, schedule } = useCampaigns();
+  const { showToast } = useToast();
   return (
     <div className="relative flex min-h-0 flex-1 overflow-hidden">
       <MainSidebar />
@@ -31,8 +35,11 @@ export default function CampaignsPage() {
           setUpCampaign(c.id, "edit", plan);
         }}
         onApprove={(c, plan) => {
+          // Scheduled straight from the calendar; the chip turns purple.
           setOpen(null);
-          setUpCampaign(c.id, "approve", plan);
+          const { date, sendTime } = withPlan(c, plan);
+          schedule(c.id, { name: c.name, date, time: sendTime, audienceId: plan.audienceId });
+          showToast(`${c.name} scheduled for ${SEND_DATE.format(new Date(`${date}T00:00:00`))}, ${sendTime}`);
         }}
         onDelete={(c) => {
           setOpen(null);

@@ -24,8 +24,9 @@ export type ScheduledBroadcast = {
   date: string;
   time: string;
   audienceId: string;
-  /** Chat thread it was set up in — where the island's notice goes back to. */
-  threadId: string;
+  /** Chat thread it was set up in — where the island's notice goes back to.
+   *  None when scheduled straight from the calendar (a toast confirms it). */
+  threadId?: string;
 };
 
 type CampaignsCtx = {
@@ -80,7 +81,7 @@ function CampaignsStore({ children }: { children: ReactNode }) {
         open: (notice) => {
           const id = notice.id.split(":").pop() ?? "";
           const b = scheduled[id];
-          if (b) openThread(b.threadId);
+          if (b?.threadId) openThread(b.threadId);
         },
       }),
     [registerSource, scheduled, openThread],
@@ -90,6 +91,8 @@ function CampaignsStore({ children }: { children: ReactNode }) {
     (campaignId: string, broadcast: ScheduledBroadcast) => {
       setScheduled((prev) => ({ ...prev, [campaignId]: broadcast }));
       setRemoved((prev) => prev.filter((id) => id !== campaignId));
+      // Set up in chat, the island confirms it; from the calendar, a toast does.
+      if (!broadcast.threadId) return;
       push({
         id: `campaigns:scheduled:${campaignId}`,
         source: "campaigns",
