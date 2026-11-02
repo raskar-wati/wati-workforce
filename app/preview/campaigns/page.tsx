@@ -16,7 +16,7 @@ const SEND_DATE = new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "num
 export default function CampaignsPage() {
   const [open, setOpen] = useState<RecommendedCampaign | null>(null);
   const { setUpCampaign } = useAskWatiDrawer();
-  const { remove, schedule, drafts, reviewing, clearReview } = useCampaigns();
+  const { remove, schedule, drafts, reviewing, clearReview, feedback, giveFeedback } = useCampaigns();
   const { showToast } = useToast();
 
   // Back from Save as draft in chat: reopen that recommendation's preview.
@@ -37,6 +37,8 @@ export default function CampaignsPage() {
       <RecommendedCampaignPreview
         campaign={open}
         saved={open ? drafts[open.id] : undefined}
+        feedback={open ? feedback[open.id] : undefined}
+        onFeedback={(c, fb) => giveFeedback(c.id, fb)}
         onClose={() => setOpen(null)}
         onEditWithAi={(c, plan) => {
           setOpen(null);

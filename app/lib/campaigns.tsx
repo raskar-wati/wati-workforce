@@ -35,7 +35,12 @@ export type ScheduledBroadcast = {
  *  with the picks it was edited under (which option, audience, time). */
 export type SavedCampaignDraft = { plan: CampaignPlan; template: TemplateDraft };
 
+/** What the user said about a recommendation. */
+export type RecommendationFeedback = { vote: "up" | "down"; reasons: string[]; note: string };
+
 type CampaignsCtx = {
+  feedback: Record<string, RecommendationFeedback>;
+  giveFeedback: (campaignId: string, feedback: RecommendationFeedback) => void;
   scheduled: Record<string, ScheduledBroadcast>;
   removed: string[];
   drafts: Record<string, SavedCampaignDraft>;
@@ -63,6 +68,7 @@ function CampaignsStore({ children }: { children: ReactNode }) {
   const [removed, setRemoved] = useState<string[]>([]);
   const [drafts, setDrafts] = useState<Record<string, SavedCampaignDraft>>({});
   const [reviewing, setReviewing] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<Record<string, RecommendationFeedback>>({});
   const [hydrated, setHydrated] = useState(false);
   const { push, registerSource } = useNotifications();
   const { openThread } = useAskWatiDrawer();
@@ -75,10 +81,12 @@ function CampaignsStore({ children }: { children: ReactNode }) {
           scheduled?: CampaignsCtx["scheduled"];
           removed?: string[];
           drafts?: CampaignsCtx["drafts"];
+          feedback?: CampaignsCtx["feedback"];
         };
         setScheduled(saved.scheduled ?? {});
         setRemoved(saved.removed ?? []);
         setDrafts(saved.drafts ?? {});
+        setFeedback(saved.feedback ?? {});
       }
     } catch {
       // Corrupt storage — start clean.
@@ -89,11 +97,11 @@ function CampaignsStore({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!hydrated) return;
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ scheduled, removed, drafts }));
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ scheduled, removed, drafts, feedback }));
     } catch {
       // Storage unavailable — session-only.
     }
-  }, [scheduled, removed, drafts, hydrated]);
+  }, [scheduled, removed, drafts, feedback, hydrated]);
 
   useEffect(
     () =>
@@ -140,9 +148,25 @@ function CampaignsStore({ children }: { children: ReactNode }) {
   const openReview = useCallback((campaignId: string) => setReviewing(campaignId), []);
   const clearReview = useCallback(() => setReviewing(null), []);
 
+  const giveFeedback = useCallback((campaignId: string, fb: RecommendationFeedback) => {
+    setFeedback((prev) => ({ ...prev, [campaignId]: fb }));
+  }, []);
+
   const value = useMemo(
-    () => ({ scheduled, removed, drafts, schedule, remove, saveDraft, reviewing, openReview, clearReview }),
-    [scheduled, removed, drafts, schedule, remove, saveDraft, reviewing, openReview, clearReview],
+    () => ({
+      scheduled,
+      removed,
+      drafts,
+      feedback,
+      schedule,
+      remove,
+      saveDraft,
+      giveFeedback,
+      reviewing,
+      openReview,
+      clearReview,
+    }),
+    [scheduled, removed, drafts, feedback, schedule, remove, saveDraft, giveFeedback, reviewing, openReview, clearReview],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

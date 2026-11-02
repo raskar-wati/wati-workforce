@@ -16,9 +16,13 @@ import {
 } from "../../lib/campaigns-data";
 import { CATEGORY_LABEL } from "../../lib/template-draft";
 import { DateChip, FACT_VALUE_LG, FactSection, SelectChip } from "../chat/FactChips";
-import type { SavedCampaignDraft } from "../../lib/campaigns";
+import type {
+  RecommendationFeedback as RecommendationFeedbackValue,
+  SavedCampaignDraft,
+} from "../../lib/campaigns";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { AskWatiIcon } from "../icons/AskWatiIcon";
+import { RecommendationFeedback } from "./RecommendationFeedback";
 import { WhatsAppPhonePreview } from "./WhatsAppPhonePreview";
 
 /**
@@ -33,8 +37,13 @@ export function RecommendedCampaignPreview({
   onApprove,
   onDelete,
   saved,
+  feedback,
+  onFeedback,
 }: {
   campaign: RecommendedCampaign | null;
+  /** Feedback already given on this recommendation, if any. */
+  feedback?: RecommendationFeedbackValue;
+  onFeedback?: (campaign: RecommendedCampaign, feedback: RecommendationFeedbackValue) => void;
   /** The template as last saved from chat, shown in place of its option. */
   saved?: SavedCampaignDraft;
   onClose: () => void;
@@ -91,6 +100,8 @@ export function RecommendedCampaignPreview({
               onApprove={onApprove}
               onDelete={onDelete}
               saved={saved}
+              feedback={feedback}
+              onFeedback={onFeedback}
             />
           </motion.div>
         </motion.div>
@@ -105,9 +116,13 @@ function CampaignPlanForm({
   onApprove,
   onDelete,
   saved,
+  feedback,
+  onFeedback,
 }: {
   campaign: RecommendedCampaign;
   saved?: SavedCampaignDraft;
+  feedback?: RecommendationFeedbackValue;
+  onFeedback?: (campaign: RecommendedCampaign, feedback: RecommendationFeedbackValue) => void;
   onEditWithAi?: (campaign: RecommendedCampaign, plan: CampaignPlan) => void;
   onApprove?: (campaign: RecommendedCampaign, plan: CampaignPlan) => void;
   onDelete?: (campaign: RecommendedCampaign) => void;
@@ -192,7 +207,7 @@ function CampaignPlanForm({
           </FactSection>
         </dl>
 
-        <div className="mt-auto flex items-center justify-end gap-2 pt-10">
+        <div className="mt-auto flex items-center justify-end gap-2 pt-8">
           <button
             type="button"
             onClick={() => onApprove?.(campaign, plan)}
@@ -212,6 +227,10 @@ function CampaignPlanForm({
             <Trash2 size={14} className="translate-y-px" />
             <span className="translate-y-px">Delete</span>
           </button>
+        </div>
+
+        <div className="mt-6 border-t border-wati-border pt-4">
+          <RecommendationFeedback given={feedback} onGive={(fb) => onFeedback?.(campaign, fb)} />
         </div>
       </div>
 
