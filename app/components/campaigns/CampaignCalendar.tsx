@@ -127,10 +127,14 @@ export function CampaignCalendar({
                     type="button"
                     onClick={() => onOpenRecommendation(c as RecommendedCampaign)}
                     title={`Wati recommends: ${c.name}`}
-                    className={`flex min-w-0 items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-[12px] text-[#1e2a8a] transition-colors ${STATUS_STYLE.recommended.chip}`}
+                    className={`flex min-w-0 items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-[12px] text-wati-green-text transition-colors ${STATUS_STYLE.recommended.chip}`}
                   >
                     <AskWatiIcon size={13} className="shrink-0" />
-                    <span className="truncate font-medium">{c.name}</span>
+                    <span className="min-w-0 truncate font-medium">{c.name}</span>
+                    {/* Nothing goes out until the user schedules it. */}
+                    <span className="ml-auto shrink-0 rounded-full bg-white px-1.5 py-px text-[10px] font-medium text-black/60">
+                      Draft
+                    </span>
                   </button>
                 ) : (
                   <div
