@@ -222,7 +222,6 @@ function CampaignPlanForm({
           <TemplateOptionStepper
             index={plan.option}
             count={options.length}
-            note={saved && plan.option === editedIndex ? "Your edit" : undefined}
             onChange={(option) => setPlan({ ...plan, option })}
           />
         )}
@@ -246,13 +245,10 @@ function CampaignPlanForm({
 function TemplateOptionStepper({
   index,
   count,
-  note,
   onChange,
 }: {
   index: number;
   count: number;
-  /** Marks a special option, e.g. "Your edit". */
-  note?: string;
   onChange: (index: number) => void;
 }) {
   const arrow =
@@ -269,7 +265,6 @@ function TemplateOptionStepper({
       </button>
       <p aria-live="polite" className="min-w-[104px] text-center text-[13px] font-medium text-[#0a0a0a]">
         Option {index + 1} of {count}
-        {note && <span className="text-wati-green-text"> · {note}</span>}
       </p>
       <button
         type="button"
