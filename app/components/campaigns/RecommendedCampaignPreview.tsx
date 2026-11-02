@@ -15,6 +15,7 @@ import {
 } from "../../lib/campaigns-data";
 import { CATEGORY_LABEL } from "../../lib/template-draft";
 import { DateChip, FACT_VALUE_LG, FactSection, SelectChip } from "../chat/FactChips";
+import type { SavedCampaignDraft } from "../../lib/campaigns";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { AskWatiIcon } from "../icons/AskWatiIcon";
 import { WhatsAppPhonePreview } from "./WhatsAppPhonePreview";
@@ -30,8 +31,11 @@ export function RecommendedCampaignPreview({
   onEditWithAi,
   onApprove,
   onDelete,
+  saved,
 }: {
   campaign: RecommendedCampaign | null;
+  /** The template as last saved from chat, shown in place of its option. */
+  saved?: SavedCampaignDraft;
   onClose: () => void;
   /** Change the template in the Ask Wati chat before it goes for approval. */
   onEditWithAi?: (campaign: RecommendedCampaign, plan: CampaignPlan) => void;
@@ -85,6 +89,7 @@ export function RecommendedCampaignPreview({
               onEditWithAi={onEditWithAi}
               onApprove={onApprove}
               onDelete={onDelete}
+              saved={saved}
             />
           </motion.div>
         </motion.div>
@@ -98,14 +103,19 @@ function CampaignPlanForm({
   onEditWithAi,
   onApprove,
   onDelete,
+  saved,
 }: {
   campaign: RecommendedCampaign;
+  saved?: SavedCampaignDraft;
   onEditWithAi?: (campaign: RecommendedCampaign, plan: CampaignPlan) => void;
   onApprove?: (campaign: RecommendedCampaign, plan: CampaignPlan) => void;
   onDelete?: (campaign: RecommendedCampaign) => void;
 }) {
-  const [plan, setPlan] = useState(() => planFor(campaign));
-  const options = templateOptions(campaign);
+  const [plan, setPlan] = useState(() => saved?.plan ?? planFor(campaign));
+  // A draft saved from chat stands in for the option it was edited from.
+  const options = templateOptions(campaign).map((t, i) =>
+    saved && saved.plan.option === i ? saved.template : t,
+  );
   const template = options[plan.option] ?? campaign.template;
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const audience = AUDIENCE_SEGMENTS.find((s) => s.id === plan.audienceId) ?? AUDIENCE_SEGMENTS[0];

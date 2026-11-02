@@ -78,6 +78,7 @@ export function TemplateDraftCard({
   onStageChange,
   onSaved,
   onFollowUp,
+  draftOnly = false,
 }: {
   threadId: string;
   draft: TemplateDraft;
@@ -106,6 +107,9 @@ export function TemplateDraftCard({
   /** Hand a next step to the composer. Absent when the next step is
    *  already in the thread (a campaign's broadcast set-up). */
   onFollowUp?: (prompt: string) => void;
+  /** Review ends in Save as draft only, no Submit to Meta (a campaign's
+   *  template, which goes back to the campaign preview). */
+  draftOnly?: boolean;
 }) {
   const { getTemplate, takenNames, saveDraft, submit } = useTemplates();
   const [drafting, setDrafting] = useState(fresh);
@@ -172,6 +176,13 @@ export function TemplateDraftCard({
               Use in a campaign
             </CardCtaChip>
           ) : null
+        ) : reviewing && draftOnly ? (
+          <>
+            <CardCtaChip primary onClick={doSave}>
+              {status === "draft" ? "Update draft" : "Save as draft"}
+            </CardCtaChip>
+            <TextAction onClick={() => onStageChange("editing")}>Keep editing</TextAction>
+          </>
         ) : reviewing ? (
           <>
             <CardCtaChip primary disabled={!canSubmit(checks)} onClick={doSubmit}>

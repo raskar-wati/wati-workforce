@@ -10,6 +10,8 @@ import {
   type ReactNode,
 } from "react";
 import { useAskWatiDrawer } from "./ask-wati-drawer";
+import type { CampaignPlan } from "./campaigns-data";
+import type { TemplateDraft } from "./template-draft";
 import { useNotifications } from "./notifications";
 
 /**
@@ -29,11 +31,22 @@ export type ScheduledBroadcast = {
   threadId?: string;
 };
 
+/** A recommendation's template as edited in chat and saved as a draft,
+ *  with the picks it was edited under (which option, audience, time). */
+export type SavedCampaignDraft = { plan: CampaignPlan; template: TemplateDraft };
+
 type CampaignsCtx = {
   scheduled: Record<string, ScheduledBroadcast>;
   removed: string[];
+  drafts: Record<string, SavedCampaignDraft>;
   schedule: (campaignId: string, broadcast: ScheduledBroadcast) => void;
   remove: (campaignId: string) => void;
+  saveDraft: (campaignId: string, draft: SavedCampaignDraft) => void;
+  /** A recommendation to reopen on the calendar (after Save as draft in
+   *  chat). The Campaigns page opens its preview and clears it. */
+  reviewing: string | null;
+  openReview: (campaignId: string) => void;
+  clearReview: () => void;
 };
 
 const Ctx = createContext<CampaignsCtx | null>(null);
@@ -48,6 +61,8 @@ export function CampaignsProvider({ children }: { children: ReactNode }) {
 function CampaignsStore({ children }: { children: ReactNode }) {
   const [scheduled, setScheduled] = useState<Record<string, ScheduledBroadcast>>({});
   const [removed, setRemoved] = useState<string[]>([]);
+  const [drafts, setDrafts] = useState<Record<string, SavedCampaignDraft>>({});
+  const [reviewing, setReviewing] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const { push, registerSource } = useNotifications();
   const { openThread } = useAskWatiDrawer();
@@ -56,9 +71,14 @@ function CampaignsStore({ children }: { children: ReactNode }) {
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       if (raw) {
-        const saved = JSON.parse(raw) as { scheduled?: CampaignsCtx["scheduled"]; removed?: string[] };
+        const saved = JSON.parse(raw) as {
+          scheduled?: CampaignsCtx["scheduled"];
+          removed?: string[];
+          drafts?: CampaignsCtx["drafts"];
+        };
         setScheduled(saved.scheduled ?? {});
         setRemoved(saved.removed ?? []);
+        setDrafts(saved.drafts ?? {});
       }
     } catch {
       // Corrupt storage — start clean.
@@ -69,11 +89,11 @@ function CampaignsStore({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!hydrated) return;
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ scheduled, removed }));
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ scheduled, removed, drafts }));
     } catch {
       // Storage unavailable — session-only.
     }
-  }, [scheduled, removed, hydrated]);
+  }, [scheduled, removed, drafts, hydrated]);
 
   useEffect(
     () =>
@@ -114,7 +134,16 @@ function CampaignsStore({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const value = useMemo(() => ({ scheduled, removed, schedule, remove }), [scheduled, removed, schedule, remove]);
+  const saveDraft = useCallback((campaignId: string, draft: SavedCampaignDraft) => {
+    setDrafts((prev) => ({ ...prev, [campaignId]: draft }));
+  }, []);
+  const openReview = useCallback((campaignId: string) => setReviewing(campaignId), []);
+  const clearReview = useCallback(() => setReviewing(null), []);
+
+  const value = useMemo(
+    () => ({ scheduled, removed, drafts, schedule, remove, saveDraft, reviewing, openReview, clearReview }),
+    [scheduled, removed, drafts, schedule, remove, saveDraft, reviewing, openReview, clearReview],
+  );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

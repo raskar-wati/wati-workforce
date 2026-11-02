@@ -87,6 +87,7 @@ import {
 import {
   RECOMMENDED_CAMPAIGNS,
   segmentFor,
+  planFor,
   withPlan,
   type CampaignPlan,
   type RecommendedCampaign,
@@ -1242,7 +1243,12 @@ export function ChatArea({
     const recommended = RECOMMENDED_CAMPAIGNS.find((c) => c.id === pendingCampaign.campaignId);
     if (!recommended) return;
     const { plan } = pendingCampaign;
-    const campaign = withPlan(recommended, plan);
+    // Pick up where the last Save as draft left off, for the same option.
+    const saved = campaigns.drafts[recommended.id];
+    const fromSaved = saved && saved.plan.option === (plan?.option ?? 0);
+    const campaign = fromSaved
+      ? { ...withPlan(recommended, plan), template: saved.template }
+      : withPlan(recommended, plan);
     const threadId = createThread(campaign.name);
     setView("chat");
     setMode(null);
@@ -2124,8 +2130,22 @@ export function ChatArea({
                       onStageChange={(stage) =>
                         updateTemplateCard(activeThreadId, m.id, { stage })
                       }
+                      draftOnly={Boolean(m.campaignId)}
                       onSaved={(templateId, status) => {
                         updateTemplateCard(activeThreadId, m.id, { templateId });
+                        // A campaign's template saved as a draft goes back to
+                        // the campaign's preview on the calendar.
+                        const rec = RECOMMENDED_CAMPAIGNS.find((c) => c.id === m.campaignId);
+                        if (rec && status === "draft") {
+                          campaigns.saveDraft(rec.id, {
+                            plan: m.campaignPlan ?? planFor(rec),
+                            template: m.draft,
+                          });
+                          campaigns.openReview(rec.id);
+                          closeDrawer();
+                          if (pathname !== CAMPAIGNS_PAGE) router.push(CAMPAIGNS_PAGE);
+                          return;
+                        }
                         // A recommended campaign's template, once submitted,
                         // moves on to its broadcast set-up (once per thread).
                         const recommended = RECOMMENDED_CAMPAIGNS.find((c) => c.id === m.campaignId);
