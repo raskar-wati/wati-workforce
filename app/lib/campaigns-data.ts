@@ -23,8 +23,16 @@ export type RecommendedCampaign = CalendarCampaign & {
    *  never other businesses' data. */
   reason: string;
   audience: { name: string; contacts: number };
+  /** The template Wati leads with. */
   template: TemplateDraft;
+  /** Other takes on the same message, so up to 3 options in all. */
+  alternatives?: TemplateDraft[];
 };
+
+/** Every template option for a recommendation, Wati's pick first. */
+export function templateOptions(c: RecommendedCampaign): TemplateDraft[] {
+  return [c.template, ...(c.alternatives ?? [])].slice(0, 3);
+}
 
 const sent = (date: string, names: string[], more = 0): CalendarCampaign[] => [
   ...names.map((name, i) => ({ id: `${date}-s${i}`, name, date, status: "sent" as const })),
@@ -95,6 +103,38 @@ export const RECOMMENDED_CAMPAIGNS: RecommendedCampaign[] = [
       ],
       samples: { name: "Priya", end_date: "31 Oct" },
     }),
+    alternatives: [
+      recommended("Midweek new arrivals at Svarnim", "promotion", {
+        purpose: "promotion",
+        name: "midweek_new_arrivals",
+        category: "marketing",
+        language: "English",
+        header: null,
+        body:
+          "Hi {{name}},\n\nFresh from our karigars this week: lightweight gold earrings and stackable rings, made for everyday wear.\n\nTake 15% off any new arrival until {{end_date}} with code MIDWEEK15.",
+        footer: "Reply STOP to unsubscribe",
+        buttons: [
+          { kind: "url", text: "See new arrivals", url: "https://svarnim.in/new" },
+          { kind: "copy-code", code: "MIDWEEK15" },
+        ],
+        samples: { name: "Priya", end_date: "31 Oct" },
+      }),
+      recommended("Short midweek offer from Svarnim", "promotion", {
+        purpose: "promotion",
+        name: "midweek_flash_offer",
+        category: "marketing",
+        language: "English",
+        header: null,
+        body:
+          "Hi {{name}}, a quick midweek offer: 15% off all Svarnim jewellery, today until {{end_date}}. Code MIDWEEK15.",
+        footer: "Reply STOP to unsubscribe",
+        buttons: [
+          { kind: "url", text: "Shop now", url: "https://svarnim.in/collection" },
+          { kind: "copy-code", code: "MIDWEEK15" },
+        ],
+        samples: { name: "Priya", end_date: "31 Oct" },
+      }),
+    ],
   },
   {
     id: "rec-rediscover",
@@ -120,6 +160,38 @@ export const RECOMMENDED_CAMPAIGNS: RecommendedCampaign[] = [
       ],
       samples: { name: "Ananya", end_date: "5 Nov" },
     }),
+    alternatives: [
+      recommended("Personal note to lapsed Svarnim customers", "promotion", {
+        purpose: "promotion",
+        name: "we_miss_you_svarnim",
+        category: "marketing",
+        language: "English",
+        header: null,
+        body:
+          "Hi {{name}},\n\nWe've missed you at Svarnim. If there's a piece you've had your eye on, now's a good time: ₹500 off with code COMEBACK500 until {{end_date}}.\n\nReply anytime if you'd like help choosing.",
+        footer: "Reply STOP to unsubscribe",
+        buttons: [
+          { kind: "url", text: "Browse Svarnim", url: "https://svarnim.in/collection" },
+          { kind: "quick-reply", text: "Help me choose" },
+        ],
+        samples: { name: "Ananya", end_date: "5 Nov" },
+      }),
+      recommended("Festive season win-back for Svarnim", "promotion", {
+        purpose: "promotion",
+        name: "festive_comeback_svarnim",
+        category: "marketing",
+        language: "English",
+        header: null,
+        body:
+          "Hi {{name}},\n\nThe festive collection is in at Svarnim. Come back for ₹500 off your next order with code COMEBACK500, valid until {{end_date}}.",
+        footer: "Reply STOP to unsubscribe",
+        buttons: [
+          { kind: "url", text: "Shop festive", url: "https://svarnim.in/festive" },
+          { kind: "quick-reply", text: "Not interested" },
+        ],
+        samples: { name: "Ananya", end_date: "5 Nov" },
+      }),
+    ],
   },
   {
     id: "rec-dhanteras",
@@ -145,6 +217,38 @@ export const RECOMMENDED_CAMPAIGNS: RecommendedCampaign[] = [
       ],
       samples: { name: "Rohan", end_date: "7 Nov" },
     }),
+    alternatives: [
+      recommended("Dhanteras gold coin reservation at Svarnim", "promotion", {
+        purpose: "promotion",
+        name: "dhanteras_coin_reserve",
+        category: "marketing",
+        language: "English",
+        header: null,
+        body:
+          "Hi {{name}},\n\nReserve your Dhanteras gold coin at Svarnim today and pick it up on the day. 24K, hallmarked, from 1g upwards.\n\nReservations close on {{end_date}}.",
+        footer: "Reply STOP to unsubscribe",
+        buttons: [
+          { kind: "url", text: "Reserve a coin", url: "https://svarnim.in/dhanteras/coins" },
+          { kind: "quick-reply", text: "Talk to us" },
+        ],
+        samples: { name: "Rohan", end_date: "7 Nov" },
+      }),
+      recommended("Dhanteras jewellery preview at Svarnim", "promotion", {
+        purpose: "promotion",
+        name: "dhanteras_jewellery_preview",
+        category: "marketing",
+        language: "English",
+        header: null,
+        body:
+          "Hi {{name}},\n\nA first look at our Dhanteras jewellery: temple necklaces, kadas and bridal sets, all in 22K gold.\n\nVisit the store or reserve online before {{end_date}}.",
+        footer: "Reply STOP to unsubscribe",
+        buttons: [
+          { kind: "url", text: "See the collection", url: "https://svarnim.in/dhanteras" },
+          { kind: "quick-reply", text: "Book a store visit" },
+        ],
+        samples: { name: "Rohan", end_date: "7 Nov" },
+      }),
+    ],
   },
 ];
 
@@ -180,11 +284,12 @@ export const SEND_TIMES = Array.from({ length: 29 }, (_, i) => {
   return `${((h + 11) % 12) + 1}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
 });
 
-/** When and to whom, as picked on the recommendation before going to chat. */
-export type CampaignPlan = { audienceId: string; date: string; time: string };
+/** What was picked on the recommendation before going to chat: template
+ *  option (index into templateOptions), audience and send time. */
+export type CampaignPlan = { option: number; audienceId: string; date: string; time: string };
 
 export function planFor(c: RecommendedCampaign): CampaignPlan {
-  return { audienceId: segmentFor(c.audience.name).id, date: c.date, time: c.sendTime };
+  return { option: 0, audienceId: segmentFor(c.audience.name).id, date: c.date, time: c.sendTime };
 }
 
 /** The recommendation with the user's picks applied. */
@@ -193,6 +298,7 @@ export function withPlan(c: RecommendedCampaign, plan?: CampaignPlan): Recommend
   const segment = AUDIENCE_SEGMENTS.find((s) => s.id === plan.audienceId) ?? segmentFor(c.audience.name);
   return {
     ...c,
+    template: templateOptions(c)[plan.option] ?? c.template,
     date: plan.date,
     sendTime: plan.time,
     audience: { name: segment.name, contacts: segment.contacts },

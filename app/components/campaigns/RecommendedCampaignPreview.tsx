@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { ChevronDown, Megaphone, Trash2, X } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Megaphone, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
   AUDIENCE_SEGMENTS,
@@ -9,6 +9,7 @@ import {
   DAILY_MESSAGING_LIMIT,
   SEND_TIMES,
   planFor,
+  templateOptions,
   type CampaignPlan,
   type RecommendedCampaign,
 } from "../../lib/campaigns-data";
@@ -104,6 +105,8 @@ function CampaignPlanForm({
   onDelete?: (campaign: RecommendedCampaign) => void;
 }) {
   const [plan, setPlan] = useState(() => planFor(campaign));
+  const options = templateOptions(campaign);
+  const template = options[plan.option] ?? campaign.template;
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const audience = AUDIENCE_SEGMENTS.find((s) => s.id === plan.audienceId) ?? AUDIENCE_SEGMENTS[0];
   const overLimit = audience.contacts > DAILY_MESSAGING_LIMIT;
@@ -170,9 +173,9 @@ function CampaignPlanForm({
           <FactSection
             size="lg"
             label="Template"
-            detail={`${CATEGORY_LABEL[campaign.template.category]} · ${campaign.template.language}`}
+            detail={`${CATEGORY_LABEL[template.category]} · ${template.language}`}
           >
-            <span className="text-[16px] font-medium text-[#0a0a0a]">{campaign.template.name}</span>
+            <span className="text-[16px] font-medium text-[#0a0a0a]">{template.name}</span>
           </FactSection>
         </dl>
 
@@ -198,8 +201,16 @@ function CampaignPlanForm({
       </div>
 
       <div className="flex shrink-0 flex-col items-center gap-2 rounded-r-2xl bg-[#f7f7f8] px-8 pb-8 pt-6">
-        <p className="text-[13px] font-medium text-black/50">Preview</p>
-        <WhatsAppPhonePreview draft={campaign.template} />
+        {options.length > 1 ? (
+          <TemplateOptionStepper
+            index={plan.option}
+            count={options.length}
+            onChange={(option) => setPlan({ ...plan, option })}
+          />
+        ) : (
+          <p className="text-[13px] font-medium text-black/50">Preview</p>
+        )}
+        <WhatsAppPhonePreview draft={template} />
       </div>
 
       <ConfirmDialog
@@ -212,6 +223,43 @@ function CampaignPlanForm({
         {campaign.name} will be removed from your calendar.
       </ConfirmDialog>
     </>
+  );
+}
+
+/** Steps through Wati's template options (up to 3), wrapping at the ends. */
+function TemplateOptionStepper({
+  index,
+  count,
+  onChange,
+}: {
+  index: number;
+  count: number;
+  onChange: (index: number) => void;
+}) {
+  const arrow =
+    "flex h-6 w-6 items-center justify-center rounded-md text-black/55 hover:bg-black/[0.06] hover:text-black/85";
+  return (
+    <div className="flex items-center gap-1.5">
+      <button
+        type="button"
+        onClick={() => onChange((index + count - 1) % count)}
+        aria-label="Previous template option"
+        className={arrow}
+      >
+        <ChevronLeft size={15} />
+      </button>
+      <p aria-live="polite" className="min-w-[96px] text-center text-[13px] font-medium text-black/60">
+        Option {index + 1} of {count}
+      </p>
+      <button
+        type="button"
+        onClick={() => onChange((index + 1) % count)}
+        aria-label="Next template option"
+        className={arrow}
+      >
+        <ChevronRight size={15} />
+      </button>
+    </div>
   );
 }
 
