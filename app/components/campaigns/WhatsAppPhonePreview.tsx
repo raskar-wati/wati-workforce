@@ -31,6 +31,7 @@ import {
   type ButtonKind,
   type TemplateDraft,
 } from "../../lib/template-draft";
+import { WatiMark } from "../WatiLogo";
 
 const BUTTON_ICON: Record<ButtonKind, LucideIcon> = {
   url: ExternalLink,
@@ -69,9 +70,7 @@ export function WhatsAppPhonePreview({
       {/* Chat header */}
       <div className="flex items-center gap-2 border-b border-black/[0.06] px-3 pb-2">
         <ChevronLeft size={18} className="text-black/70" />
-        <span className="flex h-6 w-6 items-center justify-center rounded-md bg-wati-green text-[11px] font-bold text-white">
-          W
-        </span>
+        <WatiMark size={28} className="shrink-0" />
         <span className="text-[14px] font-semibold text-[#111b21]">{businessName}</span>
         <BadgeCheck size={14} className="fill-[#1d9bf0] text-white" />
         <span className="ml-auto flex items-center gap-2 text-black/60">
