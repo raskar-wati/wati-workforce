@@ -13,7 +13,7 @@ import {
   type RecommendedCampaign,
 } from "../../lib/campaigns-data";
 import { CATEGORY_LABEL } from "../../lib/template-draft";
-import { DateChip, FACT_VALUE, FactSection, SelectChip } from "../chat/FactChips";
+import { DateChip, FACT_VALUE_LG, FactSection, SelectChip } from "../chat/FactChips";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { AskWatiIcon } from "../icons/AskWatiIcon";
 import { TemplateMessagesIcon } from "../icons/TemplateMessagesIcon";
@@ -128,6 +128,7 @@ function CampaignPlanForm({
 
         <dl className="mt-7 flex flex-col gap-5 border-t border-wati-border pt-6">
           <FactSection
+            size="lg"
             label="Audience"
             detail={
               <>
@@ -146,16 +147,16 @@ function CampaignPlanForm({
               value={plan.audienceId}
               options={AUDIENCE_SEGMENTS.map((s) => ({ value: s.id, label: s.name }))}
               onChange={(audienceId) => setPlan({ ...plan, audienceId })}
-              className={FACT_VALUE}
+              className={FACT_VALUE_LG}
             />
           </FactSection>
-          <FactSection label="Send">
+          <FactSection size="lg" label="Send">
             <DateChip
               label="Send date"
               value={plan.date}
               min={CALENDAR_TODAY}
               onChange={(date) => setPlan({ ...plan, date })}
-              className={FACT_VALUE}
+              className={FACT_VALUE_LG}
               showIcon={false}
             />
             at
@@ -164,15 +165,16 @@ function CampaignPlanForm({
               value={plan.time}
               options={times.map((t) => ({ value: t, label: t }))}
               onChange={(time) => setPlan({ ...plan, time })}
-              className={FACT_VALUE}
+              className={FACT_VALUE_LG}
             />
           </FactSection>
           <FactSection
+            size="lg"
             label="Template"
             detail={`${CATEGORY_LABEL[campaign.template.category]} · ${campaign.template.language}`}
           >
-            <span className="flex items-center gap-1.5 text-[14px] font-medium text-[#0a0a0a]">
-              <TemplateMessagesIcon size={15} className="text-black/50" />
+            <span className="flex items-center gap-1.5 text-[16px] font-medium text-[#0a0a0a]">
+              <TemplateMessagesIcon size={16} className="text-black/50" />
               {campaign.template.name}
             </span>
           </FactSection>

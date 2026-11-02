@@ -13,6 +13,9 @@ import { useState, type ReactNode } from "react";
 export const FACT_VALUE =
   "-mx-1 inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-[14px] font-medium text-[#0a0a0a] hover:bg-black/[0.04]";
 
+/** FACT_VALUE at 16px, for roomier surfaces than a chat card (modals). */
+export const FACT_VALUE_LG = FACT_VALUE.replace("text-[14px]", "text-[16px]");
+
 export const FACT_CHIP =
   "inline-flex items-center gap-1 rounded-full bg-black/[0.04] px-2.5 py-1 text-[12px] text-black/70 hover:bg-black/[0.07]";
 
@@ -150,16 +153,23 @@ export function EditableTitle({
 export function FactSection({
   label,
   detail,
+  size = "md",
   children,
 }: {
   label: string;
   detail?: ReactNode;
+  /** "lg" sets values at 16px, for modals; pair with FACT_VALUE_LG. */
+  size?: "md" | "lg";
   children: ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-1">
       <dt className="text-[12px] font-medium text-black/65">{label}</dt>
-      <dd className="flex flex-wrap items-center gap-x-1 text-[14px] text-black/55">{children}</dd>
+      <dd
+        className={`flex flex-wrap items-center gap-x-1 text-black/55 ${size === "lg" ? "text-[16px]" : "text-[14px]"}`}
+      >
+        {children}
+      </dd>
       {detail && <p className="text-[12px] text-black/55">{detail}</p>}
     </div>
   );
