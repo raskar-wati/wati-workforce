@@ -113,7 +113,7 @@ function CampaignPlanForm({
   return (
     <>
       <div className="flex min-w-0 flex-1 flex-col p-8">
-        <p className="flex items-center gap-1.5 text-[12px] font-medium text-[#1e2a8a]">
+        <p className="flex items-center gap-1.5 text-[12px] font-medium text-wati-green-text">
           <AskWatiIcon size={14} />
           Wati recommends
         </p>
