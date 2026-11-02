@@ -16,7 +16,6 @@ import { CATEGORY_LABEL } from "../../lib/template-draft";
 import { DateChip, FACT_VALUE_LG, FactSection, SelectChip } from "../chat/FactChips";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { AskWatiIcon } from "../icons/AskWatiIcon";
-import { TemplateMessagesIcon } from "../icons/TemplateMessagesIcon";
 import { WhatsAppPhonePreview } from "./WhatsAppPhonePreview";
 
 /**
@@ -173,10 +172,7 @@ function CampaignPlanForm({
             label="Template"
             detail={`${CATEGORY_LABEL[campaign.template.category]} · ${campaign.template.language}`}
           >
-            <span className="flex items-center gap-1.5 text-[16px] font-medium text-[#0a0a0a]">
-              <TemplateMessagesIcon size={16} className="text-black/50" />
-              {campaign.template.name}
-            </span>
+            <span className="text-[16px] font-medium text-[#0a0a0a]">{campaign.template.name}</span>
           </FactSection>
         </dl>
 
