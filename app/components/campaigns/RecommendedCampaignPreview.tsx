@@ -116,6 +116,7 @@ function CampaignPlanForm({
           {campaign.name}
         </h2>
         <p className="mt-2.5 text-[14px] leading-[21px] text-black/75">{campaign.reason}</p>
+        <p className="mt-1.5 text-[12px] text-black/50">Based on your campaign history</p>
 
         <dl className="mt-7 flex flex-col gap-5 border-t border-wati-border pt-6">
           <FactSection

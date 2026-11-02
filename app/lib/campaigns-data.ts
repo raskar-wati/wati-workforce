@@ -19,7 +19,8 @@ export type CalendarCampaign = {
 export type RecommendedCampaign = CalendarCampaign & {
   status: "recommended";
   sendTime: string;
-  /** Why Wati suggests it, grounded in the account's past sends. */
+  /** Why Wati suggests it, from this account's own campaign history only,
+   *  never other businesses' data. */
   reason: string;
   audience: { name: string; contacts: number };
   template: TemplateDraft;
@@ -127,7 +128,7 @@ export const RECOMMENDED_CAMPAIGNS: RecommendedCampaign[] = [
     status: "recommended",
     sendTime: "10:00 AM",
     reason:
-      "Gold coin enquiries doubled in the week before Dhanteras last year. Sending early catches buyers before they compare prices.",
+      "Your Dhanteras campaign last year went out 5 days early and got twice the replies of your usual offers. The same timing works again this year.",
     audience: { name: "Gold buyers", contacts: 860 },
     template: recommended("Dhanteras gold coin preview for Svarnim", "promotion", {
       purpose: "promotion",
