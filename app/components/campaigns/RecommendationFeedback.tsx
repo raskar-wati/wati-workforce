@@ -61,7 +61,7 @@ export function RecommendationFeedback({
 
   const thumb = "flex h-7 w-7 items-center justify-center rounded-md hover:bg-black/[0.05]";
   const tone = (on: boolean) =>
-    on ? "bg-wati-green-soft text-wati-green-text" : "text-black/50 hover:text-black/80";
+    on ? "text-black/60" : "text-black/50 hover:text-black/80";
   const toggle = (r: string) =>
     setReasons((prev) => (prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r]));
 
