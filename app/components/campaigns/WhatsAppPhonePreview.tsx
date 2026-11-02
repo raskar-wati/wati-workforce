@@ -86,6 +86,16 @@ export function WhatsAppPhonePreview({
           This business uses a secure service from Meta to manage this chat. Tap to learn more
         </p>
         <div className="overflow-hidden rounded-xl bg-white">
+          {draft.header?.kind === "image" && draft.header.previewUrl && (
+            <div className="p-1 pb-0">
+              {/* eslint-disable-next-line @next/next/no-img-element -- local asset or data URL */}
+              <img
+                src={draft.header.previewUrl}
+                alt={draft.header.fileName ?? "Header image"}
+                className="aspect-[1.91/1] w-full rounded-lg object-cover"
+              />
+            </div>
+          )}
           {draft.header?.kind === "text" && (
             <p className="px-3 pt-3 text-[14px] font-semibold text-[#111b21]">{draft.header.text}</p>
           )}

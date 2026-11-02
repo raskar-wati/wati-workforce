@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 314">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5a1220"/><stop offset="1" stop-color="#2b0710"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.55" r="0.5">
+      <stop offset="0" stop-color="#f6c453" stop-opacity="0.45"/><stop offset="1" stop-color="#f6c453" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff1b8"/><stop offset="0.45" stop-color="#f2c14e"/><stop offset="1" stop-color="#b9821c"/>
+    </linearGradient>
+    <linearGradient id="edge" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#d9a233"/><stop offset="1" stop-color="#8f6213"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="314" fill="url(#bg)"/>
+  <rect width="600" height="314" fill="url(#glow)"/>
+  <g fill="#f6c453" opacity="0.5">
+    <circle cx="70" cy="60" r="2"/><circle cx="120" cy="250" r="1.5"/><circle cx="520" cy="70" r="2.5"/><circle cx="555" cy="230" r="1.5"/><circle cx="460" cy="40" r="1.5"/><circle cx="40" cy="190" r="1.5"/>
+  </g>
+  <!-- coin stack -->
+  <g transform="translate(205 150)">
+    <g><ellipse cx="0" cy="96" rx="78" ry="20" fill="url(#edge)"/><rect x="-78" y="80" width="156" height="16" fill="url(#edge)"/><ellipse cx="0" cy="80" rx="78" ry="20" fill="url(#gold)"/></g>
+    <g><ellipse cx="0" cy="72" rx="78" ry="20" fill="url(#edge)"/><rect x="-78" y="56" width="156" height="16" fill="url(#edge)"/><ellipse cx="0" cy="56" rx="78" ry="20" fill="url(#gold)"/></g>
+    <g><ellipse cx="0" cy="48" rx="78" ry="20" fill="url(#edge)"/><rect x="-78" y="32" width="156" height="16" fill="url(#edge)"/><ellipse cx="0" cy="32" rx="78" ry="20" fill="url(#gold)"/><ellipse cx="0" cy="32" rx="58" ry="14" fill="none" stroke="#b9821c" stroke-width="2" opacity="0.6"/></g>
+  </g>
+  <!-- standing coin -->
+  <g transform="translate(395 150)">
+    <circle r="92" fill="url(#edge)"/>
+    <circle r="86" fill="url(#gold)"/>
+    <circle r="70" fill="none" stroke="#b9821c" stroke-width="3" opacity="0.7"/>
+    <!-- diya -->
+    <path d="M-34 14 Q0 44 34 14 Z" fill="#b9821c"/>
+    <path d="M0 -36 C14 -16 10 0 0 6 C-10 0 -14 -16 0 -36 Z" fill="#fff4cf"/>
+    <path d="M0 -24 C6 -12 4 -2 0 2 C-4 -2 -6 -12 0 -24 Z" fill="#e8892b"/>
+  </g>
+</svg>

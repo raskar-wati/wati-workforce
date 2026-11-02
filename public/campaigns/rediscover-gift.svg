@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 314">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1d3b36"/><stop offset="1" stop-color="#0f2420"/>
+    </linearGradient>
+    <linearGradient id="box" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f4e6d4"/><stop offset="1" stop-color="#dcc5a8"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fbe3a1"/><stop offset="0.5" stop-color="#d9a441"/><stop offset="1" stop-color="#a8741c"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="314" fill="url(#bg)"/>
+  <g fill="#d9a441" opacity="0.45"><circle cx="90" cy="70" r="2"/><circle cx="510" cy="60" r="2"/><circle cx="540" cy="240" r="1.5"/><circle cx="60" cy="230" r="1.5"/></g>
+  <!-- open jewellery box -->
+  <g transform="translate(300 170)">
+    <path d="M-120 -10 L120 -10 L105 -90 L-105 -90 Z" fill="#e7d4bb"/>
+    <path d="M-100 -82 L100 -82 L92 -22 L-92 -22 Z" fill="#7a1f2b"/>
+    <rect x="-120" y="-10" width="240" height="96" rx="8" fill="url(#box)"/>
+    <rect x="-104" y="-4" width="208" height="30" rx="6" fill="#7a1f2b"/>
+    <!-- necklace -->
+    <path d="M-60 -70 Q0 0 60 -70" fill="none" stroke="url(#gold)" stroke-width="5"/>
+    <circle cx="0" cy="-36" r="9" fill="url(#gold)"/>
+    <!-- ring in slot -->
+    <ellipse cx="0" cy="11" rx="20" ry="12" fill="none" stroke="url(#gold)" stroke-width="5"/>
+    <rect x="-28" y="40" width="56" height="10" rx="5" fill="url(#gold)"/>
+  </g>
+</svg>
