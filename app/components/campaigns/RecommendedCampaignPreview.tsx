@@ -14,6 +14,7 @@ import {
 } from "../../lib/campaigns-data";
 import { CATEGORY_LABEL } from "../../lib/template-draft";
 import { DateChip, FACT_VALUE, FactSection, SelectChip } from "../chat/FactChips";
+import { ConfirmDialog } from "../ConfirmDialog";
 import { AskWatiIcon } from "../icons/AskWatiIcon";
 import { TemplateMessagesIcon } from "../icons/TemplateMessagesIcon";
 import { WhatsAppPhonePreview } from "./WhatsAppPhonePreview";
@@ -104,6 +105,7 @@ function CampaignPlanForm({
   onDelete?: (campaign: RecommendedCampaign) => void;
 }) {
   const [plan, setPlan] = useState(() => planFor(campaign));
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const audience = AUDIENCE_SEGMENTS.find((s) => s.id === plan.audienceId) ?? AUDIENCE_SEGMENTS[0];
   const overLimit = audience.contacts > DAILY_MESSAGING_LIMIT;
   const times = SEND_TIMES.includes(plan.time) ? SEND_TIMES : [plan.time, ...SEND_TIMES];
@@ -179,9 +181,9 @@ function CampaignPlanForm({
         <div className="mt-auto flex items-center justify-end gap-2 pt-10">
           <button
             type="button"
-            onClick={() => onDelete?.(campaign)}
+            onClick={() => setConfirmingDelete(true)}
             title="Delete and remove from calendar"
-            className="mr-auto flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-medium text-[#d92d20] hover:bg-[#fef3f2]"
+            className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-medium text-black/55 hover:bg-black/[0.04] hover:text-black/80"
           >
             <Trash2 size={14} />
             Delete
@@ -201,6 +203,16 @@ function CampaignPlanForm({
         <p className="text-[13px] font-medium text-black/50">Preview</p>
         <WhatsAppPhonePreview draft={campaign.template} />
       </div>
+
+      <ConfirmDialog
+        open={confirmingDelete}
+        title="Delete this campaign?"
+        confirmLabel="Delete"
+        onCancel={() => setConfirmingDelete(false)}
+        onConfirm={() => onDelete?.(campaign)}
+      >
+        {campaign.name} will be removed from your calendar.
+      </ConfirmDialog>
     </>
   );
 }
