@@ -42,8 +42,11 @@ export function SelectChip({
   return (
     <label className={`${className} relative cursor-pointer`}>
       {icon}
-      {prefix && <span className="text-black/45">{prefix}</span>}
-      {options.find((o) => o.value === value)?.label ?? value}
+      {prefix && <span className="text-black/50">{prefix}</span>}
+      {/* Beside a muted name, the value goes full strength so it leads. */}
+      <span className={prefix ? "font-medium text-[#0a0a0a]" : undefined}>
+        {options.find((o) => o.value === value)?.label ?? value}
+      </span>
       <ChevronDown size={11} className="text-black/40" />
       <select
         aria-label={label}
