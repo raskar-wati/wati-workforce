@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { Check, ThumbsDown, ThumbsUp } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { RecommendationFeedback as Feedback } from "../../lib/campaigns";
 
 /** Why a recommendation missed, offered as one-tap reasons. */
@@ -10,8 +10,9 @@ const REASONS = ["Wrong timing", "Wrong audience", "Template doesn't fit", "Not 
 
 /**
  * "Was this recommendation helpful?" under a Wati recommendation. Thumbs up
- * is thanked at once; thumbs down asks why (reason chips, optional note)
- * before it's sent. Once given, it shows as shared.
+ * is thanked at once; thumbs down asks why (reason chips, optional note) in
+ * a popover above the row, so the modal doesn't grow. Once given, it shows
+ * as shared.
  */
 export function RecommendationFeedback({
   given,
@@ -23,6 +24,15 @@ export function RecommendationFeedback({
   const [asking, setAsking] = useState(false);
   const [reasons, setReasons] = useState<string[]>([]);
   const [note, setNote] = useState("");
+  const rootRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!asking) return;
+    const close = (e: MouseEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) setAsking(false);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [asking]);
 
   if (given) {
     return (
@@ -41,7 +51,7 @@ export function RecommendationFeedback({
     setReasons((prev) => (prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r]));
 
   return (
-    <div className="flex flex-col gap-3">
+    <div ref={rootRef} className="relative">
       <div className="flex items-center gap-1">
         <span className="mr-1 text-[12px] text-black/55">Was this recommendation helpful?</span>
         <button
@@ -65,13 +75,15 @@ export function RecommendationFeedback({
       <AnimatePresence initial={false}>
         {asking && (
           <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.18 }}
-            className="overflow-hidden"
+            role="dialog"
+            aria-label="Why wasn't it helpful?"
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 4 }}
+            transition={{ duration: 0.15 }}
+            className="absolute bottom-full left-0 z-20 mb-2 w-[340px]"
           >
-            <div className="flex flex-col gap-2.5 rounded-lg bg-black/[0.03] p-3">
+            <div className="flex flex-col gap-2.5 rounded-xl border border-wati-border bg-white p-3.5 shadow-[0_12px_32px_rgba(0,0,0,0.14)]">
               <p className="text-[12px] font-medium text-black/70">What missed?</p>
               <div className="flex flex-wrap gap-1.5">
                 {REASONS.map((r) => {
