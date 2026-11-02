@@ -152,6 +152,8 @@ export function EditableTitle({
           if (e.key === "Enter") e.currentTarget.blur();
           if (e.key === "Escape") setEditing(false);
         }}
+        // Typing replaces the name; arrow keys still allow small edits.
+        onFocus={(e) => e.currentTarget.select()}
         aria-label={label}
         className="-mx-1 w-full max-w-[320px] rounded-md border border-[#1570EF] bg-white px-1 text-[#0a0a0a] outline-none [font:inherit]"
       />

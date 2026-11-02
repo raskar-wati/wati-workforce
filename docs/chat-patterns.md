@@ -93,7 +93,8 @@ itself, and Wati offers up to 3 template options to step through
 "Schedule campaign" schedules it straight from the page, confirmed by a
 toast (top right, 5 s), with no chat. A campaign's template card ends in
 "Save as draft" only (no Submit to Meta); saving closes the chat and reopens
-the recommendation's preview with the edited template in place of its option. Whatever is
+the recommendation's preview on the user's edit, added after Wati's options
+("Option 4 of 4 · Your edit"). Editing that option again picks up the draft. Whatever is
 decided in chat writes back to the page (here the calendar) through an
 app-wide store.
 - Seen in: Campaigns (recommended broadcast → template card → broadcast card)

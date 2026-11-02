@@ -9,6 +9,7 @@ import {
   DAILY_MESSAGING_LIMIT,
   SEND_TIMES,
   planFor,
+  editedOptionIndex,
   templateOptions,
   type CampaignPlan,
   type RecommendedCampaign,
@@ -111,11 +112,13 @@ function CampaignPlanForm({
   onApprove?: (campaign: RecommendedCampaign, plan: CampaignPlan) => void;
   onDelete?: (campaign: RecommendedCampaign) => void;
 }) {
-  const [plan, setPlan] = useState(() => saved?.plan ?? planFor(campaign));
-  // A draft saved from chat stands in for the option it was edited from.
-  const options = templateOptions(campaign).map((t, i) =>
-    saved && saved.plan.option === i ? saved.template : t,
+  // The user's edit, saved from chat, joins Wati's options as the last one
+  // and opens by default.
+  const editedIndex = editedOptionIndex(campaign);
+  const [plan, setPlan] = useState(() =>
+    saved ? { ...saved.plan, option: editedIndex } : planFor(campaign),
   );
+  const options = saved ? [...templateOptions(campaign), saved.template] : templateOptions(campaign);
   const template = options[plan.option] ?? campaign.template;
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const audience = AUDIENCE_SEGMENTS.find((s) => s.id === plan.audienceId) ?? AUDIENCE_SEGMENTS[0];
@@ -219,6 +222,7 @@ function CampaignPlanForm({
           <TemplateOptionStepper
             index={plan.option}
             count={options.length}
+            note={saved && plan.option === editedIndex ? "Your edit" : undefined}
             onChange={(option) => setPlan({ ...plan, option })}
           />
         )}
@@ -237,14 +241,18 @@ function CampaignPlanForm({
   );
 }
 
-/** Steps through Wati's template options (up to 3), wrapping at the ends. */
+/** Steps through the template options (Wati's up to 3, plus the user's
+ *  saved edit), wrapping at the ends. */
 function TemplateOptionStepper({
   index,
   count,
+  note,
   onChange,
 }: {
   index: number;
   count: number;
+  /** Marks a special option, e.g. "Your edit". */
+  note?: string;
   onChange: (index: number) => void;
 }) {
   const arrow =
@@ -261,6 +269,7 @@ function TemplateOptionStepper({
       </button>
       <p aria-live="polite" className="min-w-[104px] text-center text-[13px] font-medium text-[#0a0a0a]">
         Option {index + 1} of {count}
+        {note && <span className="text-wati-green-text"> · {note}</span>}
       </p>
       <button
         type="button"

@@ -87,6 +87,7 @@ import {
 import {
   RECOMMENDED_CAMPAIGNS,
   segmentFor,
+  editedOptionIndex,
   planFor,
   withPlan,
   type CampaignPlan,
@@ -1243,9 +1244,10 @@ export function ChatArea({
     const recommended = RECOMMENDED_CAMPAIGNS.find((c) => c.id === pendingCampaign.campaignId);
     if (!recommended) return;
     const { plan } = pendingCampaign;
-    // Pick up where the last Save as draft left off, for the same option.
+    // Editing the user's own saved draft (the option after Wati's) picks up
+    // where the last Save as draft left off.
     const saved = campaigns.drafts[recommended.id];
-    const fromSaved = saved && saved.plan.option === (plan?.option ?? 0);
+    const fromSaved = saved && plan?.option === editedOptionIndex(recommended);
     const campaign = fromSaved
       ? { ...withPlan(recommended, plan), template: saved.template }
       : withPlan(recommended, plan);

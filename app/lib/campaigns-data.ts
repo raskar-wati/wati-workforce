@@ -34,6 +34,11 @@ export function templateOptions(c: RecommendedCampaign): TemplateDraft[] {
   return [c.template, ...(c.alternatives ?? [])].slice(0, 3);
 }
 
+/** Where the user's own edit (saved from chat) sits: after Wati's options. */
+export function editedOptionIndex(c: RecommendedCampaign): number {
+  return templateOptions(c).length;
+}
+
 const sent = (date: string, names: string[], more = 0): CalendarCampaign[] => [
   ...names.map((name, i) => ({ id: `${date}-s${i}`, name, date, status: "sent" as const })),
   // Hidden overflow — counted into "+N more", never shown.
