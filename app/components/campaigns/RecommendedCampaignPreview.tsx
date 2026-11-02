@@ -183,7 +183,7 @@ function CampaignPlanForm({
           <button
             type="button"
             onClick={() => onApprove?.(campaign, plan)}
-            className="rounded-lg bg-wati-green px-4 py-2 text-[13px] font-medium text-white hover:bg-wati-green-hover"
+            className="whitespace-nowrap rounded-lg border border-transparent bg-wati-green px-4 py-2 text-[13px] font-medium text-white hover:bg-wati-green-hover"
           >
             Schedule campaign
           </button>
@@ -192,9 +192,10 @@ function CampaignPlanForm({
             type="button"
             onClick={() => setConfirmingDelete(true)}
             title="Delete and remove from calendar"
-            className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-medium text-black/55 hover:bg-black/[0.04] hover:text-black/80"
+            className="flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-transparent px-2.5 py-2 text-[13px] font-medium text-black/55 hover:bg-black/[0.04] hover:text-black/80"
           >
-            <Trash2 size={14} />
+            {/* Nudged down: the lid makes the icon read high beside the text. */}
+            <Trash2 size={14} className="translate-y-px" />
             Delete
           </button>
         </div>
@@ -287,7 +288,7 @@ function EditTemplateMenu({ onEditWithAi }: { onEditWithAi: () => void }) {
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="flex items-center gap-1.5 rounded-lg border border-wati-border bg-white px-4 py-2 text-[13px] font-medium text-[#0a0a0a] hover:bg-black/[0.03]"
+        className="flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-wati-border bg-white px-4 py-2 text-[13px] font-medium text-[#0a0a0a] hover:bg-black/[0.03]"
       >
         Edit template
         <ChevronDown size={14} className={open ? "rotate-180 text-black/45" : "text-black/45"} />
