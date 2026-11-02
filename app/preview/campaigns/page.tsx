@@ -7,11 +7,13 @@ import { CampaignCalendar } from "../../components/campaigns/CampaignCalendar";
 import { CampaignsNav } from "../../components/campaigns/CampaignsNav";
 import { RecommendedCampaignPreview } from "../../components/campaigns/RecommendedCampaignPreview";
 import { useAskWatiDrawer } from "../../lib/ask-wati-drawer";
+import { useCampaigns } from "../../lib/campaigns";
 import type { RecommendedCampaign } from "../../lib/campaigns-data";
 
 export default function CampaignsPage() {
   const [open, setOpen] = useState<RecommendedCampaign | null>(null);
   const { setUpCampaign } = useAskWatiDrawer();
+  const { remove } = useCampaigns();
   return (
     <div className="relative flex min-h-0 flex-1 overflow-hidden">
       <MainSidebar />
@@ -31,6 +33,10 @@ export default function CampaignsPage() {
         onApprove={(c, plan) => {
           setOpen(null);
           setUpCampaign(c.id, "approve", plan);
+        }}
+        onDelete={(c) => {
+          setOpen(null);
+          remove(c.id);
         }}
       />
     </div>

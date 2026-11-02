@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { ChevronDown, Megaphone, X } from "lucide-react";
+import { ChevronDown, Megaphone, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
   AUDIENCE_SEGMENTS,
@@ -28,6 +28,7 @@ export function RecommendedCampaignPreview({
   onClose,
   onEditWithAi,
   onApprove,
+  onDelete,
 }: {
   campaign: RecommendedCampaign | null;
   onClose: () => void;
@@ -35,6 +36,8 @@ export function RecommendedCampaignPreview({
   onEditWithAi?: (campaign: RecommendedCampaign, plan: CampaignPlan) => void;
   /** Take the template as it is and move on to setting up the campaign. */
   onApprove?: (campaign: RecommendedCampaign, plan: CampaignPlan) => void;
+  /** Drop the recommendation; it leaves the calendar. */
+  onDelete?: (campaign: RecommendedCampaign) => void;
 }) {
   useEffect(() => {
     if (!campaign) return;
@@ -80,6 +83,7 @@ export function RecommendedCampaignPreview({
               campaign={campaign}
               onEditWithAi={onEditWithAi}
               onApprove={onApprove}
+              onDelete={onDelete}
             />
           </motion.div>
         </motion.div>
@@ -92,10 +96,12 @@ function CampaignPlanForm({
   campaign,
   onEditWithAi,
   onApprove,
+  onDelete,
 }: {
   campaign: RecommendedCampaign;
   onEditWithAi?: (campaign: RecommendedCampaign, plan: CampaignPlan) => void;
   onApprove?: (campaign: RecommendedCampaign, plan: CampaignPlan) => void;
+  onDelete?: (campaign: RecommendedCampaign) => void;
 }) {
   const [plan, setPlan] = useState(() => planFor(campaign));
   const audience = AUDIENCE_SEGMENTS.find((s) => s.id === plan.audienceId) ?? AUDIENCE_SEGMENTS[0];
@@ -171,13 +177,22 @@ function CampaignPlanForm({
         </dl>
 
         <div className="mt-auto flex items-center justify-end gap-2 pt-10">
+          <button
+            type="button"
+            onClick={() => onDelete?.(campaign)}
+            title="Delete and remove from calendar"
+            className="mr-auto flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-medium text-[#d92d20] hover:bg-[#fef3f2]"
+          >
+            <Trash2 size={14} />
+            Delete
+          </button>
           <EditTemplateMenu onEditWithAi={() => onEditWithAi?.(campaign, plan)} />
           <button
             type="button"
             onClick={() => onApprove?.(campaign, plan)}
             className="rounded-lg bg-wati-green px-4 py-2 text-[13px] font-medium text-white hover:bg-wati-green-hover"
           >
-            Approve and proceed
+            Schedule campaign
           </button>
         </div>
       </div>
