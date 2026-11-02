@@ -181,20 +181,20 @@ function CampaignPlanForm({
         <div className="mt-auto flex items-center justify-end gap-2 pt-10">
           <button
             type="button"
+            onClick={() => onApprove?.(campaign, plan)}
+            className="rounded-lg bg-wati-green px-4 py-2 text-[13px] font-medium text-white hover:bg-wati-green-hover"
+          >
+            Schedule campaign
+          </button>
+          <EditTemplateMenu onEditWithAi={() => onEditWithAi?.(campaign, plan)} />
+          <button
+            type="button"
             onClick={() => setConfirmingDelete(true)}
             title="Delete and remove from calendar"
             className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-medium text-black/55 hover:bg-black/[0.04] hover:text-black/80"
           >
             <Trash2 size={14} />
             Delete
-          </button>
-          <EditTemplateMenu onEditWithAi={() => onEditWithAi?.(campaign, plan)} />
-          <button
-            type="button"
-            onClick={() => onApprove?.(campaign, plan)}
-            className="rounded-lg bg-wati-green px-4 py-2 text-[13px] font-medium text-white hover:bg-wati-green-hover"
-          >
-            Schedule campaign
           </button>
         </div>
       </div>
