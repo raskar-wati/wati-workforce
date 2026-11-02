@@ -221,7 +221,7 @@ function CampaignPlanForm({
         onCancel={() => setConfirmingDelete(false)}
         onConfirm={() => onDelete?.(campaign)}
       >
-        {campaign.name} will be removed from your calendar.
+        This preview will be removed from your calendar.
       </ConfirmDialog>
     </>
   );
