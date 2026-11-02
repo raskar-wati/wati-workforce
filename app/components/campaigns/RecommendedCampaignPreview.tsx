@@ -249,7 +249,7 @@ function EditTemplateMenu({ onEditWithAi }: { onEditWithAi: () => void }) {
       {open && (
         <div
           role="menu"
-          className="absolute bottom-full right-0 z-10 mb-2 w-[200px] rounded-xl border border-wati-border bg-white p-1 shadow-[0_8px_24px_rgba(0,0,0,0.1)]"
+          className="absolute bottom-full right-0 z-10 mb-2 w-[248px] rounded-xl border border-wati-border bg-white p-1 shadow-[0_8px_24px_rgba(0,0,0,0.1)]"
         >
           <button type="button" role="menuitem" onClick={() => setOpen(false)} className={item}>
             <Megaphone size={14} className="text-black/50" />
@@ -266,6 +266,9 @@ function EditTemplateMenu({ onEditWithAi }: { onEditWithAi: () => void }) {
           >
             <AskWatiIcon size={14} />
             Edit with AI
+            <span className="ml-auto rounded-full bg-[#e9ebf8] px-2 py-0.5 text-[11px] font-medium text-[#1e2a8a]">
+              Recommended
+            </span>
           </button>
         </div>
       )}
