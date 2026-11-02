@@ -39,8 +39,11 @@ import {
 } from "../../../cards/WorkforceCard";
 import { TemplateMessagesIcon } from "../../../icons/TemplateMessagesIcon";
 import { modelLabel } from "../../../../lib/template-ai";
-import { SelectChip, TextChip } from "../../FactChips";
+import { EditableTitle, SelectChip } from "../../FactChips";
 import { TemplatePreview } from "./TemplatePreview";
+
+/** Meta template names: lowercase, words joined by underscores. */
+const snakeName = (v: string) => v.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_");
 
 export type TemplateCardStage = "editing" | "review";
 
@@ -140,14 +143,23 @@ export function TemplateDraftCard({
     <WorkforceCard
       icon={<TemplateMessagesIcon size={14} />}
       tone={pill?.tone ?? "neutral"}
-      // While editing, the name sits in the editable facts row instead.
+      // While editing, the card names the task and the template's own name
+      // (editable) is the subtitle, like the Schedule campaign card.
       title={locked ? draft.name : "Create Template"}
       subtitle={
-        locked
-          ? `${CHANNEL_LABEL[draft.channel ?? "whatsapp"]} template`
-          : drafter
-            ? `Drafted with ${modelLabel(drafter)}`
-            : undefined
+        locked ? (
+          `${CHANNEL_LABEL[draft.channel ?? "whatsapp"]} template`
+        ) : (
+          <span className="flex flex-wrap items-center gap-x-1.5 text-[13px] text-black/60">
+            <EditableTitle
+              label="Template name"
+              value={draft.name}
+              normalize={snakeName}
+              onChange={(name) => onDraftChange({ ...draft, name })}
+            />
+            {drafter && <span className="text-black/45">· Drafted with {modelLabel(drafter)}</span>}
+          </span>
+        )
       }
       state={pill?.state}
       stateLabel={pill?.label}
@@ -426,14 +438,9 @@ function TemplateFacts({
         }))}
         onChange={(channel) => onChange({ ...draft, channel: channel as TemplateChannel })}
       />
-      <TextChip
-        label="Template name"
-        value={draft.name}
-        normalize={(v) => v.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_")}
-        onChange={(name) => onChange({ ...draft, name })}
-      />
       <SelectChip
         label="Category"
+        prefix="Category"
         value={draft.category}
         options={(Object.keys(CATEGORY_LABEL) as TemplateCategory[]).map((c) => ({
           value: c,
@@ -444,6 +451,7 @@ function TemplateFacts({
       {TEMPLATE_TYPES[draft.category].length > 0 && (
         <SelectChip
           label="Template type"
+          prefix="Format"
           value={draft.templateType ?? "standard"}
           options={TEMPLATE_TYPES[draft.category].map((t) => ({
             value: t,

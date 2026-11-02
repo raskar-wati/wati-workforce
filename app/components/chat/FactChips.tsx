@@ -26,6 +26,7 @@ export function SelectChip({
   options,
   onChange,
   icon,
+  prefix,
   className = FACT_CHIP,
 }: {
   label: string;
@@ -33,11 +34,15 @@ export function SelectChip({
   options: { value: string; label: string }[];
   onChange: (value: string) => void;
   icon?: ReactNode;
+  /** A muted name before the value, for chips whose value alone is unclear
+   *  ("Format Standard"); clear ones (WhatsApp, English) go without. */
+  prefix?: string;
   className?: string;
 }) {
   return (
     <label className={`${className} relative cursor-pointer`}>
       {icon}
+      {prefix && <span className="text-black/45">{prefix}</span>}
       {options.find((o) => o.value === value)?.label ?? value}
       <ChevronDown size={11} className="text-black/40" />
       <select
@@ -108,10 +113,13 @@ export function EditableTitle({
   label,
   value,
   onChange,
+  normalize = (v) => v.trim(),
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  /** Clean the typed value before saving, e.g. snake_case a template name. */
+  normalize?: (value: string) => string;
 }) {
   const [editing, setEditing] = useState(false);
   if (editing) {
@@ -120,7 +128,7 @@ export function EditableTitle({
         autoFocus
         defaultValue={value}
         onBlur={(e) => {
-          const next = e.target.value.trim();
+          const next = normalize(e.target.value);
           if (next) onChange(next);
           setEditing(false);
         }}
