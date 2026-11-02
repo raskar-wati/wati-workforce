@@ -194,9 +194,10 @@ function CampaignPlanForm({
             title="Delete and remove from calendar"
             className="flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-transparent px-2.5 py-2 text-[13px] font-medium text-black/55 hover:bg-black/[0.04] hover:text-black/80"
           >
-            {/* Nudged down: the lid makes the icon read high beside the text. */}
+            {/* Icon and label sit 1px low: beside the other buttons, the
+                light grey label otherwise reads high. */}
             <Trash2 size={14} className="translate-y-px" />
-            Delete
+            <span className="translate-y-px">Delete</span>
           </button>
         </div>
       </div>
