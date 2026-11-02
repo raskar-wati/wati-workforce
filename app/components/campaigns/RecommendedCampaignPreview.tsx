@@ -203,16 +203,15 @@ function CampaignPlanForm({
       </div>
 
       <div className="flex shrink-0 flex-col items-center gap-2 rounded-r-2xl bg-[#f7f7f8] px-8 pb-8 pt-6">
-        {options.length > 1 ? (
+        <p className="text-[13px] font-medium text-black/50">Preview</p>
+        <WhatsAppPhonePreview draft={template} />
+        {options.length > 1 && (
           <TemplateOptionStepper
             index={plan.option}
             count={options.length}
             onChange={(option) => setPlan({ ...plan, option })}
           />
-        ) : (
-          <p className="text-[13px] font-medium text-black/50">Preview</p>
         )}
-        <WhatsAppPhonePreview draft={template} />
       </div>
 
       <ConfirmDialog
@@ -239,18 +238,18 @@ function TemplateOptionStepper({
   onChange: (index: number) => void;
 }) {
   const arrow =
-    "flex h-6 w-6 items-center justify-center rounded-md text-black/55 hover:bg-black/[0.06] hover:text-black/85";
+    "flex h-8 w-8 items-center justify-center rounded-full text-[#0a0a0a] hover:bg-black/[0.06]";
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="mt-2 flex items-center gap-1 rounded-full border border-wati-border bg-white p-1 shadow-[0_1px_2px_rgba(0,0,0,0.06)]">
       <button
         type="button"
         onClick={() => onChange((index + count - 1) % count)}
         aria-label="Previous template option"
         className={arrow}
       >
-        <ChevronLeft size={15} />
+        <ChevronLeft size={16} />
       </button>
-      <p aria-live="polite" className="min-w-[96px] text-center text-[13px] font-medium text-black/60">
+      <p aria-live="polite" className="min-w-[104px] text-center text-[13px] font-medium text-[#0a0a0a]">
         Option {index + 1} of {count}
       </p>
       <button
@@ -259,7 +258,7 @@ function TemplateOptionStepper({
         aria-label="Next template option"
         className={arrow}
       >
-        <ChevronRight size={15} />
+        <ChevronRight size={16} />
       </button>
     </div>
   );

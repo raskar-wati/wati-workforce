@@ -89,7 +89,7 @@ page, in its own thread with one lead line ("Recommended for Thu 29 Oct,
 11:00 AM.", or "Planned for …" if the user moved it) and the object's card,
 prefilled. The audience and send time can be changed on the recommendation
 itself, and Wati offers up to 3 template options to step through
-("‹ Option 1 of 3 ›" over the preview); those picks prefill the chat cards. "Edit" starts on the card;
+("‹ Option 1 of 3 ›" under the preview); those picks prefill the chat cards. "Edit" starts on the card;
 "Approve" commits it and moves straight to the next step. Whatever is
 decided in chat writes back to the page (here the calendar) through an
 app-wide store.
