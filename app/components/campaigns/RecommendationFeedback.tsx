@@ -11,8 +11,8 @@ const REASONS = ["Wrong timing", "Wrong audience", "Template doesn't fit", "Not 
 /**
  * "Was this recommendation helpful?" under a Wati recommendation. Thumbs up
  * is thanked at once; thumbs down asks why (reason chips, optional note) in
- * a popover above the row, so the modal doesn't grow. Once given, it shows
- * as shared.
+ * a popover above the row, so the modal doesn't grow. After a short
+ * thank-you the row returns with the chosen thumb selected; it can be changed.
  */
 export function RecommendationFeedback({
   given,
@@ -22,8 +22,11 @@ export function RecommendationFeedback({
   onGive: (feedback: Feedback) => void;
 }) {
   const [asking, setAsking] = useState(false);
-  const [reasons, setReasons] = useState<string[]>([]);
-  const [note, setNote] = useState("");
+  const [reasons, setReasons] = useState<string[]>(given?.reasons ?? []);
+  const [note, setNote] = useState(given?.note ?? "");
+  // A brief thank-you right after giving it; then back to the row, with the
+  // chosen thumb shown as selected.
+  const [thanked, setThanked] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!asking) return;
@@ -33,10 +36,21 @@ export function RecommendationFeedback({
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
   }, [asking]);
+  useEffect(() => {
+    if (!thanked) return;
+    const t = window.setTimeout(() => setThanked(false), 2500);
+    return () => window.clearTimeout(t);
+  }, [thanked]);
 
-  if (given) {
+  const give = (feedback: Feedback) => {
+    onGive(feedback);
+    setAsking(false);
+    setThanked(true);
+  };
+
+  if (thanked && given) {
     return (
-      <p className="flex items-center gap-1.5 text-[12px] text-wati-green-text">
+      <p className="flex h-7 items-center gap-1.5 text-[12px] text-wati-green-text">
         <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-wati-green text-white">
           <Check size={9} strokeWidth={3} />
         </span>
@@ -45,8 +59,9 @@ export function RecommendationFeedback({
     );
   }
 
-  const thumb =
-    "flex h-7 w-7 items-center justify-center rounded-md text-black/50 hover:bg-black/[0.05] hover:text-black/80";
+  const thumb = "flex h-7 w-7 items-center justify-center rounded-md hover:bg-black/[0.05]";
+  const tone = (on: boolean) =>
+    on ? "bg-wati-green-soft text-wati-green-text" : "text-black/50 hover:text-black/80";
   const toggle = (r: string) =>
     setReasons((prev) => (prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r]));
 
@@ -56,20 +71,21 @@ export function RecommendationFeedback({
         <span className="mr-1 text-[12px] text-black/55">Was this recommendation helpful?</span>
         <button
           type="button"
-          onClick={() => onGive({ vote: "up", reasons: [], note: "" })}
+          onClick={() => give({ vote: "up", reasons: [], note: "" })}
           aria-label="Helpful"
-          className={thumb}
+          aria-pressed={given?.vote === "up"}
+          className={`${thumb} ${tone(given?.vote === "up")}`}
         >
-          <ThumbsUp size={14} />
+          <ThumbsUp size={14} fill={given?.vote === "up" ? "currentColor" : "none"} />
         </button>
         <button
           type="button"
           onClick={() => setAsking(true)}
           aria-label="Not helpful"
-          aria-pressed={asking}
-          className={`${thumb} ${asking ? "bg-black/[0.05] text-black/80" : ""}`}
+          aria-pressed={given?.vote === "down"}
+          className={`${thumb} ${asking ? "bg-black/[0.05] text-black/80" : tone(given?.vote === "down")}`}
         >
-          <ThumbsDown size={14} />
+          <ThumbsDown size={14} fill={given?.vote === "down" && !asking ? "currentColor" : "none"} />
         </button>
       </div>
       <AnimatePresence initial={false}>
@@ -117,7 +133,7 @@ export function RecommendationFeedback({
                 <button
                   type="button"
                   disabled={reasons.length === 0 && !note.trim()}
-                  onClick={() => onGive({ vote: "down", reasons, note: note.trim() })}
+                  onClick={() => give({ vote: "down", reasons, note: note.trim() })}
                   className="rounded-lg bg-wati-green px-3 py-1.5 text-[12px] font-medium text-white hover:bg-wati-green-hover disabled:opacity-50"
                 >
                   Send feedback
