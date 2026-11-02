@@ -14,10 +14,11 @@ import { AskWatiIcon } from "../icons/AskWatiIcon";
 /** Entries shown per day before "+N more". */
 const VISIBLE_PER_DAY = 2;
 
+// One neutral chip for every status; the dot (or Wati's logo) tells them apart.
 const STATUS_STYLE = {
-  sent: { chip: "bg-[#e7f6ee]", dot: "bg-wati-green" },
-  scheduled: { chip: "bg-[#f3e4f3]", dot: "bg-[#8b1d8f]" },
-  recommended: { chip: "bg-[#e9ebf8] hover:bg-[#dfe2f6]", dot: "" },
+  sent: { chip: "bg-black/[0.04]", dot: "bg-wati-green" },
+  scheduled: { chip: "bg-black/[0.04]", dot: "bg-[#8b1d8f]" },
+  recommended: { chip: "bg-black/[0.04] hover:bg-black/[0.07]", dot: "" },
 } as const;
 
 const iso = (d: Date) =>
