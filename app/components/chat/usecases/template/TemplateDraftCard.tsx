@@ -43,6 +43,10 @@ import { modelLabel } from "../../../../lib/template-ai";
 import { EditableTitle, SelectChip } from "../../FactChips";
 import { TemplatePreview } from "./TemplatePreview";
 
+/** "+ field" chips offered in this launch. Adding an image header or a
+ *  button isn't supported yet; flip these to bring the chips back. */
+const LAUNCH_ADD_PARTS = { imageHeader: false, buttons: false };
+
 /** Meta template names: lowercase, words joined by underscores. */
 const snakeName = (v: string) => v.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_");
 
@@ -135,8 +139,10 @@ export function TemplateDraftCard({
   const reviewing = stage === "review" && !locked;
   const isAuth = draft.category === "authentication";
   const suggestions = refineSuggestions(draft, canRewrite).filter(
-    // Carousel cards carry their own images; the message has no header.
-    (s) => !(s.label === "Image header" && draft.templateType === "carousel"),
+    // No image header in this launch (LAUNCH_ADD_PARTS); carousel cards carry
+    // their own images, so the message never has one there.
+    (s) =>
+      !(s.label === "Image header" && (!LAUNCH_ADD_PARTS.imageHeader || draft.templateType === "carousel")),
   );
   const checks = checkTemplate(draft, takenNames(templateId));
   const pill = status ? STATUS_PILL[status] : null;
@@ -310,7 +316,9 @@ function RefineChips({
           {s.label}
         </button>
       ))}
-      {allowsCustomButtons(draft) && <AddButtonMenu draft={draft} onPick={onPick} />}
+      {LAUNCH_ADD_PARTS.buttons && allowsCustomButtons(draft) && (
+        <AddButtonMenu draft={draft} onPick={onPick} />
+      )}
     </div>
   );
 }
