@@ -12,7 +12,9 @@ import type { ChatMode } from "../lib/chat-mode";
 import { ATTACHMENT_ACCEPT, type Attachment } from "../lib/attachments";
 import { LLM_OPTIONS, type LLMOption } from "../lib/llm-models";
 import { useBarAnchorRef } from "../lib/shell-layout";
+import { useAskWatiSettings } from "../lib/ask-wati-settings";
 import { AttachmentStagingRow } from "./attachments/AttachmentStagingRow";
+import { ConnectorsMenuItem, ConnectorsSubmenu } from "./settings/ComposerConnectorsMenu";
 
 export type ModeOption = {
   id: ChatMode;
@@ -124,6 +126,13 @@ export function Composer({
   const barAnchorRef = useBarAnchorRef();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
+  // The + menu can step into a Connectors submenu (one settings placement).
+  const [plusView, setPlusView] = useState<"main" | "connectors">("main");
+  const { placement } = useAskWatiSettings();
+  const showConnectorsInMenu = placement === "composer";
+  useEffect(() => {
+    if (!plusMenuOpen) setPlusView("main");
+  }, [plusMenuOpen]);
   const [slashIndex, setSlashIndex] = useState(0);
   const [mentionIndex, setMentionIndex] = useState(0);
   const [textareaScrollTop, setTextareaScrollTop] = useState(0);
@@ -524,8 +533,15 @@ export function Composer({
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 6, scale: 0.97 }}
                   transition={{ duration: 0.15, ease: [0.32, 0.72, 0, 1] }}
-                  className="absolute bottom-full left-0 mb-2 w-64 overflow-hidden rounded-2xl border border-wati-border bg-white py-1 shadow-[0_8px_24px_rgba(0,0,0,0.1)]"
+                  className={`absolute bottom-full left-0 mb-2 ${plusView === "connectors" ? "w-72" : "w-64"} overflow-hidden rounded-2xl border border-wati-border bg-white py-1 shadow-[0_8px_24px_rgba(0,0,0,0.1)]`}
                 >
+                  {showConnectorsInMenu && plusView === "connectors" ? (
+                    <ConnectorsSubmenu
+                      onBack={() => setPlusView("main")}
+                      onDone={() => setPlusMenuOpen(false)}
+                    />
+                  ) : (
+                  <>
                   {canAttach && (
                     <>
                       <button
@@ -547,8 +563,13 @@ export function Composer({
                           </span>
                         </span>
                       </button>
-                      <div role="separator" className="my-1 h-px bg-[var(--wati-border-default)]" />
                     </>
+                  )}
+                  {showConnectorsInMenu && (
+                    <ConnectorsMenuItem onOpen={() => setPlusView("connectors")} />
+                  )}
+                  {(canAttach || showConnectorsInMenu) && (
+                    <div role="separator" className="my-1 h-px bg-[var(--wati-border-default)]" />
                   )}
                   {PICKABLE_MODES.map((o) => (
                     <button
@@ -559,7 +580,7 @@ export function Composer({
                         setPlusMenuOpen(false);
                         selectMode(o.id);
                       }}
-                      className={`flex w-full flex-col gap-0.5 ${canAttach ? "pl-[37px]" : "pl-3"} pr-3 py-2 text-left hover:bg-black/[0.03]`}
+                      className={`flex w-full flex-col gap-0.5 ${canAttach || showConnectorsInMenu ? "pl-[37px]" : "pl-3"} pr-3 py-2 text-left hover:bg-black/[0.03]`}
                     >
                       <span className="text-[13px] font-medium tracking-[-0.078px] text-[#0a0a0a]">
                         {o.title}
@@ -569,6 +590,8 @@ export function Composer({
                       </span>
                     </button>
                   ))}
+                  </>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>

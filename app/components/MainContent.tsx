@@ -5,6 +5,7 @@ import { useAgents } from "../lib/agents";
 import { useChatMode } from "../lib/chat-mode";
 import { useChatThreads } from "../lib/chat-threads";
 import { ChatArea } from "./ChatArea";
+import { SettingsGearButton } from "./settings/SettingsGearButton";
 
 export function MainContent({
   hideDailyDigest = false,
@@ -58,6 +59,7 @@ export function MainContent({
         </div>
       )}
       {chrome === "drawer" && <NewThreadButton />}
+      {chrome === "drawer" && <SettingsGearButton expanded={expanded} />}
       <div className="min-h-0 flex-1">
         {expanded ? (
           <div className="mx-auto flex h-full w-full max-w-[820px] flex-col">

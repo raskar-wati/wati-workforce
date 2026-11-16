@@ -3,6 +3,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import {
+  AI_SETTINGS_PAGE,
+  useAskWatiSettings,
+  type SettingsPlacement,
+} from "../lib/ask-wati-settings";
 import { useShellLayout } from "../lib/shell-layout";
 import { ASK_WATI_PAGE } from "./AskWatiDrawer";
 import { navIconMask, type NavIconName } from "./icons/nav-icons";
@@ -64,6 +69,40 @@ const NAV: NavItem[] = [
   { id: "settings", label: "Settings", icon: "settings" },
 ];
 
+/**
+ * Two of the Ask Wati settings placements being explored live in this nav:
+ * a page under Wati AI, or a link beside the other connectors.
+ */
+function navFor(placement: SettingsPlacement): NavItem[] {
+  if (placement === "nav-wati-ai") {
+    return NAV.map((item) =>
+      item.id === "wati-ai"
+        ? {
+            ...item,
+            children: [
+              ...(item.children ?? []),
+              { id: "ai-settings", label: "AI settings", href: AI_SETTINGS_PAGE },
+            ],
+          }
+        : item,
+    );
+  }
+  if (placement === "nav-connectors") {
+    return NAV.map((item) =>
+      item.id === "connectors"
+        ? {
+            ...item,
+            children: [
+              { id: "ai-connectors", label: "Wati AI connectors", href: AI_SETTINGS_PAGE },
+              ...(item.children ?? []),
+            ],
+          }
+        : item,
+    );
+  }
+  return NAV;
+}
+
 const COLLAPSED_KEY = "wati.sidebar.collapsed";
 /** Below --wati-bp-md the rail is forced collapsed; the user's choice returns when it widens. */
 const NARROW_QUERY = "(max-width: 959px)";
@@ -78,6 +117,8 @@ type Flyout =
 
 export function MainSidebar() {
   const pathname = usePathname();
+  const { placement } = useAskWatiSettings();
+  const nav = navFor(placement);
   const [userCollapsed, setUserCollapsed] = useState(false);
   const [narrow, setNarrow] = useState(false);
   // Width animates only after the persisted state is applied, so a remount on
@@ -93,6 +134,14 @@ export function MainSidebar() {
     return initial;
   });
   const [flyout, setFlyout] = useState<Flyout | null>(null);
+
+  // A placement switch can move the current page into another group.
+  useEffect(() => {
+    const holder = navFor(placement).find((item) =>
+      item.children?.some((c) => c.href === pathname),
+    );
+    if (holder) setOpen((o) => (o[holder.id] ? o : { ...o, [holder.id]: true }));
+  }, [placement, pathname]);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const collapsed = narrow || userCollapsed;
@@ -170,7 +219,7 @@ export function MainSidebar() {
       } ${collapsed ? "w-[44px]" : "w-[210px]"}`}
     >
       <nav className="flex flex-1 flex-col overflow-y-auto overflow-x-hidden">
-        {NAV.map((item) => {
+        {nav.map((item) => {
           const hasKids = !!item.children?.length;
           const isOpen = hasKids && !!open[item.id];
           return (

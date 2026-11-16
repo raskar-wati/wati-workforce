@@ -21,6 +21,7 @@ import { useDailyDigestMeta } from "../lib/daily-digest-meta";
 import { getPixabot } from "../lib/pixabots";
 import { DemoStateToggleChip } from "./DemoStateToggleChip";
 import { AskWatiIcon } from "./icons/AskWatiIcon";
+import { ThreadPanelSettingsLink } from "./settings/ThreadPanelSettingsLink";
 import { TenantToggleChip } from "./TenantToggleChip";
 
 type PanelStyle = "expandable" | "popover" | "drawer";
@@ -230,6 +231,7 @@ export function WorkforcePanel({
             />
           )}
         </div>
+        <ThreadPanelSettingsLink />
       </div>
     );
   }

@@ -1,5 +1,5 @@
 import { GlobalHeader } from "../components/GlobalHeader";
-import { IslandSimulator } from "../components/island/IslandSimulator";
+import { SettingsPlacementSimulator } from "../components/settings/SettingsPlacementSimulator";
 import { AgentsProvider } from "../lib/agents";
 import { DemoStateProvider } from "../lib/demo-state";
 import { TemplatesProvider } from "../lib/templates";
@@ -23,7 +23,9 @@ export default function PreviewLayout({ children }: { children: React.ReactNode 
           <GlobalHeader />
           {children}
         </div>
-        <IslandSimulator />
+        {/* On this branch Simulate only switches the Ask Wati settings
+            placement; the island events are parked (IslandSimulator). */}
+        <SettingsPlacementSimulator />
         </TemplatesProvider>
       </AgentsProvider>
     </DemoStateProvider>

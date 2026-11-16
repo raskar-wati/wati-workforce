@@ -9,6 +9,7 @@ import {
   groupLLMsByProvider,
 } from "../../lib/llm-models";
 import { AvatarShufflePicker } from "./AvatarShufflePicker";
+import { Switch } from "../ui/Switch";
 
 export type SchedulePreset = "daily" | "weekly" | "every-other-day";
 
@@ -305,32 +306,6 @@ function StatusRow({
       </div>
       <Switch checked={active} onChange={onChange} />
     </div>
-  );
-}
-
-function Switch({
-  checked,
-  onChange,
-}: {
-  checked: boolean;
-  onChange: (next: boolean) => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-[22px] w-[38px] shrink-0 items-center rounded-full transition-colors ${
-        checked ? "bg-wati-green" : "bg-black/20"
-      }`}
-    >
-      <span
-        className={`inline-block h-[18px] w-[18px] transform rounded-full bg-white shadow transition-transform ${
-          checked ? "translate-x-[18px]" : "translate-x-[2px]"
-        }`}
-      />
-    </button>
   );
 }
 
