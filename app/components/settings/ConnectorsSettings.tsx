@@ -61,67 +61,6 @@ export function ConnectorsSettings() {
             </button>
           </div>
 
-          <div className={LIST}>
-            {connectors.map((c) => (
-              <div
-                key={c.id}
-                className="group flex items-center gap-3 border-b border-black/[0.06] px-3 py-2.5 last:border-b-0 hover:bg-black/[0.02]"
-              >
-                <button
-                  type="button"
-                  onClick={() => setOpenId(c.id)}
-                  className="flex min-w-0 flex-1 items-center gap-3 text-left"
-                >
-                  <ConnectorTile
-                    name={c.name}
-                    logo={c.logo}
-                    custom={c.custom}
-                    expired={c.expired}
-                  />
-                  <span className="min-w-0 flex-1">
-                    <span
-                      className={`flex items-center gap-1.5 text-[13px] font-medium ${
-                        c.enabled || c.expired ? "text-[#0a0a0a]" : "text-black/45"
-                      }`}
-                    >
-                      {c.name}
-                      {c.builtIn && <span className={BADGE}>Built in</span>}
-                      {c.custom && <span className={BADGE}>Custom</span>}
-                    </span>
-                    <span className="block truncate text-[12px] text-black/55">
-                      {c.expired ? (
-                        <span className="text-red-600">Sign-in expired</span>
-                      ) : (
-                        c.summary
-                      )}
-                    </span>
-                  </span>
-                  <ChevronRight
-                    size={14}
-                    strokeWidth={2}
-                    className="shrink-0 text-black/25 group-hover:text-black/50"
-                  />
-                </button>
-                {c.expired ? (
-                  <button
-                    type="button"
-                    className={`${BTN_OUTLINE} ${BTN_SM}`}
-                    onClick={() => reconnect(c.id)}
-                  >
-                    Reconnect
-                  </button>
-                ) : (
-                  <Switch
-                    small
-                    checked={c.enabled}
-                    onChange={(v) => setEnabled(c.id, v)}
-                    label={`Use ${c.name} in chats`}
-                  />
-                )}
-              </div>
-            ))}
-          </div>
-
           {available.length > 0 && (
             <section>
               <p className={`${SECTION_LABEL} mb-2`}>Add an app</p>
@@ -153,6 +92,70 @@ export function ConnectorsSettings() {
               </div>
             </section>
           )}
+
+          <section>
+            <p className={`${SECTION_LABEL} mb-2`}>Connected</p>
+            <div className={LIST}>
+              {connectors.map((c) => (
+                <div
+                  key={c.id}
+                  className="group flex items-center gap-3 border-b border-black/[0.06] px-3 py-2.5 last:border-b-0 hover:bg-black/[0.02]"
+                >
+                  <button
+                    type="button"
+                    onClick={() => setOpenId(c.id)}
+                    className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                  >
+                    <ConnectorTile
+                      name={c.name}
+                      logo={c.logo}
+                      custom={c.custom}
+                      expired={c.expired}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span
+                        className={`flex items-center gap-1.5 text-[13px] font-medium ${
+                          c.enabled || c.expired ? "text-[#0a0a0a]" : "text-black/45"
+                        }`}
+                      >
+                        {c.name}
+                        {c.builtIn && <span className={BADGE}>Built in</span>}
+                        {c.custom && <span className={BADGE}>Custom</span>}
+                      </span>
+                      <span className="block truncate text-[12px] text-black/55">
+                        {c.expired ? (
+                          <span className="text-red-600">Sign-in expired</span>
+                        ) : (
+                          c.summary
+                        )}
+                      </span>
+                    </span>
+                    <ChevronRight
+                      size={14}
+                      strokeWidth={2}
+                      className="shrink-0 text-black/25 group-hover:text-black/50"
+                    />
+                  </button>
+                  {c.expired ? (
+                    <button
+                      type="button"
+                      className={`${BTN_OUTLINE} ${BTN_SM}`}
+                      onClick={() => reconnect(c.id)}
+                    >
+                      Reconnect
+                    </button>
+                  ) : (
+                    <Switch
+                      small
+                      checked={c.enabled}
+                      onChange={(v) => setEnabled(c.id, v)}
+                      label={`Use ${c.name} in chats`}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
         </div>
       )}
 
