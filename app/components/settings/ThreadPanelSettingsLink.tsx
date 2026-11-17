@@ -3,10 +3,9 @@
 import { Settings } from "lucide-react";
 import { useAskWatiSettings } from "../../lib/ask-wati-settings";
 
-/** "Foot of the chats list" placement: pinned under the Ask Wati thread list. */
+/** Settings entry pinned under the Ask Wati chats list. */
 export function ThreadPanelSettingsLink() {
-  const { placement, openSettings, expiredCount } = useAskWatiSettings();
-  if (placement !== "thread-panel") return null;
+  const { openSettings } = useAskWatiSettings();
   return (
     <div className="shrink-0 border-t border-[var(--wati-border-default)] p-2">
       <button
@@ -17,15 +16,12 @@ export function ThreadPanelSettingsLink() {
         <span className="flex h-5 w-5 items-center justify-center text-[var(--wati-icon-default)]">
           <Settings size={15} strokeWidth={1.75} />
         </span>
-        <span className="flex-1 text-sm font-medium text-[var(--wati-text-body)]">
+        <span className="flex flex-1 items-center gap-2 text-sm font-medium text-[var(--wati-text-body)]">
           Settings
+          <span className="rounded-full bg-red-50 px-2 py-px text-[11px] font-medium text-red-600">
+            New
+          </span>
         </span>
-        {expiredCount > 0 && (
-          <span
-            title={`${expiredCount} connector to reconnect`}
-            className="h-1.5 w-1.5 rounded-full bg-red-500"
-          />
-        )}
       </button>
     </div>
   );

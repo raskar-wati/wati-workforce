@@ -4,7 +4,6 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -21,53 +20,14 @@ import {
 /**
  * Ask Wati settings: Connectors (built), Skills and Memory (placeholders).
  *
- * Also holds where the settings entry point lives. That placement is still
- * being explored, so the Simulate menu switches between the candidates and
- * every surface asks `placement` before showing its entry.
+ * Reached from two places: the Connectors row in the composer's + menu, and
+ * the Settings row at the foot of the Ask Wati chats list.
  */
 
 export type SettingsTab = "connectors" | "skills" | "memory";
 
-export type SettingsPlacement =
-  | "chat-header"
-  | "composer"
-  | "thread-panel"
-  | "nav-wati-ai"
-  | "nav-connectors";
-
-export const PLACEMENT_OPTIONS: {
-  id: SettingsPlacement;
-  label: string;
-  hint: string;
-}[] = [
-  {
-    id: "chat-header",
-    label: "Gear in the chat header",
-    hint: "Top right of Ask Wati, opens a settings pop-up",
-  },
-  {
-    id: "composer",
-    label: "Composer + menu",
-    hint: "Connectors with quick switches, next to files",
-  },
-  {
-    id: "thread-panel",
-    label: "Foot of the chats list",
-    hint: "Bottom of the Ask Wati side panel",
-  },
-  // Parked: the side-nav placements ("nav-wati-ai", "nav-connectors") still
-  // work in MainSidebar but are hidden from the simulator for now.
-];
-
-export const AI_SETTINGS_PAGE = "/preview/ai-settings";
-
-const PLACEMENT_KEY = "wati.askWatiSettings.placement";
-
 type Ctx = {
-  placement: SettingsPlacement;
-  setPlacement: (p: SettingsPlacement) => void;
-
-  /** Settings pop-up, for the placements that use one. */
+  /** The settings pop-up. */
   dialogOpen: boolean;
   dialogTab: SettingsTab;
   openSettings: (tab?: SettingsTab) => void;
@@ -94,28 +54,9 @@ const SettingsCtx = createContext<Ctx | null>(null);
 const hostOf = (url: string) => url.replace(/^https?:\/\//, "").split("/")[0];
 
 export function AskWatiSettingsProvider({ children }: { children: ReactNode }) {
-  const [placement, setPlacementState] = useState<SettingsPlacement>("chat-header");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogTab, setDialogTab] = useState<SettingsTab>("connectors");
   const [connectors, setConnectors] = useState<Connector[]>(SEED_CONNECTORS);
-
-  // The chosen placement survives a reload; storage may be blocked.
-  useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem(PLACEMENT_KEY);
-      if (saved && PLACEMENT_OPTIONS.some((o) => o.id === saved)) {
-        setPlacementState(saved as SettingsPlacement);
-      }
-    } catch {}
-  }, []);
-
-  const setPlacement = useCallback((p: SettingsPlacement) => {
-    setPlacementState(p);
-    setDialogOpen(false);
-    try {
-      window.localStorage.setItem(PLACEMENT_KEY, p);
-    } catch {}
-  }, []);
 
   const openSettings = useCallback((tab: SettingsTab = "connectors") => {
     setDialogTab(tab);
@@ -214,8 +155,6 @@ export function AskWatiSettingsProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<Ctx>(
     () => ({
-      placement,
-      setPlacement,
       dialogOpen,
       dialogTab,
       openSettings,
@@ -232,8 +171,6 @@ export function AskWatiSettingsProvider({ children }: { children: ReactNode }) {
       updateCustomServer,
     }),
     [
-      placement,
-      setPlacement,
       dialogOpen,
       dialogTab,
       openSettings,

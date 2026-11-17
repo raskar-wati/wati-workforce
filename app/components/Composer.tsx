@@ -12,7 +12,6 @@ import type { ChatMode } from "../lib/chat-mode";
 import { ATTACHMENT_ACCEPT, type Attachment } from "../lib/attachments";
 import { LLM_OPTIONS, type LLMOption } from "../lib/llm-models";
 import { useBarAnchorRef } from "../lib/shell-layout";
-import { useAskWatiSettings } from "../lib/ask-wati-settings";
 import { AttachmentStagingRow } from "./attachments/AttachmentStagingRow";
 import { ConnectorsMenuItem, ConnectorsSubmenu } from "./settings/ComposerConnectorsMenu";
 
@@ -126,10 +125,9 @@ export function Composer({
   const barAnchorRef = useBarAnchorRef();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
-  // The + menu can step into a Connectors submenu (one settings placement).
+  // The + menu can step into a Connectors submenu.
   const [plusView, setPlusView] = useState<"main" | "connectors">("main");
-  const { placement } = useAskWatiSettings();
-  const showConnectorsInMenu = placement === "composer";
+  const showConnectorsInMenu = true;
   useEffect(() => {
     if (!plusMenuOpen) setPlusView("main");
   }, [plusMenuOpen]);
