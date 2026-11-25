@@ -1,9 +1,10 @@
 "use client";
 
-import { Brain, LayoutGrid, SquareSlash } from "lucide-react";
+import { Brain, Inbox, LayoutGrid, SquareSlash } from "lucide-react";
 import type { ComponentType } from "react";
 import type { SettingsTab } from "../../lib/ask-wati-settings";
 import { ConnectorsSettings } from "./ConnectorsSettings";
+import { InboxAiSettings } from "./InboxAiSettings";
 import { HINT } from "./settings-styles";
 
 const TABS: {
@@ -14,12 +15,12 @@ const TABS: {
   { id: "connectors", label: "Connectors", icon: LayoutGrid },
   { id: "skills", label: "Skills", icon: SquareSlash },
   { id: "memory", label: "Memory", icon: Brain },
+  { id: "team-inbox", label: "Team inbox", icon: Inbox },
 ];
 
 /**
- * The settings body (tab list + the open tab), shared by the pop-up and
- * the full page so every placement shows the same thing. Positioned so
- * the add-server sheet can cover it.
+ * The settings body (tab list + the open tab) of the Wati AI settings
+ * pop-up. Positioned so the add-server sheet can cover it.
  */
 export function AskWatiSettings({
   tab,
@@ -53,6 +54,7 @@ export function AskWatiSettings({
       </nav>
       <div className="min-w-0 flex-1 overflow-y-auto p-5">
         {tab === "connectors" && <ConnectorsSettings />}
+        {tab === "team-inbox" && <InboxAiSettings />}
         {tab === "skills" && (
           <SettingsPlaceholder
             title="Skills"

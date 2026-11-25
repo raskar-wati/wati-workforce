@@ -18,13 +18,33 @@ import {
 } from "./connectors-data";
 
 /**
- * Ask Wati settings: Connectors (built), Skills and Memory (placeholders).
+ * Wati AI settings: Connectors (built), Skills and Memory (placeholders),
+ * plus the Team inbox AI settings, which also show on the Settings page so
+ * both stay in step.
  *
  * Reached from two places: the Connectors row in the composer's + menu, and
  * the Settings row at the foot of the Ask Wati chats list.
  */
 
-export type SettingsTab = "connectors" | "skills" | "memory";
+export type SettingsTab = "connectors" | "skills" | "memory" | "team-inbox";
+
+/** Wati AI features inside the Team inbox. */
+export type InboxAiToggle =
+  | "autoRating"
+  | "manualRating"
+  | "autoSummary"
+  | "manualSummary"
+  | "aiEditor";
+export type InboxAiSettings = Record<InboxAiToggle, boolean> & { brandTone: string };
+
+const INBOX_AI_DEFAULTS: InboxAiSettings = {
+  autoRating: false,
+  manualRating: false,
+  autoSummary: false,
+  manualSummary: true,
+  aiEditor: true,
+  brandTone: "",
+};
 
 type Ctx = {
   /** The settings pop-up. */
@@ -47,6 +67,9 @@ type Ctx = {
     id: string,
     input: { name: string; description: string; url: string },
   ) => void;
+
+  inboxAi: InboxAiSettings;
+  setInboxAi: (patch: Partial<InboxAiSettings>) => void;
 };
 
 const SettingsCtx = createContext<Ctx | null>(null);
@@ -57,6 +80,11 @@ export function AskWatiSettingsProvider({ children }: { children: ReactNode }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogTab, setDialogTab] = useState<SettingsTab>("connectors");
   const [connectors, setConnectors] = useState<Connector[]>(SEED_CONNECTORS);
+  const [inboxAi, setInboxAiState] = useState<InboxAiSettings>(INBOX_AI_DEFAULTS);
+  const setInboxAi = useCallback(
+    (patch: Partial<InboxAiSettings>) => setInboxAiState((s) => ({ ...s, ...patch })),
+    [],
+  );
 
   const openSettings = useCallback((tab: SettingsTab = "connectors") => {
     setDialogTab(tab);
@@ -169,6 +197,8 @@ export function AskWatiSettingsProvider({ children }: { children: ReactNode }) {
       connectApp,
       addCustomServer,
       updateCustomServer,
+      inboxAi,
+      setInboxAi,
     }),
     [
       dialogOpen,
@@ -184,6 +214,8 @@ export function AskWatiSettingsProvider({ children }: { children: ReactNode }) {
       connectApp,
       addCustomServer,
       updateCustomServer,
+      inboxAi,
+      setInboxAi,
     ],
   );
 

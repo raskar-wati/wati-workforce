@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAskWatiSettings, type SettingsTab } from "../../lib/ask-wati-settings";
 import { AskWatiSettings } from "./AskWatiSettings";
+import { BetaBadge } from "./BetaBadge";
 
 /** Settings pop-up, used by the placements that don't have their own page. */
 export function AskWatiSettingsDialog() {
@@ -30,7 +31,7 @@ export function AskWatiSettingsDialog() {
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Ask Wati settings"
+      aria-label="Wati AI settings"
       className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) closeSettings();
@@ -38,8 +39,9 @@ export function AskWatiSettingsDialog() {
     >
       <div className="flex h-[min(680px,calc(100vh-32px))] w-full max-w-[920px] flex-col overflow-hidden rounded-2xl bg-white shadow-[0_20px_60px_rgba(0,0,0,0.2)]">
         <div className="flex items-center justify-between border-b border-black/[0.06] px-5 py-4">
-          <h2 className="text-[16px] font-medium tracking-[-0.096px] text-[#0a0a0a]">
-            Ask Wati settings
+          <h2 className="flex items-center gap-2 text-[16px] font-medium tracking-[-0.096px] text-[#0a0a0a]">
+            Wati AI settings
+            <BetaBadge />
           </h2>
           <button
             type="button"

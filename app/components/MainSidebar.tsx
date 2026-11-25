@@ -61,7 +61,7 @@ const NAV: NavItem[] = [
       { id: "webhooks", label: "Webhooks" },
     ],
   },
-  { id: "settings", label: "Settings", icon: "settings" },
+  { id: "settings", label: "Settings", icon: "settings", href: "/preview/settings" },
 ];
 
 const COLLAPSED_KEY = "wati.sidebar.collapsed";
