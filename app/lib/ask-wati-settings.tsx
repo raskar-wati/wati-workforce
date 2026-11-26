@@ -19,23 +19,26 @@ import {
 
 /**
  * Wati AI settings: Connectors (built), Skills and Memory (placeholders),
- * plus the Team inbox AI settings, which also show on the Settings page so
- * both stay in step.
+ * plus Conversations (the Team inbox AI features).
  *
  * Reached from two places: the Connectors row in the composer's + menu, and
  * the Settings row at the foot of the Ask Wati chats list.
  */
 
-export type SettingsTab = "connectors" | "skills" | "memory" | "team-inbox";
+export type SettingsTab = "connectors" | "skills" | "memory" | "knowledge" | "conversations";
 
-/** Wati AI features inside the Team inbox. */
+/** Wati AI features that work on conversations (the Conversations tab). */
 export type InboxAiToggle =
   | "autoRating"
   | "manualRating"
   | "autoSummary"
   | "manualSummary"
-  | "aiEditor";
-export type InboxAiSettings = Record<InboxAiToggle, boolean> & { brandTone: string };
+  | "aiEditor"
+  | "autoTranslate";
+export type InboxAiSettings = Record<InboxAiToggle, boolean> & {
+  brandTone: string;
+  translateTo: string;
+};
 
 const INBOX_AI_DEFAULTS: InboxAiSettings = {
   autoRating: false,
@@ -43,7 +46,9 @@ const INBOX_AI_DEFAULTS: InboxAiSettings = {
   autoSummary: false,
   manualSummary: true,
   aiEditor: true,
+  autoTranslate: true,
   brandTone: "",
+  translateTo: "English",
 };
 
 type Ctx = {

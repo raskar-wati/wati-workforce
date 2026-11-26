@@ -1,10 +1,11 @@
 "use client";
 
-import { Brain, Inbox, LayoutGrid, SquareSlash } from "lucide-react";
+import { BookOpen, Brain, LayoutGrid, MessagesSquare, SquareSlash } from "lucide-react";
 import type { ComponentType } from "react";
 import type { SettingsTab } from "../../lib/ask-wati-settings";
 import { ConnectorsSettings } from "./ConnectorsSettings";
 import { InboxAiSettings } from "./InboxAiSettings";
+import { KnowledgeBaseSettings } from "./KnowledgeBaseSettings";
 import { HINT } from "./settings-styles";
 
 const TABS: {
@@ -15,7 +16,8 @@ const TABS: {
   { id: "connectors", label: "Connectors", icon: LayoutGrid },
   { id: "skills", label: "Skills", icon: SquareSlash },
   { id: "memory", label: "Memory", icon: Brain },
-  { id: "team-inbox", label: "Team inbox", icon: Inbox },
+  { id: "knowledge", label: "Knowledge base", icon: BookOpen },
+  { id: "conversations", label: "Conversations", icon: MessagesSquare },
 ];
 
 /**
@@ -54,7 +56,8 @@ export function AskWatiSettings({
       </nav>
       <div className="min-w-0 flex-1 overflow-y-auto p-5">
         {tab === "connectors" && <ConnectorsSettings />}
-        {tab === "team-inbox" && <InboxAiSettings />}
+        {tab === "knowledge" && <KnowledgeBaseSettings />}
+        {tab === "conversations" && <InboxAiSettings />}
         {tab === "skills" && (
           <SettingsPlaceholder
             title="Skills"

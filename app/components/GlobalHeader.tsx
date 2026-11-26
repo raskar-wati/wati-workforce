@@ -1,6 +1,7 @@
 "use client";
 
-import { Bell, Rocket, User } from "lucide-react";
+import { Bell, Rocket } from "lucide-react";
+import { AccountMenu } from "./AccountMenu";
 import { motion, type Transition } from "motion/react";
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { useNotifications } from "../lib/notifications";
@@ -121,13 +122,7 @@ export function GlobalHeader() {
 
         <div className="h-4 w-px bg-[var(--wati-divider-light)]" />
 
-        <button
-          type="button"
-          aria-label="Account"
-          className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--wati-icon-default)]"
-        >
-          <User size={20} strokeWidth={1.75} />
-        </button>
+        <AccountMenu />
       </div>
     </header>
   );

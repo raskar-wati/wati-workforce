@@ -1,7 +1,12 @@
 "use client";
 
+import { Settings } from "lucide-react";
+import { useState } from "react";
 import { AskWatiDrawer } from "../components/AskWatiDrawer";
 import { MainSidebar } from "../components/MainSidebar";
+import { InboxComposer } from "../components/inbox/InboxComposer";
+import { SettingsModal } from "../components/settings/SettingsModal";
+import { TeamInboxSettings } from "../components/settings/TeamInboxSettings";
 import { InboxContextProvider, type InboxStats } from "../lib/inbox-context";
 
 // Mock inbox snapshot used to drive Ask Wati's queue-level suggestions.
@@ -28,8 +33,17 @@ export default function PreviewPage() {
 }
 
 function InboxSkeleton() {
+  const [settingsOpen, setSettingsOpen] = useState(false);
   return (
     <div className="flex h-full w-full flex-col">
+      <SettingsModal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        title="Team Inbox settings"
+        className="max-w-[720px]"
+      >
+        <TeamInboxSettings />
+      </SettingsModal>
       {/* Skeleton top bar inside the main content card */}
       <div className="flex h-12 shrink-0 items-center justify-between border-b border-slate-200 px-4">
         <div className="flex items-center gap-3">
@@ -41,7 +55,17 @@ function InboxSkeleton() {
       <div className="flex min-h-0 flex-1">
         {/* Channels */}
         <div className="flex w-56 shrink-0 flex-col gap-2 border-r border-slate-200 bg-white p-3">
-          <div className="h-5 w-32 rounded bg-slate-200" />
+          <div className="flex items-center justify-between px-1">
+            <h2 className="text-[15px] font-semibold text-[#0a0a0a]">Team Inbox</h2>
+            <button
+              type="button"
+              onClick={() => setSettingsOpen(true)}
+              aria-label="Team Inbox settings"
+              className="flex h-7 w-7 items-center justify-center rounded-md text-black/60 hover:bg-black/[0.04] hover:text-[#0a0a0a]"
+            >
+              <Settings size={17} strokeWidth={1.75} />
+            </button>
+          </div>
           <div className="mt-2 flex flex-col gap-2">
             {Array.from({ length: 5 }).map((_, i) => (
               <div key={i} className="h-7 w-full rounded bg-slate-100" />
@@ -81,10 +105,7 @@ function InboxSkeleton() {
               </div>
             ))}
           </div>
-          <div className="flex h-14 shrink-0 items-center gap-2 border-t border-slate-200 bg-white px-4">
-            <div className="h-9 flex-1 rounded bg-slate-100" />
-            <div className="h-9 w-16 rounded bg-wati-green-soft-hover" />
-          </div>
+          <InboxComposer />
         </div>
 
         {/* Contact info */}

@@ -2,6 +2,7 @@
 
 import {
   ImagePlus,
+  Languages,
   PenLine,
   Smile,
   SquareMousePointer,
@@ -14,6 +15,7 @@ import {
   useAskWatiSettings,
   type InboxAiToggle,
 } from "../../lib/ask-wati-settings";
+import { Select } from "../ui/Select";
 import { Switch } from "../ui/Switch";
 import { BTN, BTN_PRIMARY, HINT, INPUT, LIST } from "./settings-styles";
 
@@ -59,25 +61,23 @@ const SECTIONS: { title: string; rows: ToggleRow[] }[] = [
 const ROW = "flex items-start gap-3 border-b border-black/[0.06] px-4 py-3.5 last:border-b-0";
 
 /**
- * Wati AI features inside the Team inbox: CX score, summaries, brand tone
- * and the AI editor. Shown in the Wati AI settings pop-up and on the Team
- * inbox Settings page; both read the same store.
+ * Wati AI features that work on conversations: CX score, summaries, brand
+ * tone, AI editor and translation. The Conversations tab of the Wati AI
+ * settings pop-up.
  */
-export function InboxAiSettings({ heading = true }: { heading?: boolean }) {
+export function InboxAiSettings() {
   const { inboxAi, setInboxAi } = useAskWatiSettings();
 
   return (
     <div className="flex flex-col gap-6">
-      {heading && (
-        <div>
-          <h3 className="text-[14px] font-medium tracking-[-0.084px] text-[#0a0a0a]">
-            Team inbox
-          </h3>
-          <p className={`${HINT} mt-0.5`}>
-            Works across your connected channels, including WhatsApp and Instagram.
-          </p>
-        </div>
-      )}
+      <div>
+        <h3 className="text-[14px] font-medium tracking-[-0.084px] text-[#0a0a0a]">
+          Conversations
+        </h3>
+        <p className={`${HINT} mt-0.5`}>
+          Works across your connected channels, including WhatsApp and Instagram.
+        </p>
+      </div>
 
       {SECTIONS.map((section) => (
         <section key={section.title}>
@@ -111,6 +111,7 @@ export function InboxAiSettings({ heading = true }: { heading?: boolean }) {
               label="AI editor in Team inbox"
             />
           </SettingRow>
+          <TranslationRow />
         </div>
       </section>
     </div>
@@ -200,6 +201,43 @@ function BrandToneRow() {
             </button>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+const LANGUAGES = ["English", "Arabic", "Hindi", "Indonesian", "Portuguese", "Spanish"];
+
+function TranslationRow() {
+  const { inboxAi, setInboxAi } = useAskWatiSettings();
+  return (
+    <div className={`${ROW} flex-col !items-stretch`}>
+      <div className="flex items-start gap-3">
+        <Languages size={17} strokeWidth={1.5} className="mt-0.5 shrink-0 text-black/55" />
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] font-medium text-[#0a0a0a]">Auto translation of messages</p>
+          <p className={HINT}>Automatically translate messages to the preferred language</p>
+        </div>
+        <div className="shrink-0 pt-0.5">
+          <Switch
+            checked={inboxAi.autoTranslate}
+            onChange={(v) => setInboxAi({ autoTranslate: v })}
+            label="Auto translation of messages"
+          />
+        </div>
+      </div>
+      {inboxAi.autoTranslate && (
+        <label className="ml-[29px] mt-2.5 flex items-center gap-2 text-[12px] text-black/60">
+          Translate to
+          <Select
+            value={inboxAi.translateTo}
+            onChange={(e) => setInboxAi({ translateTo: e.target.value })}
+          >
+            {LANGUAGES.map((l) => (
+              <option key={l}>{l}</option>
+            ))}
+          </Select>
+        </label>
       )}
     </div>
   );
