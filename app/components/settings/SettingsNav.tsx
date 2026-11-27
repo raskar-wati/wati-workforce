@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { WATI_AI_TABS } from "./AskWatiSettings";
 
 export type SettingsPage = { id: string; label: string };
 type SettingsGroup = { id: string; label: string; icon: string; pages?: SettingsPage[] };
@@ -42,7 +43,12 @@ export const SETTINGS_IA: SettingsGroup[] = [
       { id: "switch-plan", label: "Switch plan" },
     ],
   },
-  { id: "wati-ai", label: "Wati AI", icon: `${ICONS}/wati-ai.svg` },
+  {
+    id: "wati-ai",
+    label: "Wati AI",
+    icon: `${ICONS}/wati-ai.svg`,
+    pages: WATI_AI_TABS.map((t) => ({ id: `wati-ai-${t.id}`, label: t.label })),
+  },
 ];
 
 /** Every leaf page, in nav order, for looking up the open page's label. */

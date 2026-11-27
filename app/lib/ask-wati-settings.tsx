@@ -75,9 +75,9 @@ type Ctx = {
   setInboxAi: (patch: Partial<InboxAiSettings>) => void;
 };
 
-/** Wati AI settings live in global Settings, one page with a tab per area. */
+/** Wati AI settings live in global Settings, one page per area. */
 export const watiAiSettingsHref = (tab: SettingsTab = "connectors") =>
-  `/preview/settings?page=wati-ai&tab=${tab}`;
+  `/preview/settings?page=wati-ai-${tab}`;
 
 const SettingsCtx = createContext<Ctx | null>(null);
 

@@ -8,7 +8,8 @@ import { InboxAiSettings } from "./InboxAiSettings";
 import { KnowledgeBaseSettings } from "./KnowledgeBaseSettings";
 import { HINT } from "./settings-styles";
 
-const TABS: {
+/** Wati AI settings pages, in nav order (Settings > Wati AI). */
+export const WATI_AI_TABS: {
   id: SettingsTab;
   label: string;
   icon: ComponentType<{ size?: number; strokeWidth?: number }>;
@@ -21,40 +22,12 @@ const TABS: {
 ];
 
 /**
- * Settings > Wati AI: a tab bar across the page and the open tab beneath.
- * Positioned so the add-server sheet can cover it.
+ * One Settings > Wati AI page. Positioned so the add-server sheet can cover it.
  */
-export function AskWatiSettings({
-  tab,
-  onTabChange,
-}: {
-  tab: SettingsTab;
-  onTabChange: (tab: SettingsTab) => void;
-}) {
+export function AskWatiSettings({ tab }: { tab: SettingsTab }) {
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
-      <nav
-        aria-label="Wati AI settings sections"
-        className="flex shrink-0 gap-5 border-b border-[var(--wati-border-default)]"
-      >
-        {TABS.map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => onTabChange(id)}
-            aria-current={tab === id ? "page" : undefined}
-            className={`-mb-px flex items-center gap-1.5 border-b-2 pb-2.5 pt-1 text-[13px] tracking-[-0.078px] ${
-              tab === id
-                ? "border-wati-green font-medium text-[#0a0a0a]"
-                : "border-transparent text-black/60 hover:text-[#0a0a0a]"
-            }`}
-          >
-            <Icon size={15} strokeWidth={1.75} />
-            {label}
-          </button>
-        ))}
-      </nav>
-      <div className="min-w-0 max-w-[760px] flex-1 pt-6">
+      <div className="min-w-0 max-w-[760px] flex-1">
         {tab === "connectors" && <ConnectorsSettings />}
         {tab === "knowledge" && <KnowledgeBaseSettings />}
         {tab === "conversations" && <InboxAiSettings />}
