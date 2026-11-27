@@ -21,8 +21,8 @@ const TABS: {
 ];
 
 /**
- * The settings body (tab list + the open tab) of the Wati AI settings
- * pop-up. Positioned so the add-server sheet can cover it.
+ * Settings > Wati AI: a tab bar across the page and the open tab beneath.
+ * Positioned so the add-server sheet can cover it.
  */
 export function AskWatiSettings({
   tab,
@@ -32,10 +32,10 @@ export function AskWatiSettings({
   onTabChange: (tab: SettingsTab) => void;
 }) {
   return (
-    <div className="relative flex min-h-0 flex-1">
+    <div className="relative flex min-h-0 flex-1 flex-col">
       <nav
-        aria-label="Settings sections"
-        className="flex w-[188px] shrink-0 flex-col gap-0.5 border-r border-black/[0.06] px-2 py-3"
+        aria-label="Wati AI settings sections"
+        className="flex shrink-0 gap-5 border-b border-[var(--wati-border-default)]"
       >
         {TABS.map(({ id, label, icon: Icon }) => (
           <button
@@ -43,10 +43,10 @@ export function AskWatiSettings({
             type="button"
             onClick={() => onTabChange(id)}
             aria-current={tab === id ? "page" : undefined}
-            className={`flex items-center gap-2 rounded-lg px-3 py-2 text-left text-[13px] tracking-[-0.078px] ${
+            className={`-mb-px flex items-center gap-1.5 border-b-2 pb-2.5 pt-1 text-[13px] tracking-[-0.078px] ${
               tab === id
-                ? "bg-black/[0.06] font-medium text-[#0a0a0a]"
-                : "text-black/70 hover:bg-black/[0.04]"
+                ? "border-wati-green font-medium text-[#0a0a0a]"
+                : "border-transparent text-black/60 hover:text-[#0a0a0a]"
             }`}
           >
             <Icon size={15} strokeWidth={1.75} />
@@ -54,7 +54,7 @@ export function AskWatiSettings({
           </button>
         ))}
       </nav>
-      <div className="min-w-0 flex-1 overflow-y-auto p-5">
+      <div className="min-w-0 max-w-[760px] flex-1 pt-6">
         {tab === "connectors" && <ConnectorsSettings />}
         {tab === "knowledge" && <KnowledgeBaseSettings />}
         {tab === "conversations" && <InboxAiSettings />}

@@ -42,6 +42,7 @@ export const SETTINGS_IA: SettingsGroup[] = [
       { id: "switch-plan", label: "Switch plan" },
     ],
   },
+  { id: "wati-ai", label: "Wati AI", icon: `${ICONS}/wati-ai.svg` },
 ];
 
 /** Every leaf page, in nav order, for looking up the open page's label. */

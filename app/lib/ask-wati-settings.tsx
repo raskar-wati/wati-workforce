@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import {
   createContext,
   useCallback,
@@ -52,11 +53,8 @@ const INBOX_AI_DEFAULTS: InboxAiSettings = {
 };
 
 type Ctx = {
-  /** The settings pop-up. */
-  dialogOpen: boolean;
-  dialogTab: SettingsTab;
+  /** Opens Settings > Wati AI on the given tab. */
   openSettings: (tab?: SettingsTab) => void;
-  closeSettings: () => void;
 
   connectors: Connector[];
   /** Connectors that need the user to sign in again. */
@@ -77,13 +75,16 @@ type Ctx = {
   setInboxAi: (patch: Partial<InboxAiSettings>) => void;
 };
 
+/** Wati AI settings live in global Settings, one page with a tab per area. */
+export const watiAiSettingsHref = (tab: SettingsTab = "connectors") =>
+  `/preview/settings?page=wati-ai&tab=${tab}`;
+
 const SettingsCtx = createContext<Ctx | null>(null);
 
 const hostOf = (url: string) => url.replace(/^https?:\/\//, "").split("/")[0];
 
 export function AskWatiSettingsProvider({ children }: { children: ReactNode }) {
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [dialogTab, setDialogTab] = useState<SettingsTab>("connectors");
+  const router = useRouter();
   const [connectors, setConnectors] = useState<Connector[]>(SEED_CONNECTORS);
   const [inboxAi, setInboxAiState] = useState<InboxAiSettings>(INBOX_AI_DEFAULTS);
   const setInboxAi = useCallback(
@@ -91,11 +92,10 @@ export function AskWatiSettingsProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  const openSettings = useCallback((tab: SettingsTab = "connectors") => {
-    setDialogTab(tab);
-    setDialogOpen(true);
-  }, []);
-  const closeSettings = useCallback(() => setDialogOpen(false), []);
+  const openSettings = useCallback(
+    (tab: SettingsTab = "connectors") => router.push(watiAiSettingsHref(tab)),
+    [router],
+  );
 
   const patch = useCallback((id: string, fn: (c: Connector) => Connector) => {
     setConnectors((list) => list.map((c) => (c.id === id ? fn(c) : c)));
@@ -188,10 +188,7 @@ export function AskWatiSettingsProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<Ctx>(
     () => ({
-      dialogOpen,
-      dialogTab,
       openSettings,
-      closeSettings,
       connectors,
       expiredCount: connectors.filter((c) => c.expired).length,
       setEnabled,
@@ -206,10 +203,7 @@ export function AskWatiSettingsProvider({ children }: { children: ReactNode }) {
       setInboxAi,
     }),
     [
-      dialogOpen,
-      dialogTab,
       openSettings,
-      closeSettings,
       connectors,
       setEnabled,
       setToolPermission,

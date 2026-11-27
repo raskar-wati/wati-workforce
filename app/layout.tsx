@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { AskWatiSettingsDialog } from "./components/settings/AskWatiSettingsDialog";
 import { AskWatiDrawerProvider } from "./lib/ask-wati-drawer";
 import { AskWatiSettingsProvider } from "./lib/ask-wati-settings";
 import { NotificationsProvider } from "./lib/notifications";
@@ -30,7 +29,6 @@ export default function RootLayout({
           <AskWatiDrawerProvider>
             <AskWatiSettingsProvider>
               <ShellLayoutProvider>{children}</ShellLayoutProvider>
-              <AskWatiSettingsDialog />
             </AskWatiSettingsProvider>
           </AskWatiDrawerProvider>
         </NotificationsProvider>

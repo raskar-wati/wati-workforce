@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { watiAiSettingsHref } from "../lib/ask-wati-settings";
 import { useShellLayout } from "../lib/shell-layout";
 import { ASK_WATI_PAGE } from "./AskWatiDrawer";
 import { navIconMask, type NavIconName } from "./icons/nav-icons";
@@ -49,6 +50,7 @@ const NAV: NavItem[] = [
       { id: "ask-wati", label: "Ask Wati", href: ASK_WATI_PAGE },
       { id: "talk-to-wati", label: "On WhatsApp" },
       { id: "mcp", label: "In AI tools (MCP)" },
+      { id: "wati-ai-settings", label: "Settings", href: watiAiSettingsHref() },
     ],
   },
   {
