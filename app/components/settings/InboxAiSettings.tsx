@@ -71,7 +71,7 @@ export function InboxAiSettings() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h3 className="text-[14px] font-medium tracking-[-0.084px] text-[#0a0a0a]">
+        <h3 className="text-[14px] font-semibold tracking-[-0.084px] text-[#0a0a0a]">
           Conversations
         </h3>
         <p className={`${HINT} mt-0.5`}>

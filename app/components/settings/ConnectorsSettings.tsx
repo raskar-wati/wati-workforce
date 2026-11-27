@@ -46,7 +46,7 @@ export function ConnectorsSettings() {
         <div className="flex flex-col gap-6">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h3 className="text-[14px] font-medium tracking-[-0.084px] text-[#0a0a0a]">
+              <h3 className="text-[14px] font-semibold tracking-[-0.084px] text-[#0a0a0a]">
                 Connectors
               </h3>
               <p className={`${HINT} mt-0.5`}>Apps Wati AI can use in your chats.</p>

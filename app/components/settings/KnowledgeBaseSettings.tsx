@@ -37,7 +37,7 @@ export function KnowledgeBaseSettings() {
   return (
     <div className="flex min-h-full flex-col gap-5">
       <div>
-        <h3 className="text-[14px] font-medium tracking-[-0.084px] text-[#0a0a0a]">
+        <h3 className="text-[14px] font-semibold tracking-[-0.084px] text-[#0a0a0a]">
           Knowledge base
         </h3>
         <p className={`${HINT} mt-0.5`}>

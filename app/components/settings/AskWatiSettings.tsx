@@ -51,7 +51,7 @@ export function AskWatiSettings({ tab }: { tab: SettingsTab }) {
 function SettingsPlaceholder({ title, body }: { title: string; body: string }) {
   return (
     <div className="flex flex-col gap-5">
-      <h3 className="text-[14px] font-medium tracking-[-0.084px] text-[#0a0a0a]">{title}</h3>
+      <h3 className="text-[14px] font-semibold tracking-[-0.084px] text-[#0a0a0a]">{title}</h3>
       <div className="rounded-xl border border-dashed border-[#cfd6de] px-4 py-7 text-center">
         <span className="rounded-full bg-black/[0.06] px-2 py-0.5 text-[11px] font-medium text-black/55">
           Coming soon
