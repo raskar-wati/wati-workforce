@@ -27,10 +27,11 @@ export const SETTINGS_IA: SettingsGroup[] = [
     pages: [
       { id: "general", label: "General" },
       { id: "business-profile", label: "Business profile" },
-      { id: "work-hours", label: "Work hour settings" },
       { id: "chat-assignment", label: "Chat Assignment" },
       { id: "security", label: "Security" },
       { id: "chat-data", label: "Chat Data" },
+      { id: "tags", label: "Tags" },
+      { id: "attributes", label: "Attributes" },
     ],
   },
   {
