@@ -30,8 +30,7 @@ export const SETTINGS_IA: SettingsGroup[] = [
       { id: "chat-assignment", label: "Chat Assignment" },
       { id: "security", label: "Security" },
       { id: "chat-data", label: "Chat Data" },
-      { id: "tags", label: "Tags" },
-      { id: "attributes", label: "Attributes" },
+      { id: "tags-attributes", label: "Tags & Attributes" },
     ],
   },
   {
