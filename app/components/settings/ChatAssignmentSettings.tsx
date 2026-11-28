@@ -2,6 +2,7 @@
 
 import { Check, Info } from "lucide-react";
 import { useState, type ReactNode } from "react";
+import { NumberField } from "../ui/NumberField";
 import { Switch } from "../ui/Switch";
 import { HINT } from "./settings-styles";
 
@@ -226,26 +227,5 @@ function RuleCard({
         </p>
       )}
     </div>
-  );
-}
-
-function NumberField({
-  value,
-  onChange,
-  label,
-}: {
-  value: number;
-  onChange: (v: number) => void;
-  label: string;
-}) {
-  return (
-    <input
-      type="number"
-      min={1}
-      aria-label={label}
-      value={value}
-      onChange={(e) => onChange(Math.max(1, Number(e.target.value) || 1))}
-      className="h-7 w-16 rounded-lg border border-[var(--wati-border-default)] bg-white px-2 text-[13px] text-[#0a0a0a] outline-none focus:border-[#1570EF]"
-    />
   );
 }

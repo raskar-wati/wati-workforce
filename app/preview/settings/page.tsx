@@ -6,11 +6,12 @@ import { AskWatiDrawer } from "../../components/AskWatiDrawer";
 import { MainSidebar } from "../../components/MainSidebar";
 import { AskWatiSettings, WATI_AI_TABS } from "../../components/settings/AskWatiSettings";
 import { ChatAssignmentSettings } from "../../components/settings/ChatAssignmentSettings";
+import { ChatDataSettings } from "../../components/settings/ChatDataSettings";
 import { SETTINGS_PAGES, SettingsNav } from "../../components/settings/SettingsNav";
 
 /**
- * Global Settings: the account and workspace IA. Chat Assignment and Wati AI
- * are built; the other pages are placeholders. The open page lives in the URL
+ * Global Settings: the account and workspace IA. Chat Assignment, Chat Data
+ * and Wati AI are built; the other pages are placeholders. The open page lives in the URL
  * (?page=…) so other entry points can deep-link here.
  */
 export default function SettingsPage() {
@@ -53,6 +54,10 @@ function SettingsBody() {
         ) : current === "chat-assignment" ? (
           <div className="mt-6">
             <ChatAssignmentSettings />
+          </div>
+        ) : current === "chat-data" ? (
+          <div className="mt-6">
+            <ChatDataSettings />
           </div>
         ) : (
           <div aria-hidden className="mt-6 flex max-w-[640px] flex-col gap-3">
